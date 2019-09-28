@@ -783,7 +783,7 @@ enum SndBankState
 };
 
 /* 3349 */
-struct __declspec(align(2)) SndBank
+struct SndBank
 {
   const char *name;
   unsigned int aliasCount;
