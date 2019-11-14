@@ -13,7 +13,13 @@
         {
             var result = matcher.Test(context, tokenOffset);
 
-            return !result.Successful ? new TokenMatchingResult(true, 0) : result;
+            if (!result.Successful)
+            {
+                result = new TokenMatchingResult(true, 0);
+            }
+
+            result.PrependTag(Tag);
+            return result;
         }
 
         protected override string GetIdentifier()

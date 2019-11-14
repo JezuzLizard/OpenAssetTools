@@ -3,6 +3,9 @@
 #define __int32 int
 #define __int64 long long
 
+typedef __declspec(align(32)) char byte32;
+typedef __declspec(align(16)) char char16;
+
 struct dvar_t;
 struct MenuCell;
 struct cplane_s;
@@ -285,6 +288,19 @@ enum XAssetType
     ASSET_TYPE_FULL_COUNT = 0x40,
 };
 
+enum XFileBlock
+{
+    XFILE_BLOCK_TEMP,
+    XFILE_BLOCK_RUNTIME_VIRTUAL,
+    XFILE_BLOCK_RUNTIME_PHYSICAL,
+    XFILE_BLOCK_DELAY_VIRTUAL,
+    XFILE_BLOCK_DELAY_PHYSICAL,
+    XFILE_BLOCK_VIRTUAL,
+    XFILE_BLOCK_PHYSICAL,
+    XFILE_BLOCK_STREAMER_RESERVE,
+    MAX_XFILE_COUNT,
+};
+
 /* 3486 */
 union XAssetHeader
 {
@@ -525,8 +541,8 @@ struct XModel
   char lodRampType;
   unsigned __int16 *boneNames;
   char *parentList;
-  __int16 *quats;
-  float *trans;
+  __int16 (*quats)[4];
+  float (*trans)[4];
   char *partClassification;
   DObjAnimMat *baseMat;
   XSurface *surfs;
@@ -1809,7 +1825,7 @@ struct RawFile
 {
   const char *name;
   int len;
-  const char *buffer;
+  const char16* buffer;
 };
 
 /* 3339 */
@@ -2415,7 +2431,7 @@ struct Qdb
 {
   const char *name;
   int len;
-  char *buffer;
+  byte32 *buffer;
 };
 
 /* 3483 */
@@ -2571,7 +2587,7 @@ struct __declspec(align(16)) XSurface
   unsigned __int16 vertCount;
   unsigned __int16 triCount;
   unsigned __int16 baseVertIndex;
-  unsigned __int16 *triIndices;
+  unsigned __int16 (*triIndices)[3];
   XSurfaceVertexInfo vertInfo;
   GfxPackedVertex *verts0;
   ID3D11Buffer *vb0;
@@ -5265,10 +5281,25 @@ struct MaterialArgumentCodeConst
 /* 1587 */
 union MaterialArgumentDef
 {
-  /*const*/ float *literalConst;
+  const float (*literalConst)[4];
   MaterialArgumentCodeConst codeConst;
   unsigned int codeSampler;
   unsigned int nameHash;
+};
+
+enum MaterialShaderArgumentType
+{
+  MTL_ARG_MATERIAL_VERTEX_CONST = 0x0,
+  MTL_ARG_LITERAL_VERTEX_CONST = 0x1,
+  MTL_ARG_MATERIAL_PIXEL_SAMPLER = 0x2,
+  MTL_ARG_CODE_PRIM_BEGIN = 0x3,
+  MTL_ARG_CODE_VERTEX_CONST = 0x3,
+  MTL_ARG_CODE_PIXEL_SAMPLER = 0x4,
+  MTL_ARG_CODE_PIXEL_CONST = 0x5,
+  MTL_ARG_CODE_PRIM_END = 0x6,
+  MTL_ARG_MATERIAL_PIXEL_CONST = 0x6,
+  MTL_ARG_LITERAL_PIXEL_CONST = 0x7,
+  MLT_ARG_COUNT = 0x8,
 };
 
 /* 1588 */

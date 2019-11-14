@@ -7,30 +7,19 @@ namespace ZoneCodeGenerator.Domain
     {
         private const int PointerSize = 4;
 
-        private DataType type;
-        public DataType Type
-        {
-            get
-            {
-                if (type is DataTypeTypedef typedef)
-                {
-                    return typedef.TypeDefinition.Type;
-                }
+        public DataType Type { get; set; }
 
-                return type;
-            }
 
-            set => type = value;
-        }
+        public int? CustomBitSize { get; set; }
 
-        public int? CustomBitSize { get; }
+        public bool IsConst { get; set; }
 
         public bool HasCustomBitSize => CustomBitSize != null;
 
         private readonly List<ReferenceType> references;
         public IReadOnlyList<ReferenceType> References => references.AsReadOnly();
 
-        public int Alignment => references.OfType<ReferenceTypePointer>().Any() ? PointerSize : type.Alignment;
+        public int Alignment => references.OfType<ReferenceTypePointer>().Any() ? PointerSize : Type.Alignment;
 
         public int Size
         {
@@ -57,14 +46,9 @@ namespace ZoneCodeGenerator.Domain
 
         public TypeDeclaration(DataType type, List<ReferenceType> references)
         {
-            this.type = type;
+            Type = type;
             this.references = references ?? new List<ReferenceType>();
             CustomBitSize = null;
-        }
-
-        public TypeDeclaration(DataType type, int customBitSize, List<ReferenceType> references) : this(type, references)
-        {
-            CustomBitSize = customBitSize;
         }
     }
 }

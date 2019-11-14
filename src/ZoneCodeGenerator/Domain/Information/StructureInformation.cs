@@ -4,7 +4,7 @@ using System.Linq;
 using ZoneCodeGenerator.Domain.FastFileStructure;
 using ZoneCodeGenerator.Persistence;
 
-namespace ZoneCodeGenerator.Domain.StructureInformation
+namespace ZoneCodeGenerator.Domain.Information
 {
     class StructureInformation
     {
@@ -24,11 +24,13 @@ namespace ZoneCodeGenerator.Domain.StructureInformation
         }
         
         public List<StructureInformation> Usages { get; }
-        public List<MemberInformation> OrderedMembers { get; }
+        public List<MemberInformation> OrderedMembers { get; set; }
         public bool NonEmbeddedReferenceExists { get; set; }
         public bool SinglePointerReferenceExists { get; set; }
         public bool ArrayPointerReferenceExists { get; set; }
         public bool ArrayReferenceExists { get; set; }
+
+        public bool IsLeaf { get; set; }
 
         public bool HasNameMember => Type.Members.Any(variable => variable.Name.Equals("name", StringComparison.CurrentCultureIgnoreCase));
         
@@ -42,6 +44,12 @@ namespace ZoneCodeGenerator.Domain.StructureInformation
             ArrayReferenceExists = false;
             Usages = new List<StructureInformation>();
             OrderedMembers = new List<MemberInformation>();
+            IsLeaf = true;
+        }
+
+        public override string ToString()
+        {
+            return $"info for {Type}";
         }
     }
 }

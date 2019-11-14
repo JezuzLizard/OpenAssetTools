@@ -100,22 +100,6 @@ namespace ZoneCodeGeneratorTests.Parsing.Matching.Matchers
         }
 
         [TestMethod]
-        public void EnsureConstTypeNamesAreRecognized()
-        {
-            tokens.AddRange(new List<string>
-            {
-                "const", "int"
-            });
-
-            var matcher = new MatcherTypename().WithName("type_token");
-            var result = matcher.Test(matchingContext, 0);
-
-            Assert.IsTrue(result.Successful);
-            Assert.AreEqual(2, result.ConsumedTokenCount);
-            Assert.AreEqual("const int", result.NamedMatches["type_token"].ElementAtOrDefault(0));
-        }
-
-        [TestMethod]
         public void EnsureDoubleLongIsRecognized()
         {
             tokens.AddRange(new List<string>
@@ -136,15 +120,15 @@ namespace ZoneCodeGeneratorTests.Parsing.Matching.Matchers
         {
             tokens.AddRange(new List<string>
             {
-                "const", "unsigned", "long", "long"
+                "unsigned", "long", "long"
             });
 
             var matcher = new MatcherTypename().WithName("type_token");
             var result = matcher.Test(matchingContext, 0);
 
             Assert.IsTrue(result.Successful);
-            Assert.AreEqual(4, result.ConsumedTokenCount);
-            Assert.AreEqual("const unsigned long long", result.NamedMatches["type_token"].ElementAtOrDefault(0));
+            Assert.AreEqual(3, result.ConsumedTokenCount);
+            Assert.AreEqual("unsigned long long", result.NamedMatches["type_token"].ElementAtOrDefault(0));
         }
 
         [TestMethod]
@@ -273,6 +257,54 @@ namespace ZoneCodeGeneratorTests.Parsing.Matching.Matchers
             Assert.IsFalse(result.Successful);
             Assert.AreEqual(0, result.ConsumedTokenCount);
             Assert.IsFalse(result.NamedMatches.ContainsKey("type_token"));
+        }
+
+        [TestMethod]
+        public void EnsureMakesCorrectUseOfTokenOffset()
+        {
+            tokens.AddRange(new List<string>
+            {
+                "5", "4", "3", "2", "std", ":", ":", "string", "randomString", ";"
+            });
+
+            var matcher = new MatcherTypename();
+            var result = matcher.Test(matchingContext, 4);
+
+            Assert.IsTrue(result.Successful);
+            Assert.AreEqual(4, result.ConsumedTokenCount);
+        }
+
+        [TestMethod]
+        public void EnsureAddsTagWhenMatched()
+        {
+            tokens.AddRange(new List<string>
+            {
+                "std", ":", ":", "something", "test"
+            });
+
+            var matcher = new MatcherTypename().WithTag("naisu");
+            var result = matcher.Test(matchingContext, 0);
+
+            Assert.IsTrue(result.Successful);
+            Assert.AreEqual(4, result.ConsumedTokenCount);
+            Assert.AreEqual(1, result.MatchedTags.Count);
+            Assert.AreEqual("naisu", result.MatchedTags[0]);
+        }
+
+        [TestMethod]
+        public void EnsureDoesNotAddTagWhenNotMatched()
+        {
+            tokens.AddRange(new List<string>
+            {
+                "1337", "asdf", ":", ":", "something", "test"
+            });
+
+            var matcher = new MatcherTypename().WithTag("naisu");
+            var result = matcher.Test(matchingContext, 0);
+
+            Assert.IsFalse(result.Successful);
+            Assert.AreEqual(0, result.ConsumedTokenCount);
+            Assert.AreEqual(0, result.MatchedTags.Count);
         }
     }
 }

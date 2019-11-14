@@ -52,22 +52,31 @@ asset FootstepFXTableDef ASSET_TYPE_FOOTSTEPFX_TABLE;
 asset ZBarrierDef ASSET_TYPE_ZBARRIER;
 
 // Setup blocks
-block 0 temp    XFILE_BLOCK_TEMP                default;
-block 1 runtime XFILE_BLOCK_RUNTIME_VIRTUAL     default;
-block 2 runtime XFILE_BLOCK_RUNTIME_PHYSICAL;
-block 3 delay   XFILE_BLOCK_DELAY_VIRTUAL       default;
-block 4 delay   XFILE_BLOCK_DELAY_PHYSICAL;
-block 5 normal  XFILE_BLOCK_VIRTUAL             default;
-block 6 normal  XFILE_BLOCK_PHYSICAL;
+block temp    XFILE_BLOCK_TEMP              default;
+block runtime XFILE_BLOCK_RUNTIME_VIRTUAL   default;
+block runtime XFILE_BLOCK_RUNTIME_PHYSICAL;
+block delay   XFILE_BLOCK_DELAY_VIRTUAL	    default;
+block delay   XFILE_BLOCK_DELAY_PHYSICAL;
+block normal  XFILE_BLOCK_VIRTUAL           default;
+block normal  XFILE_BLOCK_PHYSICAL;
 
 // =========================================
 // XModelPieces
 // =========================================
-set count XModelPieces::pieces numpieces;
+use XModelPieces;
+set string name;
+set count pieces numpieces;
 
 // =========================================
-// PhysConstraint
+// PhysPreset
 // =========================================
+set string PhysPreset::name;
+
+// =========================================
+// PhysConstraints
+// =========================================
+set string PhysConstraints::name;
+
 use PhysConstraint;
 set scriptstring targetname;
 set scriptstring target_ent1;
@@ -76,7 +85,9 @@ set scriptstring target_ent2;
 // =========================================
 // DestructibleDef
 // =========================================
-set count DestructibleDef::pieces numPieces;
+use DestructibleDef;
+set string name;
+set count pieces numPieces;
 
 // DestructiblePiece
 set scriptstring DestructiblePiece::enableLabel;
@@ -88,6 +99,7 @@ set scriptstring DestructibleStage::showBone;
 // XAnimParts
 // =========================================
 use XAnimParts;
+set string name;
 set scriptstring names;
 set count names boneCount[9];
 set count notify notifyCount;
@@ -126,10 +138,10 @@ set count quat 1;
 // XAnimPartTrans
 use XAnimPartTrans;
 set condition u::frames size > 0;
-set condition XAnimParts::deltaPart::trans::u::frames::indices::_1 numframes < 256;
-set count u::frames::indices::_1 size + 1;
-set count u::frames::indices::_2 size + 1;
-set condition u::frames::frames::_1 smallTrans == true;
+set condition u::frames::indices::_1 XAnimParts::numframes < 256;
+set arraysize u::frames::indices::_1 size + 1;
+set arraysize u::frames::indices::_2 size + 1;
+set condition u::frames::frames::_1 smallTrans;
 set count u::frames::frames::_1 size + 1;
 set count u::frames::frames::_2 size + 1;
 
@@ -138,4 +150,393 @@ reorder XAnimPartTransFrames:
     indices
     frames;
 
-// test
+// XAnimDeltaPartQuat2
+use XAnimDeltaPartQuat2;
+set condition u::frames size > 0;
+set condition u::frames::indices::_1 XAnimParts::numframes < 256;
+set arraysize u::frames::indices::_1 size + 1;
+set arraysize u::frames::indices::_2 size + 1;
+set count u::frames::frames size + 1;
+
+// XAnimDeltaPartQuatDataFrames2
+reorder XAnimDeltaPartQuatDataFrames2:
+    indices
+    frames;
+
+// XAnimDeltaPartQuat
+use XAnimDeltaPartQuat;
+set condition u::frames size > 0;
+set condition u::frames::indices::_1 XAnimParts::numframes < 256;
+set arraysize u::frames::indices::_1 size + 1;
+set arraysize u::frames::indices::_2 size + 1;
+set count u::frames::frames size + 1;
+
+// =========================================
+// XModel
+// =========================================
+use XModel;
+set string name;
+set scriptstring boneNames;
+set count boneNames numBones;
+set count parentList numBones - numRootBones;
+set count quats numBones - numRootBones;
+set count trans numBones - numRootBones;
+set count partClassification numBones;
+set count baseMat numBones;
+set count surfs numsurfs;
+set count materialHandles numsurfs;
+set count collSurfs numCollSurfs;
+set count boneInfo numBones;
+set count himipInvSqRadii numsurfs;
+set count collmaps numCollmaps;
+
+// XSurface
+use XSurface;
+set condition verts0 !(flags & 1);
+set count verts0 vertCount;
+set count vb0 0;
+set count vertList vertListCount;
+set count triIndices triCount;
+set count indexBuffer 0;
+reorder:
+	vertInfo
+	verts0
+	vertList
+	triIndices;
+
+// XSurfaceVertexInfo
+use XSurfaceVertexInfo;
+set count vertsBlend vertCount[0] 
+						+ 3 * vertCount[1] 
+						+ 5 * vertCount[2]
+						+ 7 * vertCount[3];
+set count tensionData vertCount[0] 
+						+ 3 * vertCount[1] 
+						+ 5 * vertCount[2]
+						+ 7 * vertCount[3];
+
+// XRigidVertList
+set count XRigidVertList::collisionTree 1;
+
+// XSurfaceCollisionTree
+use XSurfaceCollisionTree;
+set count nodes nodeCount;
+set count leafs leafCount;
+
+// XModelCollSurf_s
+set count XModelCollSurf_s::collTris numCollTris;
+
+// Collmap
+set count Collmap::geomList 1;
+
+// PhysGeomList
+set count PhysGeomList::geoms count;
+
+// PhysGeomInfo
+set count PhysGeomInfo::brush 1;
+
+// BrushWrapper
+use BrushWrapper;
+set count sides numsides;
+set count verts numverts;
+set count planes numsides;
+
+// cbrushside_t
+set count cbrushside_t::plane 1;
+
+// =========================================
+// Material
+// =========================================
+use Material;
+set string info::name;
+set count textureTable textureCount;
+set count constantTable constantCount;
+set count stateBitsTable stateBitsCount;
+
+// GfxStateBits
+use GfxStateBits;
+set count blendState 0;
+set count depthStencilState 0;
+set count rasterizerState 0;
+
+// =========================================
+// MaterialTechniqueSet
+// =========================================
+set string MaterialTechniqueSet::name;
+
+// MaterialTechnique
+use MaterialTechnique;
+set string name;
+set arraysize passArray passCount;
+reorder:
+    passArray
+    name;
+
+// MaterialPass
+use MaterialPass;
+set count args perPrimArgCount + perObjArgCount + stableArgCount;
+reorder:
+    vertexShader
+    vertexDecl
+    pixelShader
+    args;
+
+// MaterialVertexStreamRouting
+set count MaterialVertexStreamRouting::decl 0;
+
+// MaterialVertexShader
+set string MaterialVertexShader::name;
+
+// MaterialVertexShaderProgram
+set count MaterialVertexShaderProgram::vs 0;
+
+// GfxVertexShaderLoadDef
+set count GfxVertexShaderLoadDef::program programSize;
+
+// MaterialPixelShader;
+set string MaterialPixelShader::name;
+
+// MaterialPixelShaderProgram
+set count MaterialPixelShaderProgram::ps 0;
+
+// GfxPixelShaderLoadDef
+set count GfxPixelShaderLoadDef::program programSize;
+
+// MaterialShaderArgument
+use MaterialShaderArgument;
+//set condition u::literalConst type == MTL_ARG_LITERAL_VERTEX_CONST || type == MTL_ARG_LITERAL_PIXEL_CONST;
+//set condition u::literalConst type == 1 || type == 7;
+set count u::literalConst 1;
+
+// =========================================
+// GfxImage
+// =========================================
+use GfxImage;
+set string name;
+reorder:
+    name
+    texture;
+
+// GfxTexture
+set condition GfxTexture::loadDef always;
+
+// GfxImageLoadDef
+set arraysize GfxImageLoadDef::data resourceSize;
+
+// =========================================
+// SndBank
+// =========================================
+use SndBank;
+set string name;
+set count alias aliasCount;
+set count aliasIndex aliasCount;
+set count radverbs radverbCount;
+set count ducks duckCount;
+set count scriptIdLookups scriptIdLookupCount;
+
+// SndAliasList
+use SndAliasList;
+set string name;
+set count head count;
+
+// SndAlias
+use SndAlias;
+set string name;
+set string subtitle;
+set string secondaryname;
+set string assetFileName;
+
+// SndRuntimeAssetBank
+use SndRuntimeAssetBank;
+set string zone;
+set string language;
+
+// SndLoadedAssets
+use SndLoadedAssets;
+set string zone;
+set string language;
+set count entries entryCount;
+set count data dataSize;
+
+// =========================================
+// SndPatch
+// =========================================
+
+// =========================================
+// clipMap_t
+// =========================================
+
+// =========================================
+// ComWorld
+// =========================================
+
+// =========================================
+// GameWorldSp
+// =========================================
+
+// =========================================
+// GameWorldMp
+// =========================================
+
+// =========================================
+// MapEnts
+// =========================================
+
+// =========================================
+// GfxWorld
+// =========================================
+
+// =========================================
+// GfxLightDef
+// =========================================
+
+// =========================================
+// Font_s
+// =========================================
+
+// =========================================
+// FontIcon
+// =========================================
+
+// =========================================
+// MenuList
+// =========================================
+
+// =========================================
+// menuDef_t
+// =========================================
+
+// =========================================
+// LocalizeEntry
+// =========================================
+use LocalizeEntry;
+set string value;
+set string name;
+
+// =========================================
+// WeaponVariantDef
+// =========================================
+
+// =========================================
+// WeaponAttachment
+// =========================================
+
+// =========================================
+// WeaponAttachmentUnique
+// =========================================
+
+// =========================================
+// WeaponCamo
+// =========================================
+
+// =========================================
+// SndDriverGlobals
+// =========================================
+
+// =========================================
+// FxEffectDef
+// =========================================
+
+// =========================================
+// FxImpactTable
+// =========================================
+
+// =========================================
+// RawFile
+// =========================================
+use RawFile;
+set string name;
+set count buffer len + 1;
+
+// =========================================
+// StringTable
+// =========================================
+use StringTable;
+set string name;
+set count values columnCount * rowCount;
+set count cellIndex columnCount * rowCount;
+
+// StringTableCell
+set string StringTableCell::string;
+
+// =========================================
+// LeaderboardDef
+// =========================================
+
+// =========================================
+// XGlobals
+// =========================================
+
+// =========================================
+// ddlRoot_t
+// =========================================
+
+// =========================================
+// EmblemSet
+// =========================================
+
+// =========================================
+// ScriptParseTree
+// =========================================
+use ScriptParseTree;
+set string name;
+set count buffer len + 1;
+
+// =========================================
+// KeyValuePairs
+// =========================================
+use KeyValuePairs;
+set string name;
+set count keyValuePairs numVariables;
+
+// KeyValuePair
+set string KeyValuePair::value;
+
+// =========================================
+// VehicleDef
+// =========================================
+
+// =========================================
+// MemoryBlock
+// =========================================
+
+// =========================================
+// AddonMapEnts
+// =========================================
+
+// =========================================
+// TracerDef
+// =========================================
+
+// =========================================
+// SkinnedVertsDef
+// =========================================
+set string SkinnedVertsDef::name;
+
+// =========================================
+// Qdb
+// =========================================
+use Qdb;
+set string name;
+set count buffer len + 1;
+
+// =========================================
+// Slug
+// =========================================
+use Slug;
+set string name;
+set count buffer len + 1;
+
+// =========================================
+// FootstepTableDef
+// =========================================
+
+// =========================================
+// FootstepFXTableDef
+// =========================================
+
+// =========================================
+// ZBarrierDef
+// =========================================
+
+// EOF
