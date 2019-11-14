@@ -3,6 +3,9 @@
 #define __int32 int
 #define __int64 long long
 
+typedef __declspec(align(32)) char byte32;
+typedef __declspec(align(16)) char char16;
+
 struct dvar_t;
 struct MenuCell;
 struct cplane_s;
@@ -1822,7 +1825,7 @@ struct RawFile
 {
   const char *name;
   int len;
-  const char *buffer;
+  const char16* buffer;
 };
 
 /* 3339 */
@@ -2428,7 +2431,7 @@ struct Qdb
 {
   const char *name;
   int len;
-  char *buffer;
+  byte32 *buffer;
 };
 
 /* 3483 */
@@ -5278,10 +5281,25 @@ struct MaterialArgumentCodeConst
 /* 1587 */
 union MaterialArgumentDef
 {
-  /*const*/ float *literalConst;
+  const float (*literalConst)[4];
   MaterialArgumentCodeConst codeConst;
   unsigned int codeSampler;
   unsigned int nameHash;
+};
+
+enum MaterialShaderArgumentType
+{
+  MTL_ARG_MATERIAL_VERTEX_CONST = 0x0,
+  MTL_ARG_LITERAL_VERTEX_CONST = 0x1,
+  MTL_ARG_MATERIAL_PIXEL_SAMPLER = 0x2,
+  MTL_ARG_CODE_PRIM_BEGIN = 0x3,
+  MTL_ARG_CODE_VERTEX_CONST = 0x3,
+  MTL_ARG_CODE_PIXEL_SAMPLER = 0x4,
+  MTL_ARG_CODE_PIXEL_CONST = 0x5,
+  MTL_ARG_CODE_PRIM_END = 0x6,
+  MTL_ARG_MATERIAL_PIXEL_CONST = 0x6,
+  MTL_ARG_LITERAL_PIXEL_CONST = 0x7,
+  MLT_ARG_COUNT = 0x8,
 };
 
 /* 1588 */
