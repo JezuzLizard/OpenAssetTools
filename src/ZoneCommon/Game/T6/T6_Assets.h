@@ -2001,7 +2001,7 @@ struct ScriptParseTree
 {
   const char *name;
   int len;
-  char *buffer;
+  byte32 *buffer;
 };
 
 /* 3478 */
@@ -2439,7 +2439,7 @@ struct Slug
 {
   const char *name;
   int len;
-  char *buffer;
+  byte32* buffer;
 };
 
 /* 3484 */
