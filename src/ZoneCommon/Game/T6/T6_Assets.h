@@ -4909,11 +4909,9 @@ union FxElemDefVisuals
 /* 2448 */
 union FxElemExtendedDefPtr
 {
-  FxTrailDef *localTrailDef;
   FxTrailDef *trailDef;
-  FxSpotLightDef *localSpotLightDef;
   FxSpotLightDef *spotLightDef;
-  void *unknownDef;
+  char *unknownDef;
 };
 
 /* 2449 */
@@ -4934,6 +4932,26 @@ union FxElemDefUnion
 struct FxElemSpawnSound
 {
   const char *spawnSound;
+};
+
+enum FxElemType : char
+{
+  FX_ELEM_TYPE_SPRITE_BILLBOARD = 0x0,
+  FX_ELEM_TYPE_SPRITE_ORIENTED = 0x1,
+  FX_ELEM_TYPE_SPRITE_ROTATED = 0x2,
+  FX_ELEM_TYPE_TAIL = 0x3,
+  FX_ELEM_TYPE_LINE = 0x4,
+  FX_ELEM_TYPE_TRAIL = 0x5,
+  FX_ELEM_TYPE_CLOUD = 0x6,
+  FX_ELEM_TYPE_MODEL = 0x7,
+  FX_ELEM_TYPE_OMNI_LIGHT = 0x8,
+  FX_ELEM_TYPE_SPOT_LIGHT = 0x9,
+  FX_ELEM_TYPE_SOUND = 0xA,
+  FX_ELEM_TYPE_DECAL = 0xB,
+  FX_ELEM_TYPE_RUNNER = 0xC,
+  FX_ELEM_TYPE_COUNT = 0xD,
+  FX_ELEM_TYPE_LAST_SPRITE = 0x5,
+  FX_ELEM_TYPE_LAST_DRAWN = 0x9,
 };
 
 /* 2452 */
@@ -4958,7 +4976,7 @@ const struct FxElemDef
   FxFloatRange reflectionFactor;
   FxElemAtlas atlas;
   float windInfluence;
-  char elemType;
+  FxElemType elemType;
   char visualCount;
   char velIntervalCount;
   char visStateIntervalCount;
