@@ -2586,6 +2586,8 @@ struct XSurfaceVertexInfo
   float *tensionData;
 };
 
+typedef __declspec(align(16)) unsigned short r_index16_t;
+
 /* 2332 */
 struct __declspec(align(16)) XSurface
 {
@@ -2595,7 +2597,7 @@ struct __declspec(align(16)) XSurface
   unsigned __int16 vertCount;
   unsigned __int16 triCount;
   unsigned __int16 baseVertIndex;
-  unsigned __int16 (*triIndices)[3];
+  r_index16_t (*triIndices)[3];
   XSurfaceVertexInfo vertInfo;
   GfxPackedVertex *verts0;
   ID3D11Buffer *vb0;
@@ -3209,7 +3211,7 @@ struct pathnode_t
 };
 
 /* 3368 */
-struct pathbasenode_t
+struct __declspec(align(16)) pathbasenode_t
 {
   vec3_t vOrigin;
   unsigned int type;
@@ -5243,7 +5245,7 @@ union PackedUnitVec
 };
 
 /* 2325 */
-struct GfxPackedVertex
+struct __declspec(align(16)) GfxPackedVertex
 {
   vec3_t xyz;
   float binormalSign;
@@ -5271,11 +5273,13 @@ struct XModelCollTri_s
   vec4_t tvec;
 };
 
+typedef __declspec(align(16)) PhysGeomInfo PhysGeomInfo16;
+
 /* 1945 */
 struct PhysGeomList
 {
   unsigned int count;
-  PhysGeomInfo *geoms;
+  PhysGeomInfo16 *geoms;
   int contents;
 };
 
@@ -6172,7 +6176,7 @@ struct XSurfaceCollisionAabb
 };
 
 /* 2327 */
-struct XSurfaceCollisionNode
+struct __declspec(align(16)) XSurfaceCollisionNode
 {
   XSurfaceCollisionAabb aabb;
   unsigned __int16 childBeginIndex;
@@ -6186,7 +6190,7 @@ struct XSurfaceCollisionLeaf
 };
 
 /* 1633 */
-struct BrushWrapper
+struct __declspec(align(16)) BrushWrapper
 {
   vec3_t mins;
   int contents;
