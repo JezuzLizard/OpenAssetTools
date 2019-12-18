@@ -899,8 +899,8 @@ struct clipMap_t
   unsigned int vertCount;
   vec3_t *verts;
   int triCount;
-  unsigned __int16 *triIndices;
-  char *triEdgeIsWalkable;
+  unsigned __int16 (*triIndices)[3];
+  char *triEdgeIsWalkable; // Saved as 1 bit per edge rounded up to the next 4 bytes
   int partitionCount;
   CollisionPartition *partitions;
   int aabbTreeCount;
@@ -2388,6 +2388,15 @@ struct MemoryBlock
   char *data;
 };
 
+struct cmodel_t2
+{
+  vec3_t mins;
+  vec3_t maxs;
+  float radius;
+  ClipInfo *info;
+  cLeaf_s leaf;
+};
+
 /* 3480 */
 struct AddonMapEnts
 {
@@ -2397,7 +2406,7 @@ struct AddonMapEnts
   MapTriggers trigger;
   ClipInfo *info;
   unsigned int numSubModels;
-  cmodel_t *cmodels;
+  cmodel_t2 *cmodels;
   GfxBrushModel *models;
 };
 
@@ -2864,7 +2873,7 @@ struct cLeafBrushNode_s
 };
 
 /* 2547 */
-struct __declspec(align(8)) cbrush_t
+struct __declspec(align(16)) cbrush_t
 {
   vec3_t mins;
   int contents;
@@ -2926,7 +2935,7 @@ union CollisionAabbTreeIndex
 };
 
 /* 2569 */
-struct CollisionAabbTree
+struct __declspec(align(16)) CollisionAabbTree
 {
   vec3_t origin;
   unsigned __int16 materialIndex;
