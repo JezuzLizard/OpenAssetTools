@@ -5183,15 +5183,18 @@ namespace T6
         DevGraph devguiGraph;
     };
 
+    typedef char ByteVec[3];
+    typedef __declspec(align(4)) unsigned __int16 UShortVec[3];
+
     /* 2793 */
     union XAnimDynamicFrames
     {
-        char (*_1)[3];
-        unsigned __int16 (*_2)[3];
+        ByteVec *_1;
+        UShortVec *_2;
     };
 
     /* 2794 */
-    union XAnimDynamicIndices
+    union XAnimDynamicIndicesTrans
     {
         char _1[1];
         unsigned __int16 _2[1];
@@ -5203,7 +5206,7 @@ namespace T6
         vec3_t mins;
         vec3_t size;
         XAnimDynamicFrames frames;
-        XAnimDynamicIndices indices;
+        XAnimDynamicIndicesTrans indices;
     };
 
     /* 2796 */
@@ -5221,18 +5224,26 @@ namespace T6
         XAnimPartTransData u;
     };
 
+    union XAnimDynamicIndicesDeltaQuat2
+    {
+        char _1[1];
+        unsigned __int16 _2[1];
+    };
+
+    typedef __declspec(align(4)) __int16 XQuat2[2];
+
     /* 2798 */
     struct __declspec(align(4)) XAnimDeltaPartQuatDataFrames2
     {
-        __int16 (*frames)[2];
-        XAnimDynamicIndices indices;
+        XQuat2 *frames;
+        XAnimDynamicIndicesDeltaQuat2 indices;
     };
 
     /* 2799 */
     union XAnimDeltaPartQuatData2
     {
         XAnimDeltaPartQuatDataFrames2 frames;
-        __int16 frame0[2];
+        XQuat2 frame0;
     };
 
     /* 2800 */
@@ -5242,18 +5253,26 @@ namespace T6
         XAnimDeltaPartQuatData2 u;
     };
 
+    union XAnimDynamicIndicesDeltaQuat
+    {
+        char _1[1];
+        unsigned __int16 _2[1];
+    };
+
+    typedef __declspec(align(4))  __int16 XQuat[4];
+
     /* 2801 */
     struct __declspec(align(4)) XAnimDeltaPartQuatDataFrames
     {
-        __int16 (*frames)[4];
-        XAnimDynamicIndices indices;
+        XQuat *frames;
+        XAnimDynamicIndicesDeltaQuat indices;
     };
 
     /* 2802 */
     union XAnimDeltaPartQuatData
     {
         XAnimDeltaPartQuatDataFrames frames;
-        __int16 frame0[4];
+        XQuat frame0;
     };
 
     /* 2803 */
