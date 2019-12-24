@@ -1123,6 +1123,7 @@ namespace T6
     };
 
     typedef __declspec(align(4)) char aligned_byte_pointer;
+    typedef __declspec(align(4)) GfxCompressedLightGridCoeffs GfxCompressedLightGridCoeffs_align4;
 
     /* 3407 */
     struct GfxLightGrid
@@ -1141,7 +1142,7 @@ namespace T6
         unsigned int colorCount;
         GfxCompressedLightGridColors* colors;
         unsigned int coeffCount;
-        GfxCompressedLightGridCoeffs* coeffs;
+        GfxCompressedLightGridCoeffs_align4* coeffs;
         unsigned int skyGridVolumeCount;
         GfxSkyGridVolume* skyGridVolumes;
     };
@@ -1173,6 +1174,7 @@ namespace T6
         vec3_t sunFxPosition;
     };
 
+    typedef __declspec(align(4)) GfxDrawSurf GfxDrawSurf_align4;
 
     /* 3440 */
     struct GfxWorldDpvsStatic
@@ -1197,7 +1199,7 @@ namespace T6
         GfxStaticModelInst* smodelInsts;
         GfxSurface* surfaces;
         GfxStaticModelDrawInst* smodelDrawInsts;
-        GfxDrawSurf* surfaceMaterials;
+        GfxDrawSurf_align4* surfaceMaterials;
         raw_byte128* surfaceCastsSunShadow;
         raw_byte128* surfaceCastsShadow;
         raw_byte128* smodelCastsShadow;
@@ -3473,7 +3475,7 @@ namespace T6
     };*/
 
     /* 3403 */
-    struct GfxLightGridEntry
+    struct __declspec(align(4)) GfxLightGridEntry
     {
         unsigned __int16 colorsIndex;
         char primaryLightIndex;
@@ -3481,7 +3483,7 @@ namespace T6
     };
 
     /* 3404 */
-    struct GfxCompressedLightGridColors
+    struct __declspec(align(4)) GfxCompressedLightGridColors
     {
         char rgb[56][3];
     };
@@ -3557,7 +3559,7 @@ namespace T6
     };
 
     /* 3416 */
-    struct GfxSceneDynBrush
+    struct __declspec(align(4)) GfxSceneDynBrush
     {
         BModelDrawInfo info;
         unsigned __int16 dynEntId;
@@ -5562,7 +5564,7 @@ namespace T6
     {
         char_align128* pixelShaderAlign;
         char_align4* pixelShader;
-        char_align128* vertexShader;
+        char_align4* vertexShader;
         int pixelShaderSize;
         int vertexShaderSize;
     };
@@ -5602,7 +5604,7 @@ namespace T6
             half w;
         };
 
-        unsigned __int64 v;
+        // unsigned __int64 v;
     };
 
     /* 3424 */
@@ -5618,7 +5620,7 @@ namespace T6
     };
 
     /* 3425 */
-    struct SSkinVert
+    struct __declspec(align(4)) SSkinVert
     {
         half4 pos_bone;
         PackedUnitVec normal;
