@@ -2624,7 +2624,7 @@ namespace T6
     struct __declspec(align(16)) XSurface
     {
         char tileMode;
-        char vertListCount;
+        unsigned char vertListCount;
         unsigned __int16 flags;
         unsigned __int16 vertCount;
         unsigned __int16 triCount;
