@@ -112,12 +112,19 @@ namespace ZoneCodeGenerator.Persistence
                 {
                     StructureInformation memberStructureInformation = null;
 
-                    if (member.VariableType.Type is DataTypeWithMembers memberType)
+                    var memberDataType = member.VariableType.Type;
+
+                    while (memberDataType is DataTypeTypedef typedef)
+                    {
+                        memberDataType = typedef.TypeDefinition.Type;
+                    }
+
+                    if (memberDataType is DataTypeWithMembers memberType)
                     {
                         memberStructureInformation = GetInformationFor(memberType);
                     }
 
-                    information.OrderedMembers.Add(new MemberInformation(member, memberStructureInformation));
+                    information.OrderedMembers.Add(new MemberInformation(information, member, memberStructureInformation));
                 }
             }
 

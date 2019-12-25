@@ -13,9 +13,10 @@ namespace ZoneCodeGenerator.Parsing.CommandFile
     {
         private static readonly IDataPostProcessor[] postProcessors =
         {
-            new PostProcessorDefaultBlock(),
             new PostProcessorUsages(),
-            new PostProcessorLeafs()
+            new PostProcessorLeafs(),
+            new PostProcessorMemberLeafs(),
+            new PostProcessorUnions(),
         };
 
         public static bool ReadFile(string path, CUISession session, bool verbose = false)

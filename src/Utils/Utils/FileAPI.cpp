@@ -2,31 +2,26 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <filesystem>
 
 bool FileAPI::FileExists(const std::string& fileName)
 {
-	struct stat st{};
-
-    return stat(fileName.c_str(), &st) >= 0 && !(st.st_mode & S_IFDIR);
+    return std::filesystem::exists(fileName);
 }
 
 uint64_t FileAPI::FileSize(const std::string& fileName)
 {
-	struct stat st{};
+    return std::filesystem::file_size(fileName);
+}
 
-	if (stat(fileName.c_str(), &st) >= 0 && !(st.st_mode & S_IFDIR))
-	{
-		return st.st_size;
-	}
-
-	return 0;
+bool FileAPI::DirectoryCreate(const std::string& directoryPath)
+{
+    return std::filesystem::create_directories(directoryPath);
 }
 
 bool FileAPI::DirectoryExists(const std::string& directoryName)
 {
-	struct stat st{};
-
-    return stat(directoryName.c_str(), &st) >= 0 && st.st_mode & S_IFDIR;
+    return std::filesystem::is_directory(directoryName);
 }
 
 FileAPI::File FileAPI::Open(const std::string& filename, const Mode mode)
@@ -95,7 +90,7 @@ size_t FileAPI::File::Read(void* buffer, const size_t elementSize, const size_t 
 	return fread(buffer, elementSize, elementCount, static_cast<FILE*>(m_handle));
 }
 
-size_t FileAPI::File::Write(void* data, const size_t elementSize, const size_t elementCount) const
+size_t FileAPI::File::Write(const void* data, const size_t elementSize, const size_t elementCount) const
 {
 	if (!this->IsOpen())
 		return 0;
@@ -111,7 +106,7 @@ void FileAPI::File::Skip(const size_t amount) const
     fseek(static_cast<FILE*>(m_handle), amount, SEEK_CUR);
 }
 
-size_t FileAPI::File::Printf(char* fmt, ...) const
+size_t FileAPI::File::Printf(const char* fmt, ...) const
 {
 	va_list ap;
 
