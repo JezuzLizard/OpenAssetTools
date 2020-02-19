@@ -363,6 +363,7 @@ set reusable u::literalConst;
 // GfxImage
 // =========================================
 use GfxImage;
+set action OnImageLoaded(GfxImage);
 set string name;
 set name name;
 set condition pixels never;
@@ -375,9 +376,11 @@ use GfxTexture;
 set reusable loadDef;
 set block loadDef XFILE_BLOCK_TEMP;
 set condition basemap never;
+set condition texture never;
 
 // GfxImageLoadDef
 use GfxImageLoadDef;
+set action LoadImageData(GfxImageLoadDef, GfxImage);
 set arraysize data resourceSize;
 
 // =========================================

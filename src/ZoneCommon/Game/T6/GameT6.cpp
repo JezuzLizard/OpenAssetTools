@@ -3,7 +3,14 @@
 
 using namespace T6;
 
-GameT6 game_t6;
+GameT6 g_GameT6;
+
+const std::string GameT6::NAME = "T6";
+
+const std::string& GameT6::GetName()
+{
+    return NAME;
+}
 
 void GameT6::AddZone(Zone* zone)
 {
@@ -21,4 +28,28 @@ void GameT6::RemoveZone(Zone* zone)
 std::vector<Zone*> GameT6::GetZones()
 {
     return m_zones;
+}
+
+std::vector<GameLanguagePrefix> GameT6::GetLanguagePrefixes()
+{
+    std::vector<GameLanguagePrefix> prefixes;
+
+    prefixes.emplace_back(GameLanguage::LANGUAGE_ENGLISH, "en_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_FRENCH, "fr_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_FRENCH_CAN, "fc_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_GERMAN, "ge_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_AUSTRIAN, "as_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_ITALIAN, "it_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_SPANISH, "sp_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_BRITISH, "br_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_RUSSIAN, "ru_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_POLISH, "po_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_KOREAN, "ko_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_JAPANESE, "ja_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_CZECH, "cz_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_FULL_JAPANESE, "fj_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_PORTUGUESE, "bp_");
+    prefixes.emplace_back(GameLanguage::LANGUAGE_MEXICAN_SPANISH, "ms_");
+
+    return prefixes;
 }
