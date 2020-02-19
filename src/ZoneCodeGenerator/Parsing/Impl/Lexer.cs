@@ -18,6 +18,7 @@ namespace ZoneCodeGenerator.Parsing.Impl
             '{',
             '}',
             ',',
+            '.',
             '=',
             '(',
             ')',
@@ -35,7 +36,8 @@ namespace ZoneCodeGenerator.Parsing.Impl
             '+',
             '-',
             '/',
-            '\\'
+            '\\',
+            '|'
         };
 
         private readonly IParsingFileStream fileStream;

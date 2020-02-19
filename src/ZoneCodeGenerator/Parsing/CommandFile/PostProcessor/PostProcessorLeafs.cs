@@ -7,7 +7,7 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.PostProcessor
 {
     class PostProcessorLeafs : IDataPostProcessor
     {
-        private static bool IsLeaf(StructureInformation structureInformation)
+        public static bool IsLeaf(StructureInformation structureInformation)
         {
             foreach (var member in structureInformation.OrderedMembers)
             {
@@ -30,6 +30,10 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.PostProcessor
                 });
 
                 if (!hasNoPointerMembers)
+                    return false;
+
+                // If the member has an embedded type with dynamic size
+                if (member.Computations.HasDynamicArraySize)
                     return false;
 
                 if (member.StructureType != null

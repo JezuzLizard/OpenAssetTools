@@ -1,11 +1,12 @@
 #pragma once
 
 #include <d3d11.h>
+#include "Image/Texture.h"
+
+#include "T6_Assets.h"
 
 namespace T6
 {
-#include "T6_Assets.h"
-
     struct ScriptStringList
     {
         int count;
@@ -18,7 +19,6 @@ namespace T6
         XAssetHeader header;
     };
 
-
     struct XAssetList
     {
         ScriptStringList stringList;
@@ -27,5 +27,4 @@ namespace T6
         int assetCount;
         XAsset *assets;
     };
-
 }

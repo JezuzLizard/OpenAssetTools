@@ -13,15 +13,21 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Impl
 {
     class CommandParserState : ICommandParserState
     {
-        private static readonly ITokenTest<ICommandParserState>[] tests = {
+        private static readonly ITokenTest<ICommandParserState>[] tests =
+        {
+            new TestAction(), 
+            new TestArrayCount(),
             new TestArraySize(),
             new TestAsset(),
             new TestBlock(),
             new TestCondition(),
             new TestCount(),
             new TestGame(),
+            new TestName(),
             new TestReorder(),
+            new TestReusable(),
             new TestScriptString(),
+            new TestSetBlock(),
             new TestString(),
             new TestUse()
         };
@@ -55,7 +61,8 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Impl
             return true;
         }
 
-        private bool FindTypenameParts(string[] parts, out DataTypeWithMembers dataTypeWithMembers, out int typeNamePartCount)
+        private bool FindTypenameParts(string[] parts, out DataTypeWithMembers dataTypeWithMembers,
+            out int typeNamePartCount)
         {
             typeNamePartCount = 1;
             while (typeNamePartCount <= parts.Length)
@@ -67,7 +74,8 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Impl
                 {
                     if (!(foundDataType is DataTypeWithMembers foundDataTypeWithMembers))
                     {
-                        throw new TestFailedException($"Referenced type '{currentTypeName}' needs to be a data type with members to be used in an evaluation.");
+                        throw new TestFailedException(
+                            $"Referenced type '{currentTypeName}' needs to be a data type with members to be used in an evaluation.");
                     }
 
                     dataTypeWithMembers = foundDataTypeWithMembers;
@@ -81,7 +89,8 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Impl
             return false;
         }
 
-        public bool GetMembersFromParts(string[] parts, StructureInformation baseType, out List<MemberInformation> members)
+        public bool GetMembersFromParts(string[] parts, StructureInformation baseType,
+            out List<MemberInformation> members)
         {
             members = new List<MemberInformation>();
             var currentStructure = baseType;

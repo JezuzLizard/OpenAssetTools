@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ZoneCodeGenerator.Domain;
 using ZoneCodeGenerator.Domain.Evaluation;
 using ZoneCodeGenerator.Domain.Information;
 using ZoneCodeGenerator.Parsing.Matching;
@@ -24,19 +25,28 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
         // Operand Sub-Tags
         private const string TagOperandNumber = "operandNumber";
         private const string TagOperandTypename = "operandTypename";
-        private const string TagOperandArray = "operandArray";
         private const string TokenOperandNumber = "operandNumberToken";
         private const string TokenOperandTypename = "operandTypenameToken";
         private const string TokenOperandArray = "operandArrayToken";
 
+        // OperandArray Sub-Tags
+        private const string TagOperandArray = "operandArray";
+        private const string TagOperandArrayEnd = "operandArrayEnd";
+
         // Visible to children
         protected const string TagEvaluation = "evaluation";
+
+        private static readonly TokenMatcher operandArray = new MatcherGroupAnd(
+            new MatcherLiteral("["),
+            new MatcherWithTag(TagEvaluation),
+            new MatcherLiteral("]").WithTag(TagOperandArrayEnd)
+            ).WithTag(TagOperandArray);
 
         // operand ::= <typename> <array>* | <number>
         private static readonly TokenMatcher operand = new MatcherGroupOr(
             new MatcherGroupAnd(
                 new MatcherTypename().WithName(TokenOperandTypename),
-                new MatcherGroupLoop(MatcherGroupLoop.LoopMode.ZeroOneMultiple, new MatcherArray().WithName(TokenOperandArray).WithTag(TagOperandArray))
+                new MatcherGroupLoop(MatcherGroupLoop.LoopMode.ZeroOneMultiple, new MatcherWithTag(TagOperandArray))
             ).WithTag(TagOperandTypename),
             new MatcherNumber().WithName(TokenOperandNumber).WithTag(TagOperandNumber)
         ).WithTag(TagOperand);
@@ -44,6 +54,7 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
         // operationType ::= + | - | * | / | << | >> | ...
         private static readonly TokenMatcher operationType = new MatcherGroupOr(
             OperationType.Types
+                .OrderByDescending(type => type.Syntax.Length)
                 .Select(type => new MatcherLiteral(type.Syntax.ToCharArray().Select(c => c.ToString()).ToArray()).WithName(TokenOperationType))
                 .Cast<TokenMatcher>().ToArray()
         ).WithTag(TagOperationType);
@@ -68,6 +79,7 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
 
         protected TestWithEvaluation(TokenMatcher[] matchers) : base(matchers)
         {
+            AddTaggedMatcher(operandArray);
             AddTaggedMatcher(operand);
             AddTaggedMatcher(operationType);
             AddTaggedMatcher(evaluation);
@@ -84,15 +96,34 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
         private IEvaluation ProcessOperandTypename(ICommandParserState state)
         {
             var typenameString = NextMatch(TokenOperandTypename);
-            var arrayIndexStrings = new List<string>();
+            var arrayIndexEvaluations = new List<IEvaluation>();
 
             while (PeekTag().Equals(TagOperandArray))
             {
                 NextTag();
-                arrayIndexStrings.Add(NextMatch(TokenOperandArray));
+
+                if (NextTag() != TagEvaluation)
+                    throw new Exception("Expected evaluation tag @ Operand");
+
+                arrayIndexEvaluations.Add(ProcessEvaluation(state));
+
+                if (NextTag() != TagOperandArrayEnd)
+                    throw new Exception("Expected operand array end tag @ Operand");
             }
 
             var nameParts = typenameString.Split(new[] { "::" }, StringSplitOptions.None);
+
+            if (nameParts.Length == 1 && arrayIndexEvaluations.Count == 0)
+            {
+                var enumMember = state.Repository.GetAllEnums().SelectMany(_enum => _enum.Members)
+                    .FirstOrDefault(member => member.Name.Equals(nameParts[0]));
+
+                if(enumMember != null)
+                {
+                    return new OperandStatic(enumMember);
+                }
+            }
+
             List<MemberInformation> referencedMemberChain = null;
 
             var referencedType = GetUsedTypes(state)
@@ -113,10 +144,9 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
             }
 
             var operandDynamic = new OperandDynamic(referencedType, referencedMemberChain);
-
-            foreach (var arrayIndexString in arrayIndexStrings)
+            foreach (var indexEvaluation in arrayIndexEvaluations)
             {
-                operandDynamic.ArrayIndices.Add(int.Parse(arrayIndexString));
+                operandDynamic.ArrayIndices.Add(indexEvaluation);
             }
 
             return operandDynamic;
@@ -173,7 +203,8 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
             while (true)
             {
                 IEvaluation firstStatementPart;
-                switch (NextTag())
+                var tag = NextTag();
+                switch (tag)
                 {
                     case TagEvaluationParenthesis:
                         firstStatementPart = ProcessEvaluationInParenthesis(state);
@@ -184,7 +215,7 @@ namespace ZoneCodeGenerator.Parsing.CommandFile.Tests
                         break;
 
                     default:
-                        throw new Exception("Invalid followup tag @ Evaluation");
+                        throw new Exception($"Invalid followup tag '{tag}' @ Evaluation");
                 }
                 operands.Add(firstStatementPart);
 

@@ -2,9 +2,9 @@
 
 #include "GlobalAssetPool.h"
 #include "AssetPool.h"
+#include "XAssetInfo.h"
 
 #include <cstring>
-#include <map>
 
 template <typename T>
 class AssetPoolStatic final : public AssetPool<T>
@@ -26,11 +26,13 @@ class AssetPoolStatic final : public AssetPool<T>
     AssetPoolEntry* m_pool;
     XAssetInfo<T>* m_info_pool;
     size_t m_capacity;
+    asset_type_t m_type;
 
 public:
-    AssetPoolStatic(const size_t capacity, const int priority)
+    AssetPoolStatic(const size_t capacity, const int priority, const asset_type_t type)
     {
         m_capacity = capacity;
+        m_type = type;
 
         if (m_capacity > 0)
         {
@@ -53,6 +55,7 @@ public:
         {
             m_pool = nullptr;
             m_free = nullptr;
+            m_info_pool = nullptr;
         }
     }
 
@@ -78,7 +81,7 @@ public:
         m_capacity = 0;
     }
 
-    XAssetInfo<T>* AddAsset(std::string name, T* asset, std::vector<std::string>& scriptStrings, std::vector<XAssetDependency>& dependencies) override
+    XAssetInfo<T>* AddAsset(std::string name, T* asset, std::vector<std::string>& scriptStrings, std::vector<XAssetInfoGeneric*>& dependencies) override
     {
         if(m_free == nullptr)
         {
@@ -90,8 +93,9 @@ public:
 
         memcpy(&poolSlot->m_entry, asset, sizeof(T));
 
+        poolSlot->m_info->m_type = m_type;
         poolSlot->m_info->m_name = std::move(name);
-        poolSlot->m_info->m_asset = &poolSlot->m_entry;
+        poolSlot->m_info->m_ptr = &poolSlot->m_entry;
         poolSlot->m_info->m_script_strings = std::move(scriptStrings);
         poolSlot->m_info->m_dependencies = std::move(dependencies);
 

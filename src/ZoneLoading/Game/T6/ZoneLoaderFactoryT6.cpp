@@ -19,6 +19,7 @@
 #include "ContentLoaderT6.h"
 #include "Game/T6/GameAssetPoolT6.h"
 #include "Game/T6/GameT6.h"
+#include "Game/GameLanguage.h"
 
 const std::string ZoneLoaderFactoryT6::MAGIC_SIGNED_TREYARCH = "TAff0100";
 const std::string ZoneLoaderFactoryT6::MAGIC_SIGNED_ASSET_BUILDER = "ABff0100";
@@ -28,6 +29,7 @@ const int ZoneLoaderFactoryT6::VERSION = 147;
 
 const int ZoneLoaderFactoryT6::STREAM_COUNT = 4;
 const int ZoneLoaderFactoryT6::XCHUNK_SIZE = 0x8000;
+const int ZoneLoaderFactoryT6::VANILLA_BUFFER_SIZE = 0x80000;
 const int ZoneLoaderFactoryT6::OFFSET_BLOCK_BIT_COUNT = 3;
 const block_t ZoneLoaderFactoryT6::INSERT_BLOCK = T6::XFILE_BLOCK_VIRTUAL;
 
@@ -84,6 +86,21 @@ const uint8_t ZoneLoaderFactoryT6::RSA_PUBLIC_KEY_TREYARCH[]
 
 class ZoneLoaderFactoryT6::ZoneLoaderFactoryT6Impl
 {
+    static GameLanguage GetZoneLanguage(std::string& zoneName)
+    {
+        auto languagePrefixes = g_GameT6.GetLanguagePrefixes();
+
+        for(const auto& languagePrefix : languagePrefixes)
+        {
+            if(zoneName.compare(0, languagePrefix.m_prefix.length(), languagePrefix.m_prefix) == 0)
+            {
+                return languagePrefix.m_language;
+            }
+        }
+
+        return GameLanguage::LANGUAGE_NONE;
+    }
+
     static bool CanLoad(ZoneHeader& header, bool* isSecure, bool* isOfficial, bool* isEncrypted)
     {
         assert(isSecure != nullptr);
@@ -189,7 +206,7 @@ class ZoneLoaderFactoryT6::ZoneLoaderFactoryT6Impl
     static ISignatureDataProvider* AddXChunkProcessor(bool isEncrypted, ZoneLoader* zoneLoader, std::string& fileName)
     {
         ISignatureDataProvider* result = nullptr;
-        auto* xChunkProcessor = new ProcessorXChunks(STREAM_COUNT, XCHUNK_SIZE);
+        auto* xChunkProcessor = new ProcessorXChunks(STREAM_COUNT, XCHUNK_SIZE, VANILLA_BUFFER_SIZE);
 
         if(isEncrypted)
         {
@@ -219,7 +236,8 @@ public:
             return nullptr;
 
         // Create new zone
-        auto* zone = new Zone(fileName, 0, new GameAssetPoolT6(0), &game_t6);
+        auto* zone = new Zone(fileName, 0, new GameAssetPoolT6(0), &g_GameT6);
+        zone->m_language = GetZoneLanguage(fileName);
         
         // File is supported. Now setup all required steps for loading this file.
         auto* zoneLoader = new ZoneLoader(zone);
