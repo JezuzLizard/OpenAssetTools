@@ -236,13 +236,16 @@ void $LoaderClassName(context.Asset)$::LoadArray_$type.Name$(const bool atStream
     if(atStreamStart)
         m_stream->Load<$type.FullName$>($TypeVarName(type)$, count);
 
+    $type.FullName$* var = $TypeVarName(type)$;
     for(size_t index = 0; index < count; index++)
     {
         $if(!type.Members)$
-        $TypeVarName(structure.Type)$ = $TypeVarName(type)$;
+        $TypeVarName(structure.Type)$ = var;
+        $else$
+        $TypeVarName(type)$ = var;
         $endif$
         Load_$structure.Type.Name$(false);
-        $TypeVarName(type)$++;
+        var++;
     }
 }
 >>
@@ -256,19 +259,22 @@ void $LoaderClassName(context.Asset)$::Load_$structure.Type.Name$(const bool atS
 
     if(atStreamStart)
         $if(!structure.Computations.DynamicMember)$
-        m_stream->Load<$structure.Type.FullName$>($TypeVarName(structure.Type)$);$\\$
+        m_stream->Load<$structure.Type.FullName$>($TypeVarName(structure.Type)$); // Size: $structure.Type.Size$$\\$
         $else$
         m_stream->LoadPartial<$structure.Type.FullName$>($TypeVarName(structure.Type)$, offsetof($structure.Type.FullName$, $structure.Computations.DynamicMember.Member.Name$));$\\$
         $endif$
     $else$
     assert(atStreamStart);$\\$
     $endif$
-    $if(structure.IsAsset)$
+    $if(structure.Block)$
+
+    m_stream->PushBlock($structure.Block.Name$);$\\$
+    $elseif(structure.IsAsset)$
 
     m_stream->PushBlock($context.DefaultNormalBlock.Name$);$\\$
     $endif$
     $structure.OrderedMembers:{member | $LoadMemberIfNeedsTreatment(context, structure, member)$}$
-    $if(structure.IsAsset)$
+    $if(structure.Block || structure.IsAsset)$
 
     m_stream->PopBlock();
     $endif$
