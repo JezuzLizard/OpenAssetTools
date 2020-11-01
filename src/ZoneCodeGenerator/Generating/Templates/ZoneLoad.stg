@@ -12,7 +12,7 @@ import "Loading/PointerArray.stg"
 // Loading common
 LoaderClassName(asset) ::= "Loader_$asset.Type.Name$"
 
-HeaderConstructor(context) ::= "$LoaderClassName(context.Asset)$(IZoneScriptStringProvider* scriptStringProvider, Zone* zone, IZoneInputStream* stream);"
+HeaderConstructor(context) ::= "$LoaderClassName(context.Asset)$(Zone* zone, IZoneInputStream* stream);"
 
 HeaderTempPtrLoadMethodDeclaration(structure) ::= "void LoadPtr_$structure.Type.Name$(bool atStreamStart);"
 HeaderArrayLoadMethodDeclaration(type) ::= "void LoadArray_$SafeTypeName(type)$(bool atStreamStart, size_t count);"
@@ -236,13 +236,16 @@ void $LoaderClassName(context.Asset)$::LoadArray_$type.Name$(const bool atStream
     if(atStreamStart)
         m_stream->Load<$type.FullName$>($TypeVarName(type)$, count);
 
+    $type.FullName$* var = $TypeVarName(type)$;
     for(size_t index = 0; index < count; index++)
     {
         $if(!type.Members)$
-        $TypeVarName(structure.Type)$ = $TypeVarName(type)$;
+        $TypeVarName(structure.Type)$ = var;
+        $else$
+        $TypeVarName(type)$ = var;
         $endif$
         Load_$structure.Type.Name$(false);
-        $TypeVarName(type)$++;
+        var++;
     }
 }
 >>
@@ -256,19 +259,22 @@ void $LoaderClassName(context.Asset)$::Load_$structure.Type.Name$(const bool atS
 
     if(atStreamStart)
         $if(!structure.Computations.DynamicMember)$
-        m_stream->Load<$structure.Type.FullName$>($TypeVarName(structure.Type)$);$\\$
+        m_stream->Load<$structure.Type.FullName$>($TypeVarName(structure.Type)$); // Size: $structure.Type.Size$$\\$
         $else$
         m_stream->LoadPartial<$structure.Type.FullName$>($TypeVarName(structure.Type)$, offsetof($structure.Type.FullName$, $structure.Computations.DynamicMember.Member.Name$));$\\$
         $endif$
     $else$
     assert(atStreamStart);$\\$
     $endif$
-    $if(structure.IsAsset)$
+    $if(structure.Block)$
+
+    m_stream->PushBlock($structure.Block.Name$);$\\$
+    $elseif(structure.IsAsset)$
 
     m_stream->PushBlock($context.DefaultNormalBlock.Name$);$\\$
     $endif$
     $structure.OrderedMembers:{member | $LoadMemberIfNeedsTreatment(context, structure, member)$}$
-    $if(structure.IsAsset)$
+    $if(structure.Block || structure.IsAsset)$
 
     m_stream->PopBlock();
     $endif$
@@ -284,8 +290,8 @@ var$type.Name$Ptr = nullptr;
 >>
 
 ConstructorMethod(context) ::= <<
-$LoaderClassName(context.Asset)$::$LoaderClassName(context.Asset)$(IZoneScriptStringProvider* scriptStringProvider, Zone* zone, IZoneInputStream* stream) 
-    : AssetLoader($context.Asset.AssetEnumEntry.Name$, scriptStringProvider, zone, stream)$\\$
+$LoaderClassName(context.Asset)$::$LoaderClassName(context.Asset)$(Zone* zone, IZoneInputStream* stream) 
+    : AssetLoader($context.Asset.AssetEnumEntry.Name$, zone, stream)$\\$
     $if(context.HasActions)$, m_actions(zone)$endif$
 {
     m_asset_info = nullptr;

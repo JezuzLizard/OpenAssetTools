@@ -1,42 +1,32 @@
 #include "AssetDumperStringTable.h"
 
+#include "Dumping/CsvWriter.h"
+
 using namespace T6;
 
-bool AssetDumperStringTable::ShouldDump(StringTable* asset)
+bool AssetDumperStringTable::ShouldDump(XAssetInfo<StringTable>* asset)
 {
     return true;
 }
 
-std::string AssetDumperStringTable::GetFileNameForAsset(Zone* zone, StringTable* asset)
+std::string AssetDumperStringTable::GetFileNameForAsset(Zone* zone, XAssetInfo<StringTable>* asset)
 {
-    return std::string(asset->name);
+    return asset->m_name;
 }
 
-void AssetDumperStringTable::DumpAsset(Zone* zone, StringTable* asset, FileAPI::File* out)
+void AssetDumperStringTable::DumpAsset(Zone* zone, XAssetInfo<StringTable>* asset, FileAPI::File* out)
 {
-    char separator[]{ ',' };
-    char newLine[]{ '\n' };
+    const auto* stringTable = asset->Asset();
+    CsvWriter csv(out);
 
-    for(int row = 0; row < asset->rowCount; row++)
+    for(int row = 0; row < stringTable->rowCount; row++)
     {
-        for(int column = 0; column < asset->columnCount; column++)
+        for(int column = 0; column < stringTable->columnCount; column++)
         {
-            const auto cell = &asset->values[column + row * asset->columnCount];
-
-            if (column != 0)
-            {
-                out->Write(separator, 1, sizeof separator);
-            }
-
-            if(cell->string && *cell->string)
-            {
-                out->Write(cell->string, 1, strlen(cell->string));
-            }
+            const auto* cell = &stringTable->values[column + row * stringTable->columnCount];
+            csv.WriteColumn(cell->string);
         }
 
-        if (row != asset->rowCount - 1)
-        {
-            out->Write(newLine, 1, sizeof newLine);
-        }
+        csv.NextRow();
     }
 }

@@ -3,10 +3,13 @@
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
 
-class AssetDumperStringTable final : public AbstractAssetDumper<T6::StringTable>
+namespace T6
 {
-protected:
-    bool ShouldDump(T6::StringTable* asset) override;
-    std::string GetFileNameForAsset(Zone* zone, T6::StringTable* asset) override;
-    void DumpAsset(Zone* zone, T6::StringTable* asset, FileAPI::File* out) override;
-};
+    class AssetDumperStringTable final : public AbstractAssetDumper<StringTable>
+    {
+    protected:
+        bool ShouldDump(XAssetInfo<StringTable>* asset) override;
+        std::string GetFileNameForAsset(Zone* zone, XAssetInfo<StringTable>* asset) override;
+        void DumpAsset(Zone* zone, XAssetInfo<StringTable>* asset, FileAPI::File* out) override;
+    };
+}

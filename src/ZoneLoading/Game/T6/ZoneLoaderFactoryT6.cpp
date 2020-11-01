@@ -21,20 +21,22 @@
 #include "Game/T6/GameT6.h"
 #include "Game/GameLanguage.h"
 
-const std::string ZoneLoaderFactoryT6::MAGIC_SIGNED_TREYARCH = "TAff0100";
-const std::string ZoneLoaderFactoryT6::MAGIC_SIGNED_ASSET_BUILDER = "ABff0100";
-const std::string ZoneLoaderFactoryT6::MAGIC_UNSIGNED = "TAffu100";
-const std::string ZoneLoaderFactoryT6::MAGIC_UNSIGNED_SERVER = "TAsvu100";
-const int ZoneLoaderFactoryT6::VERSION = 147;
+using namespace T6;
 
-const int ZoneLoaderFactoryT6::STREAM_COUNT = 4;
-const int ZoneLoaderFactoryT6::XCHUNK_SIZE = 0x8000;
-const int ZoneLoaderFactoryT6::VANILLA_BUFFER_SIZE = 0x80000;
-const int ZoneLoaderFactoryT6::OFFSET_BLOCK_BIT_COUNT = 3;
-const block_t ZoneLoaderFactoryT6::INSERT_BLOCK = T6::XFILE_BLOCK_VIRTUAL;
+const std::string ZoneLoaderFactory::MAGIC_SIGNED_TREYARCH = "TAff0100";
+const std::string ZoneLoaderFactory::MAGIC_SIGNED_ASSET_BUILDER = "ABff0100";
+const std::string ZoneLoaderFactory::MAGIC_UNSIGNED = "TAffu100";
+const std::string ZoneLoaderFactory::MAGIC_UNSIGNED_SERVER = "TAsvu100";
+const int ZoneLoaderFactory::VERSION = 147;
 
-const std::string ZoneLoaderFactoryT6::MAGIC_AUTH_HEADER = "PHEEBs71";
-const uint8_t ZoneLoaderFactoryT6::SALSA20_KEY_TREYARCH[]
+const int ZoneLoaderFactory::STREAM_COUNT = 4;
+const int ZoneLoaderFactory::XCHUNK_SIZE = 0x8000;
+const int ZoneLoaderFactory::VANILLA_BUFFER_SIZE = 0x80000;
+const int ZoneLoaderFactory::OFFSET_BLOCK_BIT_COUNT = 3;
+const block_t ZoneLoaderFactory::INSERT_BLOCK = T6::XFILE_BLOCK_VIRTUAL;
+
+const std::string ZoneLoaderFactory::MAGIC_AUTH_HEADER = "PHEEBs71";
+const uint8_t ZoneLoaderFactory::SALSA20_KEY_TREYARCH[]
 {
 	0x64, 0x1D, 0x8A, 0x2F,
 	0xE3, 0x1D, 0x3A, 0xA6,
@@ -46,7 +48,7 @@ const uint8_t ZoneLoaderFactoryT6::SALSA20_KEY_TREYARCH[]
 	0x5E, 0xDC, 0x50, 0xBE
 };
 
-const uint8_t ZoneLoaderFactoryT6::RSA_PUBLIC_KEY_TREYARCH[]
+const uint8_t ZoneLoaderFactory::RSA_PUBLIC_KEY_TREYARCH[]
 {
     0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01,
     0x00, 0xc7, 0x9d, 0x33, 0xe0, 0x75, 0xaf, 0xef,
@@ -84,7 +86,7 @@ const uint8_t ZoneLoaderFactoryT6::RSA_PUBLIC_KEY_TREYARCH[]
     0x8b, 0x02, 0x03, 0x01, 0x00, 0x01
 };
 
-class ZoneLoaderFactoryT6::ZoneLoaderFactoryT6Impl
+class ZoneLoaderFactory::Impl
 {
     static GameLanguage GetZoneLanguage(std::string& zoneName)
     {
@@ -203,9 +205,9 @@ class ZoneLoaderFactoryT6::ZoneLoaderFactoryT6Impl
         return signatureLoadStep;
     }
 
-    static ISignatureDataProvider* AddXChunkProcessor(bool isEncrypted, ZoneLoader* zoneLoader, std::string& fileName)
+    static ICapturedDataProvider* AddXChunkProcessor(bool isEncrypted, ZoneLoader* zoneLoader, std::string& fileName)
     {
-        ISignatureDataProvider* result = nullptr;
+        ICapturedDataProvider* result = nullptr;
         auto* xChunkProcessor = new ProcessorXChunks(STREAM_COUNT, XCHUNK_SIZE, VANILLA_BUFFER_SIZE);
 
         if(isEncrypted)
@@ -236,7 +238,8 @@ public:
             return nullptr;
 
         // Create new zone
-        auto* zone = new Zone(fileName, 0, new GameAssetPoolT6(0), &g_GameT6);
+        auto* zone = new Zone(fileName, 0, &g_GameT6);
+        zone->m_pools = std::make_unique<GameAssetPoolT6>(zone, 0);
         zone->m_language = GetZoneLanguage(fileName);
         
         // File is supported. Now setup all required steps for loading this file.
@@ -251,14 +254,14 @@ public:
         ISignatureProvider* signatureProvider = AddAuthHeaderSteps(isSecure, zoneLoader, fileName);
 
         // Setup loading XChunks from the zone from this point on.
-        ISignatureDataProvider* signatureDataProvider = AddXChunkProcessor(isEncrypted, zoneLoader, fileName);
+        ICapturedDataProvider* signatureDataProvider = AddXChunkProcessor(isEncrypted, zoneLoader, fileName);
 
         // Start of the XFile struct
         zoneLoader->AddLoadingStep(new StepSkipBytes(8)); // Skip size and externalSize fields since they are not interesting for us
         zoneLoader->AddLoadingStep(new StepAllocXBlocks());
 
         // Start of the zone content
-        zoneLoader->AddLoadingStep(new StepLoadZoneContent(new ContentLoaderT6(), zone, OFFSET_BLOCK_BIT_COUNT, INSERT_BLOCK));
+        zoneLoader->AddLoadingStep(new StepLoadZoneContent(new ContentLoader(), zone, OFFSET_BLOCK_BIT_COUNT, INSERT_BLOCK));
 
         if(isSecure)
         {
@@ -270,7 +273,7 @@ public:
     }
 };
 
-ZoneLoader* ZoneLoaderFactoryT6::CreateLoaderForHeader(ZoneHeader& header, std::string& fileName)
+ZoneLoader* ZoneLoaderFactory::CreateLoaderForHeader(ZoneHeader& header, std::string& fileName)
 {
-    return ZoneLoaderFactoryT6Impl::CreateLoaderForHeader(header, fileName);
+    return Impl::CreateLoaderForHeader(header, fileName);
 }

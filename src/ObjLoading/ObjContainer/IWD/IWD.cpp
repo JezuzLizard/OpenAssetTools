@@ -7,6 +7,7 @@
 #include <unzip.h>
 #include <filesystem>
 #include <cassert>
+#include <map>
 
 ObjContainerRepository<IWD, ISearchPath> IWD::Repository;
 
@@ -36,7 +37,7 @@ public:
         m_open = true;
     }
 
-    ~IWDFile()
+    ~IWDFile() override
     {
         if(m_open)
         {
@@ -53,7 +54,7 @@ public:
     {
         const auto result = unzReadCurrentFile(m_container, buffer, elementSize * elementCount);
 
-        return result >= 0 ? static_cast<size_t>(result) : 0;
+        return result >= 0 ? static_cast<size_t>(result) / elementSize : 0;
     }
 
     size_t Write(const void* data, size_t elementSize, size_t elementCount) override
@@ -113,7 +114,7 @@ public:
 
     void Close() override
     {
-        unzClose(m_container);
+        unzCloseCurrentFile(m_container);
         m_open = false;
 
         m_parent->OnIWDFileClose();
@@ -125,8 +126,7 @@ class IWD::Impl : public ISearchPath, public IObjContainer, public IWDFile::IPar
     class IWDEntry
     {
     public:
-        std::string m_name;
-        size_t m_size;
+        size_t m_size{};
         unz_file_pos m_file_pos{};
     };
 
@@ -136,7 +136,7 @@ class IWD::Impl : public ISearchPath, public IObjContainer, public IWDFile::IPar
 
     IWDFile* m_last_file;
 
-    std::vector<IWDEntry> m_entries;
+    std::map<std::string, IWDEntry> m_entry_map;
 
 public:
     Impl(std::string path, FileAPI::IFile* file)
@@ -147,7 +147,7 @@ public:
         m_last_file = nullptr;
     }
 
-    ~Impl()
+    ~Impl() override
     {
         if (m_unz_file != nullptr)
         {
@@ -161,6 +161,11 @@ public:
             m_file = nullptr;
         }
     }
+
+    Impl(const Impl& other) = delete;
+    Impl(Impl&& other) noexcept = default;
+    Impl& operator=(const Impl& other) = delete;
+    Impl& operator=(Impl&& other) noexcept = default;
 
     bool Initialize()
     {
@@ -186,10 +191,9 @@ public:
             if (path.has_filename())
             {
                 IWDEntry entry;
-                entry.m_name = std::move(fileName);
                 entry.m_size = info.uncompressed_size;
                 unzGetFilePos(m_unz_file, &entry.m_file_pos);
-                m_entries.push_back(entry);
+                m_entry_map.emplace(std::move(fileName), entry);
             }
 
             ret = unzGoToNextFile(m_unz_file);
@@ -197,7 +201,7 @@ public:
 
         if (ObjLoading::Configuration.Verbose)
         {
-            printf("Loaded IWD \"%s\" with %u entries\n", m_path.c_str(), m_entries.size());
+            printf("Loaded IWD \"%s\" with %u entries\n", m_path.c_str(), m_entry_map.size());
         }
 
         return true;
@@ -213,25 +217,24 @@ public:
         std::string iwdFilename = fileName;
         std::replace(iwdFilename.begin(), iwdFilename.end(), '\\', '/');
 
-        const auto iwdEntry = std::find_if(m_entries.begin(), m_entries.end(), [&iwdFilename](IWDEntry& entry) -> bool
-        {
-            return entry.m_name == iwdFilename;
-        });
+        const auto iwdEntry = m_entry_map.find(iwdFilename);
 
-        if (iwdEntry != m_entries.end())
+        if (iwdEntry != m_entry_map.end())
         {
             if(m_last_file != nullptr)
             {
                 throw std::runtime_error("Trying to open new IWD file while last one was not yet closed.");
             }
 
-            auto pos = iwdEntry->m_file_pos;
+            auto pos = iwdEntry->second.m_file_pos;
             unzGoToFilePos(m_unz_file, &pos);
 
             if (unzOpenCurrentFile(m_unz_file) == UNZ_OK)
             {
-                m_last_file = new IWDFile(this, m_unz_file, iwdEntry->m_size);
+                m_last_file = new IWDFile(this, m_unz_file, iwdEntry->second.m_size);
             }
+
+            return m_last_file;
         }
 
         return nullptr;
@@ -254,9 +257,9 @@ public:
             return;
         }
 
-        for(auto& entry : m_entries)
+        for(auto& [entryName, entry] : m_entry_map)
         {
-            std::filesystem::path entryPath(entry.m_name);
+            std::filesystem::path entryPath(entryName);
 
             if(!options.m_should_include_subdirectories && entryPath.has_parent_path())
                 continue;
@@ -264,7 +267,7 @@ public:
             if(options.m_filter_extensions && options.m_extension != entryPath.extension().string())
                 continue;
 
-            callback(entry.m_name);
+            callback(entryName);
         }
     }
 

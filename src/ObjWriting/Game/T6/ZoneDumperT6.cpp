@@ -1,4 +1,5 @@
 #include "ZoneDumperT6.h"
+
 #include "Game/T6/GameT6.h"
 #include "Game/T6/GameAssetPoolT6.h"
 
@@ -9,13 +10,22 @@
 #include "AssetDumpers/AssetDumperStringTable.h"
 #include "AssetDumpers/AssetDumperLocalizeEntry.h"
 #include "AssetDumpers/AssetDumperGfxImage.h"
+#include "AssetDumpers/AssetDumperFontIcon.h"
+#include "AssetDumpers/AssetDumperPhysConstraints.h"
+#include "AssetDumpers/AssetDumperPhysPreset.h"
+#include "AssetDumpers/AssetDumperTracer.h"
+#include "AssetDumpers/AssetDumperVehicle.h"
+#include "AssetDumpers/AssetDumperWeapon.h"
+#include "AssetDumpers/AssetDumperZBarrier.h"
 
-bool ZoneDumperT6::CanHandleZone(Zone* zone) const
+using namespace T6;
+
+bool ZoneDumper::CanHandleZone(Zone* zone) const
 {
     return zone->m_game == &g_GameT6;
 }
 
-bool ZoneDumperT6::DumpZone(Zone* zone, const std::string& basePath) const
+bool ZoneDumper::DumpZone(Zone* zone, const std::string& basePath) const
 {
 #define DUMP_ASSET_POOL(dumperType, poolName) \
     if(assetPools->poolName) \
@@ -24,10 +34,10 @@ bool ZoneDumperT6::DumpZone(Zone* zone, const std::string& basePath) const
         dumper.DumpPool(zone, assetPools->poolName, basePath); \
     }
 
-    const auto assetPools = dynamic_cast<GameAssetPoolT6*>(zone->GetPools());
+    const auto* assetPools = dynamic_cast<GameAssetPoolT6*>(zone->m_pools.get());
 
-    // DUMP_ASSET_POOL(AssetDumperPhysPreset, m_phys_preset);
-    // DUMP_ASSET_POOL(AssetDumperPhysConstraints, m_phys_constraints);
+    DUMP_ASSET_POOL(AssetDumperPhysPreset, m_phys_preset);
+    DUMP_ASSET_POOL(AssetDumperPhysConstraints, m_phys_constraints);
     // DUMP_ASSET_POOL(AssetDumperDestructibleDef, m_destructible_def);
     // DUMP_ASSET_POOL(AssetDumperXAnimParts, m_xanim_parts);
     // DUMP_ASSET_POOL(AssetDumperXModel, m_xmodel);
@@ -44,11 +54,11 @@ bool ZoneDumperT6::DumpZone(Zone* zone, const std::string& basePath) const
     // DUMP_ASSET_POOL(AssetDumperGfxWorld, m_gfx_world);
     // DUMP_ASSET_POOL(AssetDumperGfxLightDef, m_gfx_light_def);
     // DUMP_ASSET_POOL(AssetDumperFont, m_font);
-    // DUMP_ASSET_POOL(AssetDumperFontIcon, m_font_icon);
+    DUMP_ASSET_POOL(AssetDumperFontIcon, m_font_icon);
     // DUMP_ASSET_POOL(AssetDumperMenuList, m_menu_list);
     // DUMP_ASSET_POOL(AssetDumperMenuDef, m_menu_def);
     DUMP_ASSET_POOL(AssetDumperLocalizeEntry, m_localize);
-    // DUMP_ASSET_POOL(AssetDumperWeaponVariantDef, m_weapon);
+    DUMP_ASSET_POOL(AssetDumperWeapon, m_weapon);
     // DUMP_ASSET_POOL(AssetDumperWeaponAttachment, m_attachment);
     // DUMP_ASSET_POOL(AssetDumperWeaponAttachmentUnique, m_attachment_unique);
     // DUMP_ASSET_POOL(AssetDumperWeaponCamo, m_camo);
@@ -64,16 +74,16 @@ bool ZoneDumperT6::DumpZone(Zone* zone, const std::string& basePath) const
     // DUMP_ASSET_POOL(AssetDumperEmblemSet, m_emblem_set);
     DUMP_ASSET_POOL(AssetDumperScriptParseTree, m_script);
     // DUMP_ASSET_POOL(AssetDumperKeyValuePairs, m_key_value_pairs);
-    // DUMP_ASSET_POOL(AssetDumperVehicleDef, m_vehicle);
+    DUMP_ASSET_POOL(AssetDumperVehicle, m_vehicle);
     // DUMP_ASSET_POOL(AssetDumperMemoryBlock, m_memory_block);
     // DUMP_ASSET_POOL(AssetDumperAddonMapEnts, m_addon_map_ents);
-    // DUMP_ASSET_POOL(AssetDumperTracerDef, m_tracer);
+    DUMP_ASSET_POOL(AssetDumperTracer, m_tracer);
     // DUMP_ASSET_POOL(AssetDumperSkinnedVertsDef, m_skinned_verts);
     DUMP_ASSET_POOL(AssetDumperQdb, m_qdb);
     DUMP_ASSET_POOL(AssetDumperSlug, m_slug);
     // DUMP_ASSET_POOL(AssetDumperFootstepTableDef, m_footstep_table);
     // DUMP_ASSET_POOL(AssetDumperFootstepFXTableDef, m_footstep_fx_table);
-    // DUMP_ASSET_POOL(AssetDumperZBarrierDef, m_zbarrier);
+    DUMP_ASSET_POOL(AssetDumperZBarrier, m_zbarrier);
 
     return true;
 

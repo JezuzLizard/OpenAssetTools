@@ -2,11 +2,26 @@
 
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
+#include "Image/IImageWriter.h"
 
-class AssetDumperGfxImage final : public AbstractAssetDumper<T6::GfxImage>
+namespace T6
 {
-protected:
-    bool ShouldDump(T6::GfxImage* asset) override;
-    std::string GetFileNameForAsset(Zone* zone, T6::GfxImage* asset) override;
-    void DumpAsset(Zone* zone, T6::GfxImage* asset, FileAPI::File* out) override;
-};
+    class AssetDumperGfxImage final : public AbstractAssetDumper<GfxImage>
+    {
+        IImageWriter* m_writer;
+
+    protected:
+        bool ShouldDump(XAssetInfo<GfxImage>* asset) override;
+        std::string GetFileNameForAsset(Zone* zone, XAssetInfo<GfxImage>* asset) override;
+        void DumpAsset(Zone* zone, XAssetInfo<GfxImage>* asset, FileAPI::File* out) override;
+
+    public:
+        AssetDumperGfxImage();
+        ~AssetDumperGfxImage() override;
+
+        AssetDumperGfxImage(const AssetDumperGfxImage& other) = delete;
+        AssetDumperGfxImage(AssetDumperGfxImage&& other) noexcept = delete;
+        AssetDumperGfxImage& operator=(const AssetDumperGfxImage& other) = delete;
+        AssetDumperGfxImage& operator=(AssetDumperGfxImage&& other) noexcept = delete;
+    };
+}

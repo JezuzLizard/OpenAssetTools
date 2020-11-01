@@ -1,10 +1,13 @@
 #include "ZoneLoading.h"
+
 #include "Utils/PathUtils.h"
+#include "Game/IW4/ZoneLoaderFactoryIW4.h"
 #include "Game/T6/ZoneLoaderFactoryT6.h"
 
-IZoneLoaderFactory* zoneLoaderFactories[]
+IZoneLoaderFactory* ZoneLoaderFactories[]
 {
-    new ZoneLoaderFactoryT6()
+    new IW4::ZoneLoaderFactory(),
+    new T6::ZoneLoaderFactory()
 };
 
 Zone* ZoneLoading::LoadZone(const std::string& path)
@@ -22,7 +25,7 @@ Zone* ZoneLoading::LoadZone(const std::string& path)
     file.Read(&header, sizeof(ZoneHeader), 1);
 
     ZoneLoader* zoneLoader = nullptr;
-    for(auto factory : zoneLoaderFactories)
+    for(auto* factory : ZoneLoaderFactories)
     {
         zoneLoader = factory->CreateLoaderForHeader(header, zoneName);
 

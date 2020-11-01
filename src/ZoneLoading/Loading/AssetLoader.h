@@ -1,22 +1,17 @@
 #pragma once
 #include "Pool/XAssetInfo.h"
-#include "ContentLoader.h"
-#include "IZoneScriptStringProvider.h"
+#include "ContentLoaderBase.h"
 
-class AssetLoader : public ContentLoader
+class AssetLoader : public ContentLoaderBase
 {
     asset_type_t m_asset_type;
-
-    std::vector<std::string> m_used_script_strings;
 
     std::vector<XAssetInfoGeneric*> m_dependencies;
 
 protected:
-    IZoneScriptStringProvider* m_script_string_provider;
-
     scr_string_t* varScriptString;
 
-    AssetLoader(asset_type_t assetType, IZoneScriptStringProvider* scriptStringProvider, Zone* zone, IZoneInputStream* stream);
+    AssetLoader(asset_type_t assetType, Zone* zone, IZoneInputStream* stream);
     
     void AddDependency(XAssetInfoGeneric* assetInfo);
 

@@ -3,10 +3,13 @@
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
 
-class AssetDumperQdb final : public AbstractAssetDumper<T6::Qdb>
+namespace T6
 {
-protected:
-    bool ShouldDump(T6::Qdb* asset) override;
-    std::string GetFileNameForAsset(Zone* zone, T6::Qdb* asset) override;
-    void DumpAsset(Zone* zone, T6::Qdb* asset, FileAPI::File* out) override;
-};
+    class AssetDumperQdb final : public AbstractAssetDumper<Qdb>
+    {
+    protected:
+        bool ShouldDump(XAssetInfo<Qdb>* asset) override;
+        std::string GetFileNameForAsset(Zone* zone, XAssetInfo<Qdb>* asset) override;
+        void DumpAsset(Zone* zone, XAssetInfo<Qdb>* asset, FileAPI::File* out) override;
+    };
+}
