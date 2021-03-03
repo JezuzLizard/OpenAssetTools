@@ -641,7 +641,7 @@ namespace T6
     };
 
     /* 1568 */
-    struct alignas(8) MaterialInfo
+    struct type_align(8) MaterialInfo
     {
         const char* name;
         unsigned int gameFlags;
@@ -811,7 +811,7 @@ namespace T6
 
     /* 3345 */
 #pragma pack(push, 1)
-    struct alignas(2) SndRuntimeAssetBank
+    struct type_align(2) SndRuntimeAssetBank
     {
         const char* zone;
         const char* language;
@@ -912,7 +912,7 @@ namespace T6
     };
 
     /* 2551 */
-    struct alignas(4) cLeaf_s
+    struct type_align(4) cLeaf_s
     {
         uint16_t firstCollAabbIndex;
         uint16_t collAabbCount;
@@ -1341,7 +1341,7 @@ namespace T6
     };
 
     /* 2439 */
-    struct alignas(4) GfxLightImage
+    struct type_align(4) GfxLightImage
     {
         GfxImage* image;
         char samplerState;
@@ -1435,7 +1435,7 @@ namespace T6
     };
 
     /* 1994 */
-    struct alignas(8) menuDef_t
+    struct type_align(8) menuDef_t
     {
         windowDef_t window;
         const char* font;
@@ -2665,7 +2665,7 @@ namespace T6
     typedef tdef_align(16) unsigned short r_index16_t;
 
     /* 2332 */
-    struct alignas(16) XSurface
+    struct type_align(16) XSurface
     {
         char tileMode;
         unsigned char vertListCount;
@@ -2695,7 +2695,7 @@ namespace T6
     };
 
     /* 1833 */
-    struct alignas(4) XBoneInfo
+    struct type_align(4) XBoneInfo
     {
         vec3_t bounds[2];
         vec3_t offset;
@@ -2723,7 +2723,7 @@ namespace T6
     };
 
     /* 1603 */
-    struct alignas(16) MaterialConstantDef
+    struct type_align(16) MaterialConstantDef
     {
         unsigned int nameHash;
         char name[12];
@@ -2795,7 +2795,7 @@ namespace T6
     };*/
 
     /* 1596 */
-    struct alignas(4) GfxImageLoadDef
+    struct type_align(4) GfxImageLoadDef
     {
         char levelCount;
         char flags;
@@ -2815,7 +2815,7 @@ namespace T6
     };
 
     /* 3341 */
-    struct alignas(4) SndIndexEntry
+    struct type_align(4) SndIndexEntry
     {
         uint16_t value;
         uint16_t next;
@@ -2940,7 +2940,7 @@ namespace T6
     };
 
     /* 2547 */
-    struct alignas(16) cbrush_t
+    struct type_align(16) cbrush_t
     {
         vec3_t mins;
         int contents;
@@ -3002,7 +3002,7 @@ namespace T6
     };
 
     /* 2569 */
-    struct alignas(16) CollisionAabbTree
+    struct type_align(16) CollisionAabbTree
     {
         vec3_t origin;
         uint16_t materialIndex;
@@ -3103,7 +3103,7 @@ namespace T6
     };
 
     /* 3172 */
-    struct alignas(4) constraint_t
+    struct type_align(4) constraint_t
     {
         vec3_t p;
         rope_constraint_e type;
@@ -3128,7 +3128,7 @@ namespace T6
     };
 
     /* 3364 */
-    struct alignas(4) rope_t
+    struct type_align(4) rope_t
     {
         par_t m_particles[25];
         constraint_t m_constraints[30];
@@ -3248,7 +3248,7 @@ namespace T6
     };
 
     /* 2678 */
-    struct alignas(4) pathnode_dynamic_t
+    struct type_align(4) pathnode_dynamic_t
     {
         SentientHandle pOwner;
         int iFreeTime;
@@ -3288,7 +3288,7 @@ namespace T6
     };
 
     /* 3368 */
-    struct alignas(16) pathbasenode_t
+    struct type_align(16) pathbasenode_t
     {
         vec3_t vOrigin;
         unsigned int type;
@@ -3342,7 +3342,7 @@ namespace T6
     };
 
     /* 3375 */
-    struct alignas(16) GfxStreamingAabbTree
+    struct type_align(16) GfxStreamingAabbTree
     {
         vec4_t mins;
         vec4_t maxs;
@@ -3356,7 +3356,7 @@ namespace T6
     };
 
     /* 2950 */
-    struct alignas(16) float44
+    struct type_align(16) float44
     {
         union
         {
@@ -3366,7 +3366,7 @@ namespace T6
     };
 
     /* 2951 */
-    struct alignas(16) GfxLight
+    struct type_align(16) GfxLight
     {
         char type;
         char canUseShadowMap;
@@ -3519,7 +3519,7 @@ namespace T6
     };*/
 
     /* 3403 */
-    struct alignas(4) GfxLightGridEntry
+    struct type_align(4) GfxLightGridEntry
     {
         uint16_t colorsIndex;
         char primaryLightIndex;
@@ -3527,7 +3527,7 @@ namespace T6
     };
 
     /* 3404 */
-    struct alignas(4) GfxCompressedLightGridColors
+    struct type_align(4) GfxCompressedLightGridColors
     {
         char rgb[56][3];
     };
@@ -3559,7 +3559,7 @@ namespace T6
     };
 
     /* 3409 */
-    struct alignas(16) GfxBrushModel
+    struct type_align(16) GfxBrushModel
     {
         GfxBrushModelWritable writable;
         vec3_t bounds[2];
@@ -3603,7 +3603,7 @@ namespace T6
     };
 
     /* 3416 */
-    struct alignas(4) GfxSceneDynBrush
+    struct type_align(4) GfxSceneDynBrush
     {
         BModelDrawInfo info;
         uint16_t dynEntId;
@@ -3638,7 +3638,7 @@ namespace T6
     };
 
     /* 3429 */
-    struct alignas(16) SSkinInstance
+    struct type_align(16) SSkinInstance
     {
         union
         {
@@ -3695,7 +3695,7 @@ namespace T6
     };
 
     /* 3436 */
-    struct alignas(16) GfxSurface
+    struct type_align(16) GfxSurface
     {
         srfTriangles_t tris;
         Material* material;
@@ -3723,7 +3723,7 @@ namespace T6
     };
 
     /* 3438 */
-    struct alignas(4) GfxStaticModelLmapVertexInfo
+    struct type_align(4) GfxStaticModelLmapVertexInfo
     {
         unsigned int* lmapVertexColors;
         void/*ID3D11Buffer*/* lmapVertexColorsVB;
@@ -3946,7 +3946,7 @@ namespace T6
     };
 
     /* 1997 */
-    struct alignas(8) itemDef_s
+    struct type_align(8) itemDef_s
     {
         windowDef_t window;
         int type;
@@ -5476,7 +5476,7 @@ namespace T6
     };
 
     /* 2754 */
-    struct alignas(4) DevGraph
+    struct type_align(4) DevGraph
     {
         vec2_t* knots;
         int* knotCount;
@@ -5516,7 +5516,7 @@ namespace T6
     };
 
     /* 2795 */
-    struct alignas(4) XAnimPartTransFrames
+    struct type_align(4) XAnimPartTransFrames
     {
         vec3_t mins;
         vec3_t size;
@@ -5548,7 +5548,7 @@ namespace T6
     typedef tdef_align(4) int16_t XQuat2[2];
 
     /* 2798 */
-    struct alignas(4) XAnimDeltaPartQuatDataFrames2
+    struct type_align(4) XAnimDeltaPartQuatDataFrames2
     {
         XQuat2 *frames;
         XAnimDynamicIndicesDeltaQuat2 indices;
@@ -5577,7 +5577,7 @@ namespace T6
     typedef tdef_align(4)  int16_t XQuat[4];
 
     /* 2801 */
-    struct alignas(4) XAnimDeltaPartQuatDataFrames
+    struct type_align(4) XAnimDeltaPartQuatDataFrames
     {
         XQuat *frames;
         XAnimDynamicIndicesDeltaQuat indices;
@@ -5617,7 +5617,7 @@ namespace T6
     };
 
     /* 2325 */
-    struct alignas(16) GfxPackedVertex
+    struct type_align(16) GfxPackedVertex
     {
         vec3_t xyz;
         float binormalSign;
@@ -5801,7 +5801,7 @@ namespace T6
     };
 
     /* 2675 */
-    struct alignas(4) pathlink_s
+    struct type_align(4) pathlink_s
     {
         float fDist;
         uint16_t nodeNum;
@@ -5922,7 +5922,7 @@ namespace T6
     };
 
     /* 3425 */
-    struct alignas(4) SSkinVert
+    struct type_align(4) SSkinVert
     {
         half4 pos_bone;
         PackedUnitVec normal;
@@ -6019,7 +6019,7 @@ namespace T6
     };
 
     /* 1559 */
-    struct alignas(8) dvar_t
+    struct type_align(8) dvar_t
     {
         const char* name;
         const char* description;
@@ -6551,7 +6551,7 @@ namespace T6
     };
 
     /* 2327 */
-    struct alignas(16) XSurfaceCollisionNode
+    struct type_align(16) XSurfaceCollisionNode
     {
         XSurfaceCollisionAabb aabb;
         uint16_t childBeginIndex;
@@ -6565,7 +6565,7 @@ namespace T6
     };
 
     /* 1633 */
-    struct alignas(16) BrushWrapper
+    struct type_align(16) BrushWrapper
     {
         vec3_t mins;
         int contents;
