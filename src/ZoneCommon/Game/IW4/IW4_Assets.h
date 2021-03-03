@@ -3,15 +3,22 @@
 #ifndef __IW4_ASSETS_H
 #define __IW4_ASSETS_H
 
-#ifndef __align
-#ifdef __zonecodegenerator
-#define __align alignas
-#else
-#if defined(_MSVC_LANG)
-#define __align(x) __declspec(align(x))
-#else
-#define __align(x) alignas(x)
+#ifdef type_align
+#undef type_align
 #endif
+#ifdef tdef_align
+#undef tdef_align
+#endif
+#ifdef __zonecodegenerator
+#define type_align alignas
+#define tdef_align alignas
+#else
+#ifdef _MSVC_LANG
+#define type_align(x) __declspec(align(x))
+#define tdef_align(x) __declspec(align(x))
+#else
+#define type_align(x) __attribute__((__aligned__(x)))
+#define tdef_align(x) __attribute__((__aligned__(x)))
 #endif
 #endif
 
@@ -165,10 +172,10 @@ namespace IW4
         void* data;
     };
 
-    typedef __declspec(align(16)) char raw_byte16;
-    typedef __declspec(align(16)) float raw_float16;
+    typedef tdef_align(16) char raw_byte16;
+    typedef tdef_align(16) float raw_float16;
     typedef unsigned int raw_uint;
-    typedef __declspec(align(128)) unsigned int raw_uint128;
+    typedef tdef_align(128) unsigned int raw_uint128;
     typedef char cbrushedge_t;
     typedef unsigned short r_index_t;
     typedef float vec2_t[2];
@@ -269,7 +276,7 @@ namespace IW4
     };
 
     typedef unsigned char ByteVec[3];
-    typedef __declspec(align(4)) unsigned short UShortVec[3];
+    typedef tdef_align(4) unsigned short UShortVec[3];
 
     union XAnimDynamicFrames
     {
@@ -283,7 +290,7 @@ namespace IW4
         unsigned __int16 _2[1];
     };
 
-    struct __declspec(align(4)) XAnimPartTransFrames
+    struct alignas(4) XAnimPartTransFrames
     {
         float mins[3];
         float size[3];
@@ -310,9 +317,9 @@ namespace IW4
         unsigned __int16 _2[1];
     };
 
-    typedef __declspec(align(4)) short XQuat2[2];
+    typedef tdef_align(4) short XQuat2[2];
 
-    struct __declspec(align(4)) XAnimDeltaPartQuatDataFrames2
+    struct alignas(4) XAnimDeltaPartQuatDataFrames2
     {
         XQuat2* frames;
         XAnimDynamicIndicesQuat2 indices;
@@ -336,7 +343,7 @@ namespace IW4
         unsigned __int16 _2[1];
     };
 
-    typedef __declspec(align(4)) short XQuat[4];
+    typedef tdef_align(4) short XQuat[4];
 
     struct XAnimDeltaPartQuatDataFrames
     {
@@ -420,7 +427,7 @@ namespace IW4
     };
 
     /* 1088 */
-    struct __declspec(align(16)) GfxPackedVertex
+    struct alignas(16) GfxPackedVertex
     {
         float xyz[3];
         float binormalSign;
@@ -438,7 +445,7 @@ namespace IW4
     };
 
     /* 1090 */
-    struct __declspec(align(16)) XSurfaceCollisionNode
+    struct alignas(16) XSurfaceCollisionNode
     {
         XSurfaceCollisionAabb aabb;
         unsigned __int16 childBeginIndex;
@@ -472,7 +479,7 @@ namespace IW4
         XSurfaceCollisionTree* collisionTree;
     };
 
-    typedef __declspec(align(16)) unsigned __int16 r_index16_t;
+    typedef tdef_align(16) unsigned __int16 r_index16_t;
 
     struct XSurface
     {
@@ -621,7 +628,7 @@ namespace IW4
         MaterialTextureDefInfo u;
     };
 
-    struct __declspec(align(16)) MaterialConstantDef
+    struct alignas(16) MaterialConstantDef
     {
         unsigned int nameHash;
         char name[12];
@@ -681,7 +688,7 @@ namespace IW4
         GfxStateBits* stateBitsTable;
     };
 
-    struct __declspec(align(4)) GfxImageLoadDef
+    struct alignas(4) GfxImageLoadDef
     {
         char levelCount;
         char pad[3];
@@ -1319,7 +1326,7 @@ namespace IW4
         ItemKeyHandler* next;
     };
 
-    struct __declspec(align(4)) rectDef_s
+    struct alignas(4) rectDef_s
     {
         float x;
         float y;
@@ -1781,7 +1788,7 @@ namespace IW4
         DATA_COUNT = 0xA,
     };
 
-    struct __declspec(align(4)) StructuredDataEnumEntry
+    struct alignas(4) StructuredDataEnumEntry
     {
         const char* string;
         unsigned __int16 index;
@@ -1992,7 +1999,7 @@ namespace IW4
         int partitionIndex;
     };
 
-    struct __declspec(align(16)) CollisionAabbTree
+    struct alignas(16) CollisionAabbTree
     {
         float midPoint[3];
         unsigned __int16 materialIndex;
@@ -2086,8 +2093,8 @@ namespace IW4
         float linkMaxs[2];
     };
 
-    typedef __declspec(align(128)) cbrush_t cbrush_array_t;
-    typedef __declspec(align(128)) Bounds BoundsArray;
+    typedef tdef_align(128) cbrush_t cbrush_array_t;
+    typedef tdef_align(128) Bounds BoundsArray;
 
     struct clipMap_t
     {
@@ -2281,7 +2288,7 @@ namespace IW4
         pathnode_transient_t transient;
     };
 
-    struct __declspec(align(16)) pathbasenode_t
+    struct alignas(16) pathbasenode_t
     {
         float vOrigin[3];
         unsigned int type;
@@ -2477,7 +2484,7 @@ namespace IW4
         char endVertIndex;
     };
 
-    union __declspec(align(4)) FxGlassGeometryData
+    union alignas(4) FxGlassGeometryData
     {
         FxGlassVertex vert;
         FxGlassHoleHeader hole;
@@ -2669,14 +2676,14 @@ namespace IW4
         r_index_t* indices;
     };
 
-    struct __declspec(align(4)) GfxLightGridEntry
+    struct alignas(4) GfxLightGridEntry
     {
         unsigned __int16 colorsIndex;
         char primaryLightIndex;
         char needsTrace;
     };
 
-    struct __declspec(align(4)) GfxLightGridColors
+    struct alignas(4) GfxLightGridColors
     {
         char rgb[56][3];
     };
@@ -2703,7 +2710,7 @@ namespace IW4
         Bounds bounds;
     };
 
-    struct __declspec(align(4)) GfxBrushModel
+    struct alignas(4) GfxBrushModel
     {
         GfxBrushModelWritable writable;
         Bounds bounds;
@@ -2763,7 +2770,7 @@ namespace IW4
         unsigned __int16 surfId;
     };
 
-    struct __declspec(align(4)) GfxSceneDynBrush
+    struct alignas(4) GfxSceneDynBrush
     {
         BModelDrawInfo info;
         unsigned __int16 dynEntId;
@@ -2908,8 +2915,8 @@ namespace IW4
         int exponent;
     };
 
-    typedef __declspec(align(128)) GfxCellTree GfxCellTree128;
-    typedef __declspec(align(4)) GfxSceneDynModel GfxSceneDynModel4;
+    typedef tdef_align(128) GfxCellTree GfxCellTree128;
+    typedef tdef_align(4) GfxSceneDynModel GfxSceneDynModel4;
 
     struct GfxWorld
     {
