@@ -1,0 +1,32 @@
+stages:
+    - build
+    - test
+        
+build-gcc:
+    image: laupetin/gcc-9-multilib:latest
+    stage: build
+    cache:
+      paths:
+        - build/
+    tags:
+      - build
+      - docker
+      - linux
+    script:
+        - "./generate.sh"
+        - "./scripts/make-release.sh"
+
+test-gcc:
+    image: laupetin/gcc-9-multilib:latest
+    stage: test
+    cache:
+      paths:
+        - build/
+    tags:
+      - build
+      - docker
+      - linux
+    script:
+        - "./build/lib/Release_x86/tests/ObjCommonTests"
+        - "./build/lib/Release_x86/tests/ZoneCodeGeneratorLibTests"
+        - "./build/lib/Release_x86/tests/ZoneCommonTests"

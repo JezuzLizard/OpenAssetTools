@@ -145,8 +145,8 @@ function ZoneCode:allWriteFiles()
     return result
 end
 
-function ZoneCode:include()
-	if References:include("ZoneCode") then
+function ZoneCode:include(includes)
+	if includes:handle(self:name()) then
         includedirs {
             path.join(ProjectFolder(), "ZoneCode"),
             "%{wks.location}/src/ZoneCode"
@@ -154,19 +154,22 @@ function ZoneCode:include()
     end
 end
 
-function ZoneCode:link()
+function ZoneCode:link(links)
     
 end
 
 function ZoneCode:use()
-	dependson "ZoneCode"
+	dependson(self:name())
+end
+
+function ZoneCode:name()
+    return "ZoneCode"
 end
 
 function ZoneCode:project()
-    References:reset()
-	local folder = ProjectFolder();
+	local folder = ProjectFolder()
 
-	project "ZoneCode"
+	project(self:name())
         targetdir(TargetDirectoryLib)
 		location "%{wks.location}/src/%{prj.name}"
 		kind "Utility"
@@ -188,19 +191,19 @@ function ZoneCode:project()
         filter "files:**.gen"
             buildmessage "Generating ZoneCode for game %{file.basename}"
             buildcommands {
-                '"' .. TargetDirectoryBin .. '/ZoneCodeGenerator.exe"' 
+                '"' .. TargetDirectoryBin .. '/' .. ExecutableByOs('ZoneCodeGenerator') .. '"' 
                     .. ' -h "' .. path.join(path.getabsolute(ProjectFolder()), 'ZoneCode/Game/%{file.basename}/%{file.basename}.h') .. '"'
                     .. ' -c "' .. path.join(path.getabsolute(ProjectFolder()), 'ZoneCode/Game/%{file.basename}/%{file.basename}_Commands.txt') .. '"'
                     .. ' -o "%{wks.location}/src/ZoneCode/Game/%{file.basename}/XAssets"'
-                    .. ' -g * ZoneLoad'
-                    .. ' -g * ZoneWrite'
-                    .. ' -g * AssetStructTests'
+                    .. ' -g "*" ZoneLoad'
+                    .. ' -g "*" ZoneWrite'
+                    .. ' -g "*" AssetStructTests'
             }
             buildinputs {
                 path.join(ProjectFolder(), "ZoneCode/Game/%{file.basename}/%{file.basename}.h"),
                 path.join(ProjectFolder(), "ZoneCode/Game/%{file.basename}/%{file.basename}_Commands.txt"),
-                path.join(ProjectFolder(), "ZoneCommon/Game/%{file.basename}/%{file.basename}_Assets.h"),
-                TargetDirectoryBin .. "/ZoneCodeGenerator.exe"
+                path.join(ProjectFolder(), "Common/Game/%{file.basename}/%{file.basename}_Assets.h"),
+                TargetDirectoryBin .. "/" .. ExecutableByOs('ZoneCodeGenerator')
             }
         filter {}
         

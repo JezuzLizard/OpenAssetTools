@@ -1,6 +1,7 @@
 #include "HeaderCommonMatchers.h"
 
 #include <sstream>
+#include <type_traits>
 
 #include "HeaderMatcherFactory.h"
 
@@ -8,17 +9,28 @@ std::unique_ptr<HeaderCommonMatchers::matcher_t> HeaderCommonMatchers::Align(con
 {
     const HeaderMatcherFactory create(labelSupplier);
 
-    return create.And({
-        create.Type(HeaderParserValueType::DECLSPEC),
-        create.Char('('),
-        create.Type(HeaderParserValueType::ALIGN),
-        create.Char('('),
-        create.Integer(),
-        create.Char(')'),
-        create.Char(')')
-    }).Transform([](HeaderMatcherFactory::token_list_t& values)
-    {
-        return HeaderParserValue::Integer(values[4].get().GetPos(), values[4].get().IntegerValue());
+    return create.Or({
+        create.And({
+            create.Type(HeaderParserValueType::DECLSPEC),
+            create.Char('('),
+            create.Type(HeaderParserValueType::ALIGN),
+            create.Char('('),
+            create.Integer(),
+            create.Char(')'),
+            create.Char(')')
+        }).Transform([](HeaderMatcherFactory::token_list_t& values)
+        {
+            return HeaderParserValue::Integer(values[4].get().GetPos(), values[4].get().IntegerValue());
+        }),
+        create.And({
+            create.Type(HeaderParserValueType::ALIGNAS),
+            create.Char('('),
+            create.Integer(),
+            create.Char(')')
+        }).Transform([](HeaderMatcherFactory::token_list_t& values)
+        {
+            return HeaderParserValue::Integer(values[2].get().GetPos(), values[2].get().IntegerValue());
+        })
     });
 }
 
@@ -52,7 +64,7 @@ std::unique_ptr<HeaderCommonMatchers::matcher_t> HeaderCommonMatchers::Typename(
         "int",
         "long"
     };
-    static_assert(_countof(BUILT_IN_TYPE_NAMES) == static_cast<int>(HeaderParserValueType::BUILT_IN_LAST) - static_cast<int>(HeaderParserValueType::BUILT_IN_FIRST) + 1);
+    static_assert(std::extent<decltype(BUILT_IN_TYPE_NAMES)>::value == static_cast<int>(HeaderParserValueType::BUILT_IN_LAST) - static_cast<int>(HeaderParserValueType::BUILT_IN_FIRST) + 1);
 
     const HeaderMatcherFactory create(labelSupplier);
 
@@ -73,7 +85,7 @@ std::unique_ptr<HeaderCommonMatchers::matcher_t> HeaderCommonMatchers::Typename(
             std::ostringstream str;
             auto first = true;
 
-            for(const auto& token : values)
+            for (const auto& token : values)
             {
                 if (first)
                     first = false;

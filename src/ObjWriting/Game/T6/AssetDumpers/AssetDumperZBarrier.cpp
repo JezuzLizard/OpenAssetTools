@@ -1,6 +1,7 @@
 #include "AssetDumperZBarrier.h"
 
 #include <cassert>
+#include <type_traits>
 
 #include "Game/T6/InfoStringT6.h"
 
@@ -183,9 +184,9 @@ std::string AssetDumperZBarrier::GetFileNameForAsset(Zone* zone, XAssetInfo<ZBar
     return "zbarrier/" + asset->m_name;
 }
 
-void AssetDumperZBarrier::DumpAsset(Zone* zone, XAssetInfo<ZBarrierDef>* asset, FileAPI::File* out)
+void AssetDumperZBarrier::DumpAsset(Zone* zone, XAssetInfo<ZBarrierDef>* asset, std::ostream& stream)
 {
-    InfoStringFromZBarrierConverter converter(asset->Asset(), zbarrier_fields, _countof(zbarrier_fields), [asset](const scr_string_t scrStr) -> std::string
+    InfoStringFromZBarrierConverter converter(asset->Asset(), zbarrier_fields, std::extent<decltype(zbarrier_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
         {
             assert(scrStr < asset->m_zone->m_script_strings.size());
             if (scrStr >= asset->m_zone->m_script_strings.size())
@@ -196,14 +197,14 @@ void AssetDumperZBarrier::DumpAsset(Zone* zone, XAssetInfo<ZBarrierDef>* asset, 
 
     const auto infoString = converter.Convert();
     const auto stringValue = infoString.ToString("ZBARRIER");
-    out->Write(stringValue.c_str(), 1, stringValue.length());
+    stream.write(stringValue.c_str(), stringValue.size());
 }
 
 //void AssetDumperZBarrier::CheckFields()
 //{
-//    assert(_countof(zbarrier_fields) == _countof(fields222));
+//    assert(std::extent<decltype(zbarrier_fields)>::value == std::extent<decltype(fields222)>::value);
 //
-//    for(auto i = 0u; i < _countof(zbarrier_fields); i++)
+//    for(auto i = 0u; i < std::extent<decltype(zbarrier_fields)>::value; i++)
 //    {
 //        if(zbarrier_fields[i].iOffset != fields222[i].iOffset)
 //        {

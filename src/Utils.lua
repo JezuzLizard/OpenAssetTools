@@ -1,29 +1,31 @@
 Utils = {}
 
-function Utils:include()
-	if References:include("Utils") then
+function Utils:include(includes)
+	if includes:handle(self:name()) then
 		includedirs {
 			path.join(ProjectFolder(), "Utils")
 		}
 	end
 end
 
-function Utils:link()
-	if References:link("Utils") then
-		links "Utils"
-	end
+function Utils:link(links)
+	links:add(self:name())
 end
 
 function Utils:use()
 	
 end
 
-function Utils:project()
-	References:reset()
-	local folder = ProjectFolder();
+function Utils:name()
+    return "Utils"
+end
 
-	project "Utils"
-        targetdir(TargetDirectoryLib)
+function Utils:project()
+	local folder = ProjectFolder()
+	local includes = Includes:create()
+
+	project(self:name())
+		targetdir(TargetDirectoryLib)
 		location "%{wks.location}/src/%{prj.name}"
 		kind "StaticLib"
 		language "C++"
@@ -39,5 +41,5 @@ function Utils:project()
 			}
 		}
 		
-        self:include()
+        self:include(includes)
 end

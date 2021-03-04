@@ -3,6 +3,8 @@
 #ifndef __IW4_ASSETS_H
 #define __IW4_ASSETS_H
 
+#include "../../Utils/TypeAlignment.h"
+
 #ifndef __zonecodegenerator
 namespace IW4
 {
@@ -153,10 +155,10 @@ namespace IW4
         void* data;
     };
 
-    typedef __declspec(align(16)) char raw_byte16;
-    typedef __declspec(align(16)) float raw_float16;
+    typedef tdef_align(16) char raw_byte16;
+    typedef tdef_align(16) float raw_float16;
     typedef unsigned int raw_uint;
-    typedef __declspec(align(128)) unsigned int raw_uint128;
+    typedef tdef_align(128) unsigned int raw_uint128;
     typedef char cbrushedge_t;
     typedef unsigned short r_index_t;
     typedef float vec2_t[2];
@@ -195,18 +197,18 @@ namespace IW4
     struct cbrushside_t
     {
         cplane_s* plane;
-        unsigned __int16 materialNum;
+        uint16_t materialNum;
         char firstAdjacentSideOffset;
         char edgeCount;
     };
 
     struct cbrushWrapper_t
     {
-        unsigned __int16 numsides;
-        unsigned __int16 glassPieceIndex;
+        uint16_t numsides;
+        uint16_t glassPieceIndex;
         cbrushside_t* sides;
         cbrushedge_t* baseAdjacentSide;
-        __int16 axialMaterialNum[2][3];
+        int16_t axialMaterialNum[2][3];
         char firstAdjacentSideOffsets[2][3];
         char edgeCount[2][3];
     };
@@ -246,18 +248,18 @@ namespace IW4
     union XAnimIndices
     {
         char* _1;
-        unsigned __int16* _2;
+        uint16_t* _2;
         void* data;
     };
 
     struct XAnimNotifyInfo
     {
-        unsigned __int16 name;
+        uint16_t name;
         float time;
     };
 
     typedef unsigned char ByteVec[3];
-    typedef __declspec(align(4)) unsigned short UShortVec[3];
+    typedef tdef_align(4) unsigned short UShortVec[3];
 
     union XAnimDynamicFrames
     {
@@ -268,10 +270,10 @@ namespace IW4
     union XAnimDynamicIndicesTrans
     {
         char _1[1];
-        unsigned __int16 _2[1];
+        uint16_t _2[1];
     };
 
-    struct __declspec(align(4)) XAnimPartTransFrames
+    struct type_align(4) XAnimPartTransFrames
     {
         float mins[3];
         float size[3];
@@ -287,7 +289,7 @@ namespace IW4
 
     struct XAnimPartTrans
     {
-        unsigned __int16 size;
+        uint16_t size;
         char smallTrans;
         XAnimPartTransData u;
     };
@@ -295,12 +297,12 @@ namespace IW4
     union XAnimDynamicIndicesQuat2
     {
         char _1[1];
-        unsigned __int16 _2[1];
+        uint16_t _2[1];
     };
 
-    typedef __declspec(align(4)) short XQuat2[2];
+    typedef tdef_align(4) short XQuat2[2];
 
-    struct __declspec(align(4)) XAnimDeltaPartQuatDataFrames2
+    struct type_align(4) XAnimDeltaPartQuatDataFrames2
     {
         XQuat2* frames;
         XAnimDynamicIndicesQuat2 indices;
@@ -309,22 +311,22 @@ namespace IW4
     union XAnimDeltaPartQuatData2
     {
         XAnimDeltaPartQuatDataFrames2 frames;
-        __int16 frame0[2];
+        int16_t frame0[2];
     };
 
     struct XAnimDeltaPartQuat2
     {
-        unsigned __int16 size;
+        uint16_t size;
         XAnimDeltaPartQuatData2 u;
     };
 
     union XAnimDynamicIndicesQuat
     {
         char _1[1];
-        unsigned __int16 _2[1];
+        uint16_t _2[1];
     };
 
-    typedef __declspec(align(4)) short XQuat[4];
+    typedef tdef_align(4) short XQuat[4];
 
     struct XAnimDeltaPartQuatDataFrames
     {
@@ -335,12 +337,12 @@ namespace IW4
     union XAnimDeltaPartQuatData
     {
         XAnimDeltaPartQuatDataFrames frames;
-        __int16 frame0[4];
+        int16_t frame0[4];
     };
 
     struct XAnimDeltaPartQuat
     {
-        unsigned __int16 size;
+        uint16_t size;
         XAnimDeltaPartQuatData u;
     };
 
@@ -354,12 +356,12 @@ namespace IW4
     struct XAnimParts
     {
         const char* name;
-        unsigned __int16 dataByteCount;
-        unsigned __int16 dataShortCount;
-        unsigned __int16 dataIntCount;
-        unsigned __int16 randomDataByteCount;
-        unsigned __int16 randomDataIntCount;
-        unsigned __int16 numframes;
+        uint16_t dataByteCount;
+        uint16_t dataShortCount;
+        uint16_t dataIntCount;
+        uint16_t randomDataByteCount;
+        uint16_t randomDataIntCount;
+        uint16_t numframes;
         char flags;
         unsigned char boneCount[10];
         char notifyCount;
@@ -369,11 +371,11 @@ namespace IW4
         unsigned int indexCount;
         float framerate;
         float frequency;
-        unsigned __int16* names;
+        uint16_t* names;
         char* dataByte;
-        __int16* dataShort;
+        int16_t* dataShort;
         int* dataInt;
-        __int16* randomDataShort;
+        int16_t* randomDataShort;
         char* randomDataByte;
         int* randomDataInt;
         XAnimIndices indices;
@@ -383,8 +385,8 @@ namespace IW4
 
     struct XSurfaceVertexInfo
     {
-        __int16 vertCount[4];
-        unsigned __int16* vertsBlend;
+        int16_t vertCount[4];
+        uint16_t* vertsBlend;
     };
 
     /* 1085 */
@@ -408,7 +410,7 @@ namespace IW4
     };
 
     /* 1088 */
-    struct __declspec(align(16)) GfxPackedVertex
+    struct type_align(16) GfxPackedVertex
     {
         float xyz[3];
         float binormalSign;
@@ -421,22 +423,22 @@ namespace IW4
     /* 1089 */
     struct XSurfaceCollisionAabb
     {
-        unsigned __int16 mins[3];
-        unsigned __int16 maxs[3];
+        uint16_t mins[3];
+        uint16_t maxs[3];
     };
 
     /* 1090 */
-    struct __declspec(align(16)) XSurfaceCollisionNode
+    struct type_align(16) XSurfaceCollisionNode
     {
         XSurfaceCollisionAabb aabb;
-        unsigned __int16 childBeginIndex;
-        unsigned __int16 childCount;
+        uint16_t childBeginIndex;
+        uint16_t childCount;
     };
 
     /* 1091 */
     struct XSurfaceCollisionLeaf
     {
-        unsigned __int16 triangleBeginIndex;
+        uint16_t triangleBeginIndex;
     };
 
     /* 1092 */
@@ -453,24 +455,24 @@ namespace IW4
     /* 1093 */
     struct XRigidVertList
     {
-        unsigned __int16 boneOffset;
-        unsigned __int16 vertCount;
-        unsigned __int16 triOffset;
-        unsigned __int16 triCount;
+        uint16_t boneOffset;
+        uint16_t vertCount;
+        uint16_t triOffset;
+        uint16_t triCount;
         XSurfaceCollisionTree* collisionTree;
     };
 
-    typedef __declspec(align(16)) unsigned __int16 r_index16_t;
+    typedef tdef_align(16) uint16_t r_index16_t;
 
     struct XSurface
     {
         char tileMode;
         bool deformed;
-        unsigned __int16 vertCount;
-        unsigned __int16 triCount;
+        uint16_t vertCount;
+        uint16_t triCount;
         char zoneHandle;
-        unsigned __int16 baseTriIndex;
-        unsigned __int16 baseVertIndex;
+        uint16_t baseTriIndex;
+        uint16_t baseVertIndex;
         r_index16_t (*triIndices)[3];
         XSurfaceVertexInfo vertInfo;
         GfxPackedVertex* verts0;
@@ -483,15 +485,15 @@ namespace IW4
     {
         const char* name;
         XSurface* surfs;
-        unsigned __int16 numsurfs;
+        uint16_t numsurfs;
         int partBits[6];
     };
 
     struct XModelLodInfo
     {
         float dist;
-        unsigned __int16 numsurfs;
-        unsigned __int16 surfIndex;
+        uint16_t numsurfs;
+        uint16_t surfIndex;
         XModelSurfs* modelSurfs;
         int partBits[6];
         XSurface* surfs;
@@ -540,9 +542,9 @@ namespace IW4
         char lodRampType;
         float scale;
         unsigned int noScalePartBits[6];
-        unsigned __int16* boneNames;
+        uint16_t* boneNames;
         char* parentList;
-        __int16(*quats)[4];
+        int16_t(*quats)[4];
         float(*trans)[3];
         char* partClassification;
         DObjAnimMat* baseMat;
@@ -609,7 +611,7 @@ namespace IW4
         MaterialTextureDefInfo u;
     };
 
-    struct __declspec(align(16)) MaterialConstantDef
+    struct type_align(16) MaterialConstantDef
     {
         unsigned int nameHash;
         char name[12];
@@ -621,25 +623,25 @@ namespace IW4
         unsigned int loadBits[2];
     };
 
-    struct GfxDrawSurfFields
+    struct gcc_align(8) GfxDrawSurfFields
     {
-        unsigned __int64 objectId : 16;
-        unsigned __int64 reflectionProbeIndex : 8;
-        unsigned __int64 hasGfxEntIndex : 1;
-        unsigned __int64 customIndex : 5;
-        unsigned __int64 materialSortedIndex : 12;
-        unsigned __int64 prepass : 2;
-        unsigned __int64 useHeroLighting : 1;
-        unsigned __int64 sceneLightIndex : 8;
-        unsigned __int64 surfType : 4;
-        unsigned __int64 primarySortKey : 6;
-        unsigned __int64 unused : 1;
+        uint64_t objectId : 16;
+        uint64_t reflectionProbeIndex : 8;
+        uint64_t hasGfxEntIndex : 1;
+        uint64_t customIndex : 5;
+        uint64_t materialSortedIndex : 12;
+        uint64_t prepass : 2;
+        uint64_t useHeroLighting : 1;
+        uint64_t sceneLightIndex : 8;
+        uint64_t surfType : 4;
+        uint64_t primarySortKey : 6;
+        uint64_t unused : 1;
     };
 
     union GfxDrawSurf
     {
-        GfxDrawSurfFields fields;
-        unsigned __int64 packed;
+        gcc_align(8) GfxDrawSurfFields fields;
+        gcc_align(8) uint64_t packed;
     };
 
     struct MaterialInfo
@@ -651,7 +653,7 @@ namespace IW4
         char textureAtlasColumnCount;
         GfxDrawSurf drawSurf;
         unsigned int surfaceTypeBits;
-        unsigned __int16 hashIndex;
+        uint16_t hashIndex;
     };
 
     struct Material
@@ -669,7 +671,7 @@ namespace IW4
         GfxStateBits* stateBitsTable;
     };
 
-    struct __declspec(align(4)) GfxImageLoadDef
+    struct type_align(4) GfxImageLoadDef
     {
         char levelCount;
         char pad[3];
@@ -726,9 +728,9 @@ namespace IW4
         bool noPicmip;
         char track;
         CardMemory cardMemory;
-        unsigned __int16 width;
-        unsigned __int16 height;
-        unsigned __int16 depth;
+        uint16_t width;
+        uint16_t height;
+        uint16_t depth;
         bool delayLoadPixels;
         const char* name;
     };
@@ -736,15 +738,15 @@ namespace IW4
     struct GfxPixelShaderLoadDef
     {
         unsigned int* program;
-        unsigned __int16 programSize;
-        unsigned __int16 loadForRenderer;
+        uint16_t programSize;
+        uint16_t loadForRenderer;
     };
 
     struct GfxVertexShaderLoadDef
     {
         unsigned int* program;
-        unsigned __int16 programSize;
-        unsigned __int16 loadForRenderer;
+        uint16_t programSize;
+        uint16_t loadForRenderer;
     };
 
     struct MaterialStreamRouting
@@ -795,7 +797,7 @@ namespace IW4
 
     struct MaterialArgumentCodeConst
     {
-        unsigned __int16 index;
+        uint16_t index;
         char firstRow;
         char rowCount;
     };
@@ -825,8 +827,8 @@ namespace IW4
 
     struct MaterialShaderArgument
     {
-        unsigned __int16 type;
-        unsigned __int16 dest;
+        uint16_t type;
+        uint16_t dest;
         MaterialArgumentDef u;
     };
 
@@ -845,8 +847,8 @@ namespace IW4
     struct MaterialTechnique
     {
         const char* name;
-        unsigned __int16 flags;
-        unsigned __int16 passCount;
+        uint16_t flags;
+        uint16_t passCount;
         MaterialPass passArray[1];
     };
 
@@ -1006,7 +1008,7 @@ namespace IW4
     struct SndCurve
     {
         const char* filename;
-        unsigned __int16 knotCount;
+        uint16_t knotCount;
         float knots[16][2];
     };
 
@@ -1307,7 +1309,7 @@ namespace IW4
         ItemKeyHandler* next;
     };
 
-    struct __declspec(align(4)) rectDef_s
+    struct type_align(4) rectDef_s
     {
         float x;
         float y;
@@ -1492,7 +1494,7 @@ namespace IW4
         char loopCount;
         char colIndexBits;
         char rowIndexBits;
-        __int16 entryCount;
+        int16_t entryCount;
     };
 
     struct FxElemVec3Range
@@ -1572,7 +1574,7 @@ namespace IW4
         int vertCount;
         FxTrailVertex* verts;
         int indCount;
-        unsigned __int16* inds;
+        uint16_t* inds;
     };
 
     struct FxSparkFountainDef
@@ -1665,7 +1667,7 @@ namespace IW4
 
     struct Glyph
     {
-        unsigned __int16 letter;
+        uint16_t letter;
         char x0;
         char y0;
         char dx;
@@ -1769,10 +1771,10 @@ namespace IW4
         DATA_COUNT = 0xA,
     };
 
-    struct __declspec(align(4)) StructuredDataEnumEntry
+    struct type_align(4) StructuredDataEnumEntry
     {
         const char* string;
-        unsigned __int16 index;
+        uint16_t index;
     };
 
     struct StructuredDataEnum
@@ -1852,16 +1854,16 @@ namespace IW4
     struct TriggerModel
     {
         int contents;
-        unsigned __int16 hullCount;
-        unsigned __int16 firstHull;
+        uint16_t hullCount;
+        uint16_t firstHull;
     };
 
     struct TriggerHull
     {
         Bounds bounds;
         int contents;
-        unsigned __int16 slabCount;
-        unsigned __int16 firstSlab;
+        uint16_t slabCount;
+        uint16_t firstSlab;
     };
 
     struct TriggerSlab
@@ -1885,7 +1887,7 @@ namespace IW4
     {
         const char* name;
         float origin[3];
-        unsigned __int16 triggerIndex;
+        uint16_t triggerIndex;
         char sunPrimaryLightIndex;
     };
 
@@ -1927,7 +1929,7 @@ namespace IW4
     struct cNode_t
     {
         cplane_s* plane;
-        __int16 children[2];
+        int16_t children[2];
     };
 
     struct cLeafBrushNodeLeaf_t
@@ -1939,7 +1941,7 @@ namespace IW4
     {
         float dist;
         float range;
-        unsigned __int16 childOffset[2];
+        uint16_t childOffset[2];
     };
 
     union cLeafBrushNodeData_t
@@ -1951,7 +1953,7 @@ namespace IW4
     struct cLeafBrushNode_s
     {
         char axis;
-        __int16 leafBrushCount;
+        int16_t leafBrushCount;
         int contents;
         cLeafBrushNodeData_t data;
     };
@@ -1980,19 +1982,19 @@ namespace IW4
         int partitionIndex;
     };
 
-    struct __declspec(align(16)) CollisionAabbTree
+    struct type_align(16) CollisionAabbTree
     {
         float midPoint[3];
-        unsigned __int16 materialIndex;
-        unsigned __int16 childCount;
+        uint16_t materialIndex;
+        uint16_t childCount;
         float halfSize[3];
         CollisionAabbTreeIndex u;
     };
 
     struct cLeaf_t
     {
-        unsigned __int16 firstCollAabbIndex;
-        unsigned __int16 collAabbCount;
+        uint16_t firstCollAabbIndex;
+        uint16_t collAabbCount;
         int brushContents;
         int terrainContents;
         Bounds bounds;
@@ -2008,11 +2010,11 @@ namespace IW4
 
     struct cbrush_t
     {
-        unsigned __int16 numsides;
-        unsigned __int16 glassPieceIndex;
+        uint16_t numsides;
+        uint16_t glassPieceIndex;
         cbrushside_t* sides;
         char* baseAdjacentSide;
-        __int16 axialMaterialNum[2][3];
+        int16_t axialMaterialNum[2][3];
         char firstAdjacentSideOffsets[2][3];
         char edgeCount[2][3];
     };
@@ -2020,8 +2022,8 @@ namespace IW4
     struct SModelAabbNode
     {
         Bounds bounds;
-        unsigned __int16 firstChild;
-        unsigned __int16 childCount;
+        uint16_t firstChild;
+        uint16_t childCount;
     };
 
     struct GfxPlacement
@@ -2043,8 +2045,8 @@ namespace IW4
         DynEntityType type;
         GfxPlacement pose;
         XModel* xModel;
-        unsigned __int16 brushModel;
-        unsigned __int16 physicsBrushModel;
+        uint16_t brushModel;
+        uint16_t physicsBrushModel;
         FxEffectDef* destroyFx;
         PhysPreset* physPreset;
         int health;
@@ -2061,21 +2063,21 @@ namespace IW4
     struct DynEntityClient
     {
         int physObjId;
-        unsigned __int16 flags;
-        unsigned __int16 lightingHandle;
+        uint16_t flags;
+        uint16_t lightingHandle;
         int health;
     };
 
     struct DynEntityColl
     {
-        unsigned __int16 sector;
-        unsigned __int16 nextEntInSector;
+        uint16_t sector;
+        uint16_t nextEntInSector;
         float linkMins[2];
         float linkMaxs[2];
     };
 
-    typedef __declspec(align(128)) cbrush_t cbrush_array_t;
-    typedef __declspec(align(128)) Bounds BoundsArray;
+    typedef tdef_align(128) cbrush_t cbrush_array_t;
+    typedef tdef_align(128) Bounds BoundsArray;
 
     struct clipMap_t
     {
@@ -2104,7 +2106,7 @@ namespace IW4
         unsigned int vertCount;
         vec3_t* verts;
         int triCount;
-        unsigned __int16* triIndices;
+        uint16_t* triIndices;
         char* triEdgeIsWalkable;
         int borderCount;
         CollisionBorder* borders;
@@ -2114,14 +2116,14 @@ namespace IW4
         CollisionAabbTree* aabbTrees;
         unsigned int numSubModels;
         cmodel_t* cmodels;
-        unsigned __int16 numBrushes;
+        uint16_t numBrushes;
         cbrush_array_t* brushes;
         BoundsArray* brushBounds;
         int* brushContents;
         MapEnts* mapEnts;
-        unsigned __int16 smodelNodeCount;
+        uint16_t smodelNodeCount;
         SModelAabbNode* smodelNodes;
-        unsigned __int16 dynEntCount[2];
+        uint16_t dynEntCount[2];
         DynEntityDef* dynEntDefList[2];
         DynEntityPose* dynEntPoseList[2];
         DynEntityClient* dynEntClientList[2];
@@ -2187,7 +2189,7 @@ namespace IW4
     struct pathlink_s
     {
         float fDist;
-        unsigned __int16 nodeNum;
+        uint16_t nodeNum;
         char disconnectCount;
         char negotiationLink;
         char flags;
@@ -2212,12 +2214,12 @@ namespace IW4
     struct pathnode_constant_t
     {
         nodeType type;
-        unsigned __int16 spawnflags;
-        unsigned __int16 targetname;
-        unsigned __int16 script_linkName;
-        unsigned __int16 script_noteworthy;
-        unsigned __int16 target;
-        unsigned __int16 animscript;
+        uint16_t spawnflags;
+        uint16_t targetname;
+        uint16_t script_linkName;
+        uint16_t script_noteworthy;
+        uint16_t target;
+        uint16_t animscript;
         int animscriptfunc;
         float vOrigin[3];
         float fAngle;
@@ -2228,8 +2230,8 @@ namespace IW4
             float minUseDistSq;
             PathNodeErrorCode error;
         };
-        __int16 wOverlapNode[2];
-        unsigned __int16 totalLinkCount;
+        int16_t wOverlapNode[2];
+        uint16_t totalLinkCount;
         pathlink_s* Links;
     };
 
@@ -2240,9 +2242,9 @@ namespace IW4
         int iValidTime[3];
         int dangerousNodeTime[3];
         int inPlayerLOSTime;
-        __int16 wLinkCount;
-        __int16 wOverlapCount;
-        __int16 turretEntNumber;
+        int16_t wLinkCount;
+        int16_t wOverlapCount;
+        int16_t turretEntNumber;
         char userCount;
         bool hasBadPlaceLink;
     };
@@ -2269,7 +2271,7 @@ namespace IW4
         pathnode_transient_t transient;
     };
 
-    struct __declspec(align(16)) pathbasenode_t
+    struct type_align(16) pathbasenode_t
     {
         float vOrigin[3];
         unsigned int type;
@@ -2278,7 +2280,7 @@ namespace IW4
     struct pathnode_tree_nodes_t
     {
         int nodeCount;
-        unsigned __int16* nodes;
+        uint16_t* nodes;
     };
 
     struct pathnode_tree_t;
@@ -2302,8 +2304,8 @@ namespace IW4
         pathnode_t* nodes;
         pathbasenode_t* basenodes;
         unsigned int chainNodeCount;
-        unsigned __int16* chainNodeForNode;
-        unsigned __int16* nodeForChainNode;
+        uint16_t* chainNodeForNode;
+        uint16_t* nodeForChainNode;
         int visBytes;
         char* pathVis;
         int nodeTreeCount;
@@ -2354,8 +2356,8 @@ namespace IW4
 
     struct G_GlassPiece
     {
-        unsigned __int16 damageTaken;
-        unsigned __int16 collapseTime;
+        uint16_t damageTaken;
+        uint16_t collapseTime;
         int lastStateChangeTime;
         char impactDir;
         char impactPos[2];
@@ -2364,17 +2366,17 @@ namespace IW4
     struct G_GlassName
     {
         char* nameStr;
-        unsigned __int16 name;
-        unsigned __int16 pieceCount;
-        unsigned __int16* pieceIndices;
+        uint16_t name;
+        uint16_t pieceCount;
+        uint16_t* pieceIndices;
     };
 
     struct G_GlassData
     {
         G_GlassPiece* glassPieces;
         unsigned int pieceCount;
-        unsigned __int16 damageToWeaken;
-        unsigned __int16 damageToDestroy;
+        uint16_t damageToWeaken;
+        uint16_t damageToDestroy;
         unsigned int glassNameCount;
         G_GlassName* glassNames;
         char pad[108];
@@ -2424,15 +2426,15 @@ namespace IW4
     {
         float texCoordOrigin[2];
         unsigned int supportMask;
-        unsigned __int16 initIndex;
-        unsigned __int16 geoDataStart;
+        uint16_t initIndex;
+        uint16_t geoDataStart;
         char defIndex;
         char pad[5];
         char vertCount;
         char holeDataCount;
         char crackDataCount;
         char fanDataCount;
-        unsigned __int16 flags;
+        uint16_t flags;
         float areaX2;
     };
 
@@ -2447,31 +2449,31 @@ namespace IW4
 
     struct FxGlassVertex
     {
-        __int16 x;
-        __int16 y;
+        int16_t x;
+        int16_t y;
     };
 
     struct FxGlassHoleHeader
     {
-        unsigned __int16 uniqueVertCount;
+        uint16_t uniqueVertCount;
         char touchVert;
         char pad[1];
     };
 
     struct FxGlassCrackHeader
     {
-        unsigned __int16 uniqueVertCount;
+        uint16_t uniqueVertCount;
         char beginVertIndex;
         char endVertIndex;
     };
 
-    union __declspec(align(4)) FxGlassGeometryData
+    union type_align(4) FxGlassGeometryData
     {
         FxGlassVertex vert;
         FxGlassHoleHeader hole;
         FxGlassCrackHeader crack;
         char asBytes[4];
-        __int16 anonymous[2];
+        int16_t anonymous[2];
     };
 
     struct FxGlassInitPieceState
@@ -2511,7 +2513,7 @@ namespace IW4
         raw_byte16* visData;
         vec3_t* linkOrg;
         raw_float16* halfThickness;
-        unsigned __int16* lightingHandles;
+        uint16_t* lightingHandles;
         FxGlassInitPieceState* initPieceStates;
         FxGlassGeometryData* initGeoData;
         bool needToCompactData;
@@ -2538,7 +2540,7 @@ namespace IW4
     {
         int cellCount;
         cplane_s* planes;
-        unsigned __int16* nodes;
+        uint16_t* nodes;
         raw_uint* sceneEntCellBits;
     };
 
@@ -2552,12 +2554,12 @@ namespace IW4
     struct GfxAabbTree
     {
         Bounds bounds;
-        unsigned __int16 childCount;
-        unsigned __int16 surfaceCount;
-        unsigned __int16 startSurfIndex;
-        unsigned __int16 surfaceCountNoDecal;
-        unsigned __int16 startSurfIndexNoDecal;
-        unsigned __int16 smodelIndexCount;
+        uint16_t childCount;
+        uint16_t surfaceCount;
+        uint16_t startSurfIndex;
+        uint16_t surfaceCountNoDecal;
+        uint16_t startSurfIndexNoDecal;
+        uint16_t smodelIndexCount;
         StaticModelIndex* smodelIndexes;
         int childrenOffset;
     };
@@ -2589,7 +2591,7 @@ namespace IW4
         GfxPortalWritable writable;
         DpvsPlane plane;
         vec3_t* vertices;
-        unsigned __int16 cellIndex;
+        uint16_t cellIndex;
         char vertexCount;
         float hullAxis[2][3];
     };
@@ -2657,14 +2659,14 @@ namespace IW4
         r_index_t* indices;
     };
 
-    struct __declspec(align(4)) GfxLightGridEntry
+    struct type_align(4) GfxLightGridEntry
     {
-        unsigned __int16 colorsIndex;
+        uint16_t colorsIndex;
         char primaryLightIndex;
         char needsTrace;
     };
 
-    struct __declspec(align(4)) GfxLightGridColors
+    struct type_align(4) GfxLightGridColors
     {
         char rgb[56][3];
     };
@@ -2673,11 +2675,11 @@ namespace IW4
     {
         bool hasLightRegions;
         unsigned int lastSunPrimaryLightIndex;
-        unsigned __int16 mins[3];
-        unsigned __int16 maxs[3];
+        uint16_t mins[3];
+        uint16_t maxs[3];
         unsigned int rowAxis;
         unsigned int colAxis;
-        unsigned __int16* rowDataStart;
+        uint16_t* rowDataStart;
         unsigned int rawRowDataSize;
         char* rawRowData;
         unsigned int entryCount;
@@ -2691,14 +2693,14 @@ namespace IW4
         Bounds bounds;
     };
 
-    struct __declspec(align(4)) GfxBrushModel
+    struct type_align(4) GfxBrushModel
     {
         GfxBrushModelWritable writable;
         Bounds bounds;
         float radius;
-        unsigned __int16 surfaceCount;
-        unsigned __int16 startSurfIndex;
-        unsigned __int16 surfaceCountNoDecal;
+        uint16_t surfaceCount;
+        uint16_t startSurfIndex;
+        uint16_t surfaceCountNoDecal;
     };
 
     struct MaterialMemory
@@ -2737,32 +2739,32 @@ namespace IW4
     {
         char hasGfxEntIndex;
         char lod;
-        unsigned __int16 surfId;
+        uint16_t surfId;
     };
 
     struct GfxSceneDynModel
     {
         XModelDrawInfo info;
-        unsigned __int16 dynEntId;
+        uint16_t dynEntId;
     };
 
     struct BModelDrawInfo
     {
-        unsigned __int16 surfId;
+        uint16_t surfId;
     };
 
-    struct __declspec(align(4)) GfxSceneDynBrush
+    struct type_align(4) GfxSceneDynBrush
     {
         BModelDrawInfo info;
-        unsigned __int16 dynEntId;
+        uint16_t dynEntId;
     };
 
     struct GfxShadowGeometry
     {
-        unsigned __int16 surfaceCount;
-        unsigned __int16 smodelCount;
-        unsigned __int16* sortedSurfIndex;
-        unsigned __int16* smodelIndex;
+        uint16_t surfaceCount;
+        uint16_t smodelCount;
+        uint16_t* sortedSurfIndex;
+        uint16_t* smodelIndex;
     };
 
     struct GfxLightRegionAxis
@@ -2797,14 +2799,14 @@ namespace IW4
     {
         GfxPackedPlacement placement;
         XModel* model;
-        unsigned __int16 cullDist;
-        unsigned __int16 lightingHandle;
+        uint16_t cullDist;
+        uint16_t lightingHandle;
         char reflectionProbeIndex;
         char primaryLightIndex;
         char flags;
         char firstMtlSkinIndex;
         GfxColor groundLighting;
-        unsigned __int16 cacheId[4];
+        uint16_t cacheId[4];
     };
 
     struct GfxStaticModelInst
@@ -2817,8 +2819,8 @@ namespace IW4
     {
         unsigned int vertexLayerData;
         unsigned int firstVertex;
-        unsigned __int16 vertexCount;
-        unsigned __int16 triCount;
+        uint16_t vertexCount;
+        uint16_t triCount;
         unsigned int baseIndex;
     };
 
@@ -2865,7 +2867,7 @@ namespace IW4
         unsigned int surfaceVisDataCount;
         char* smodelVisData[3];
         char* surfaceVisData[3];
-        unsigned __int16* sortedSurfIndex;
+        uint16_t* sortedSurfIndex;
         GfxStaticModelInst* smodelInsts;
         GfxSurface* surfaces;
         GfxSurfaceBounds* surfacesBounds;
@@ -2896,8 +2898,8 @@ namespace IW4
         int exponent;
     };
 
-    typedef __declspec(align(128)) GfxCellTree GfxCellTree128;
-    typedef __declspec(align(4)) GfxSceneDynModel GfxSceneDynModel4;
+    typedef tdef_align(128) GfxCellTree GfxCellTree128;
+    typedef tdef_align(4) GfxSceneDynModel GfxSceneDynModel4;
 
     struct GfxWorld
     {
@@ -3255,10 +3257,10 @@ namespace IW4
         const char** szXAnimsRightHanded;
         const char** szXAnimsLeftHanded;
         const char* szModeName;
-        unsigned __int16* notetrackSoundMapKeys;
-        unsigned __int16* notetrackSoundMapValues;
-        unsigned __int16* notetrackRumbleMapKeys;
-        unsigned __int16* notetrackRumbleMapValues;
+        uint16_t* notetrackSoundMapKeys;
+        uint16_t* notetrackSoundMapValues;
+        uint16_t* notetrackRumbleMapKeys;
+        uint16_t* notetrackRumbleMapValues;
         int playerAnimType;
         weapType_t weapType;
         weapClass_t weapClass;
@@ -3558,7 +3560,7 @@ namespace IW4
         const char* accuracyGraphName1;
         vec2_t* originalAccuracyGraphKnots0;
         vec2_t* originalAccuracyGraphKnots1;
-        unsigned __int16 originalAccuracyGraphKnotCount[2];
+        uint16_t originalAccuracyGraphKnotCount[2];
         int iPositionReloadTransTime;
         float leftArc;
         float rightArc;
@@ -3680,7 +3682,7 @@ namespace IW4
         const char* szInternalName;
         WeaponDef* weapDef;
         const char* szDisplayName;
-        unsigned __int16* hideTags;
+        uint16_t* hideTags;
         const char** szXAnims;
         float fAdsZoomFov;
         int iAdsTransInTime;
@@ -3702,7 +3704,7 @@ namespace IW4
         int ammoDropStockMax;
         float adsDofStart;
         float adsDofEnd;
-        unsigned __int16 accuracyGraphKnotCount[2];
+        uint16_t accuracyGraphKnotCount[2];
         vec2_t* accuracyGraphKnots[2];
         bool motionTracker;
         bool enhanced;
@@ -3713,15 +3715,15 @@ namespace IW4
     {
         WeaponCompleteDef weapCompleteDef;
         WeaponDef weapDef;
-        unsigned __int16 hideTags[32];
+        uint16_t hideTags[32];
         const char* szXAnims[37];
         XModel* gunXModel[16];
         const char* szXAnimsRightHanded[37];
         const char* szXAnimsLeftHanded[37];
-        unsigned __int16 notetrackSoundMapKeys[16];
-        unsigned __int16 notetrackSoundMapValues[16];
-        unsigned __int16 notetrackRumbleMapKeys[16];
-        unsigned __int16 notetrackRumbleMapValues[16];
+        uint16_t notetrackSoundMapKeys[16];
+        uint16_t notetrackSoundMapValues[16];
+        uint16_t notetrackRumbleMapKeys[16];
+        uint16_t notetrackRumbleMapValues[16];
         XModel* worldModel[16];
         float parallelBounce[31];
         float perpendicularBounce[31];
@@ -3870,7 +3872,7 @@ namespace IW4
         float trophyInactiveRadius;
         int trophyAmmoCount;
         float trophyReloadTime;
-        unsigned __int16 trophyTags[4];
+        uint16_t trophyTags[4];
         Material* compassFriendlyIcon;
         Material* compassEnemyIcon;
         int compassIconWidth;

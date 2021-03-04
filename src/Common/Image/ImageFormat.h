@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <dxgiformat.h>
+#include <cstddef>
+#include "DxgiFormat.h"
 
 enum class ImageFormatId
 {

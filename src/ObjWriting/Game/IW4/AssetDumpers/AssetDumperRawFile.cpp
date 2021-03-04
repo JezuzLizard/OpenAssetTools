@@ -1,6 +1,7 @@
 #include "AssetDumperRawFile.h"
 
 #include <zlib.h>
+#include <stdexcept>
 
 using namespace IW4;
 
@@ -14,7 +15,7 @@ std::string AssetDumperRawFile::GetFileNameForAsset(Zone* zone, XAssetInfo<RawFi
     return asset->m_name;
 }
 
-void AssetDumperRawFile::DumpAsset(Zone* zone, XAssetInfo<RawFile>* asset, FileAPI::File* out)
+void AssetDumperRawFile::DumpAsset(Zone* zone, XAssetInfo<RawFile>* asset, std::ostream& stream)
 {
     const auto* rawFile = asset->Asset();
     if (rawFile->compressedLen > 0)
@@ -31,7 +32,7 @@ void AssetDumperRawFile::DumpAsset(Zone* zone, XAssetInfo<RawFile>* asset, FileA
 
         if (ret != Z_OK)
         {
-            throw std::exception("Initializing inflate failed");
+            throw std::runtime_error("Initializing inflate failed");
         }
 
         zs.next_in = reinterpret_cast<const Bytef*>(rawFile->data.compressedBuffer);
@@ -52,13 +53,13 @@ void AssetDumperRawFile::DumpAsset(Zone* zone, XAssetInfo<RawFile>* asset, FileA
                 return;
             }
 
-            out->Write(buffer, 1, sizeof buffer - zs.avail_out);
+            stream.write(reinterpret_cast<char*>(buffer), sizeof buffer - zs.avail_out);
         }
 
         inflateEnd(&zs);
     }
     else if (rawFile->len > 0)
     {
-        out->Write(rawFile->data.buffer, 1, rawFile->len);
+        stream.write(rawFile->data.buffer, rawFile->len);
     }
 }

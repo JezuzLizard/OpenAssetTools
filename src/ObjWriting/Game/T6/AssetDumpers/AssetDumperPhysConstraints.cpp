@@ -1,6 +1,7 @@
 #include "AssetDumperPhysConstraints.h"
 
 #include <cassert>
+#include <type_traits>
 
 #include "Game/T6/InfoStringT6.h"
 
@@ -110,7 +111,7 @@ namespace T6
             switch (static_cast<constraintsFieldType_t>(field.iFieldType))
             {
             case CFT_TYPE:
-                FillFromEnumInt(std::string(field.szName), field.iOffset, s_constraintTypeNames, _countof(s_constraintTypeNames));
+                FillFromEnumInt(std::string(field.szName), field.iOffset, s_constraintTypeNames, std::extent<decltype(s_constraintTypeNames)>::value);
                 break;
 
             case CFT_NUM:
@@ -138,11 +139,11 @@ std::string AssetDumperPhysConstraints::GetFileNameForAsset(Zone* zone, XAssetIn
     return "physconstraints/" + asset->m_name;
 }
 
-void AssetDumperPhysConstraints::DumpAsset(Zone* zone, XAssetInfo<PhysConstraints>* asset, FileAPI::File* out)
+void AssetDumperPhysConstraints::DumpAsset(Zone* zone, XAssetInfo<PhysConstraints>* asset, std::ostream& stream)
 {
     assert(asset->Asset()->count <= 4);
 
-    InfoStringFromPhysConstraintsConverter converter(asset->Asset(), phys_constraints_fields, _countof(phys_constraints_fields), [asset](const scr_string_t scrStr) -> std::string
+    InfoStringFromPhysConstraintsConverter converter(asset->Asset(), phys_constraints_fields, std::extent<decltype(phys_constraints_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
     {
         assert(scrStr < asset->m_zone->m_script_strings.size());
         if (scrStr >= asset->m_zone->m_script_strings.size())
@@ -153,5 +154,5 @@ void AssetDumperPhysConstraints::DumpAsset(Zone* zone, XAssetInfo<PhysConstraint
 
     const auto infoString = converter.Convert();
     const auto stringValue = infoString.ToString("PHYSCONSTRAINTS");
-    out->Write(stringValue.c_str(), 1, stringValue.length());
+    stream.write(stringValue.c_str(), stringValue.size());
 }
