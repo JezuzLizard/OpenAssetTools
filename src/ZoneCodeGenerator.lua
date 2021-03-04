@@ -1,50 +1,51 @@
 ZoneCodeGenerator = {}
 
-function ZoneCodeGenerator:include()
-
+function ZoneCodeGenerator:include(includes)
+	if includes:handle(self:name()) then
+		includedirs {
+			path.join(ProjectFolder(), "ZoneCodeGenerator")
+		}
+		Utils:include(includes)
+	end
 end
 
-function ZoneCodeGenerator:link()
-	if References:link("ZoneCodeGenerator") then
-        links "ZoneCodeGenerator"
-    end
+function ZoneCodeGenerator:link(links)
+
 end
 
 function ZoneCodeGenerator:use()
-    dependson "ZoneCodeGenerator"
+    dependson(self:name())
+end
+
+function ZoneCodeGenerator:name()
+    return "ZoneCodeGenerator"
 end
 
 function ZoneCodeGenerator:project()
-    References:reset()
-	local folder = ProjectFolder();
+	local folder = ProjectFolder()
+	local includes = Includes:create()
+	local links = Links:create()
 
-	project "ZoneCodeGenerator"
-        targetdir(TargetDirectoryLib)
+	project(self:name())
+		targetdir(TargetDirectoryBin)
 		location "%{wks.location}/src/%{prj.name}"
 		kind "ConsoleApp"
-        language "C#"
-        dotnetframework "4.5"
-        namespace "ZoneCodeGenerator"
-        
+		language "C++"
+		
 		files {
-            path.join(folder, "ZoneCodeGenerator/**.cs"),
-            path.join(folder, "ZoneCodeGenerator/**.stg")
-        }
+			path.join(folder, "ZoneCodeGenerator/**.h"), 
+			path.join(folder, "ZoneCodeGenerator/**.cpp") 
+		}
+        vpaths {
+			["*"] = {
+				path.join(folder, "ZoneCodeGenerator"),
+			}
+		}
+		
+		self:include(includes)
+		ZoneCodeGeneratorLib:include(includes)
 
-        filter "files:**.stg"
-            buildaction "Embed"
-        filter {}
-
-        vpaths { ["*"] = "src/ZoneCodeGenerator" }
-
-        nuget {
-            "Antlr3.Runtime:3.5.1",
-            "StringTemplate4:4.0.8"
-        }
-        
-        links {
-            "System",
-            "System.Core",
-            "System.Data"
-        }
+		links:linkto(Utils)
+		links:linkto(ZoneCodeGeneratorLib)
+		links:linkall()
 end

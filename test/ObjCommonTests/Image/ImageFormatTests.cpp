@@ -1,22 +1,19 @@
-#include "CppUnitTest.h"
+#include <catch2/catch.hpp>
+
+#include <type_traits>
+
 #include "Image/ImageFormat.h"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-
-namespace ObjCommonTests
+namespace image::image_format
 {
-	TEST_CLASS(ImageFormatTests)
+	TEST_CASE("ImageFormat: EnsureAllFormatsArrayIndicesAreIds", "[image]")
 	{
-	public:
-		TEST_METHOD(EnsureAllFormatsArrayIndicesAreIds)
-		{
-			Assert::AreEqual(static_cast<unsigned int>(ImageFormatId::MAX), _countof(ImageFormat::ALL_FORMATS));
+		REQUIRE(static_cast<unsigned int>(ImageFormatId::MAX) == std::extent<decltype(ImageFormat::ALL_FORMATS)>::value);
 
-			for(unsigned i = 0; i < _countof(ImageFormat::ALL_FORMATS); i++)
-			{
-				Assert::IsNotNull(ImageFormat::ALL_FORMATS[i]);
-				Assert::AreEqual(i, static_cast<unsigned>(ImageFormat::ALL_FORMATS[i]->GetId()));
-			}
+		for(unsigned i = 0; i < std::extent<decltype(ImageFormat::ALL_FORMATS)>::value; i++)
+		{
+			REQUIRE(ImageFormat::ALL_FORMATS[i] != nullptr);
+			REQUIRE(i == static_cast<unsigned>(ImageFormat::ALL_FORMATS[i]->GetId()));
 		}
-	};
+	}
 }

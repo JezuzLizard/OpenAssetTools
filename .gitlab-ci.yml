@@ -1,57 +1,32 @@
 stages:
     - build
     - test
-
-variables:
-    BUILD_APP: "MSBuild.exe"
-    TEST_APP: "vstest.console.exe"
         
-.build:
+build-gcc:
+    image: laupetin/gcc-9-multilib:latest
     stage: build
     cache:
       paths:
         - build/
     tags:
       - build
-      - cpp
-      - dotnet
-      - windows
-      - powershell
+      - docker
+      - linux
     script:
-        - "./generate.bat"
-        - "& \"$BUILD_APP\" build/OpenAssetTools.sln -t:restore -t:build -m -p:Configuration=Release -p:Platform=x86 -p:RestorePackagesPath=build/packages"
+        - "./generate.sh"
+        - "./scripts/make-release.sh"
 
-build:withartifacts:
-  stage: build
-  extends: .build
-  only:
-    refs:
-      - master
-      - develop
-  artifacts:
-      name: "OpenAssetTools"
-      paths:
-          - build/bin
-
-build:noartifacts:
-  stage: build
-  extends: .build
-  except:
-    refs:
-      - master
-      - develop
-
-
-test:
+test-gcc:
+    image: laupetin/gcc-9-multilib:latest
     stage: test
     cache:
       paths:
         - build/
     tags:
-      - test
-      - cpp
-      - dotnet
-      - windows
-      - powershell
+      - build
+      - docker
+      - linux
     script:
-        - "& \"$TEST_APP\" --InIsolation build/lib/Release_X86/tests/ZoneCodeGeneratorTests.dll build/lib/Release_X86/tests/ZoneCommonTests.dll"
+        - "./build/lib/Release_x86/tests/ObjCommonTests"
+        - "./build/lib/Release_x86/tests/ZoneCodeGeneratorLibTests"
+        - "./build/lib/Release_x86/tests/ZoneCommonTests"

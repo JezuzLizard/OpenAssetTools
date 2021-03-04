@@ -1,27 +1,34 @@
 ObjCommonTests = {}
 
-function ObjCommonTests:include()
-    
+function ObjCommonTests:include(includes)
+	if includes:handle(self:name()) then
+		includedirs {
+			path.join(TestFolder(), "ObjCommonTests")
+		}
+	end
 end
 
-function ObjCommonTests:link()
-	if References:link("ObjCommonTests") then
-		links "ObjCommonTests"
-	end
+function ObjCommonTests:link(links)
+	
 end
 
 function ObjCommonTests:use()
 	
 end
 
-function ObjCommonTests:project()
-	References:reset()
-	local folder = TestFolder();
+function ObjCommonTests:name()
+    return "ObjCommonTests"
+end
 
-	project "ObjCommonTests"
+function ObjCommonTests:project()
+	local folder = TestFolder()
+	local includes = Includes:create()
+	local links = Links:create()
+
+	project(self:name())
         targetdir(TargetDirectoryTest)
 		location "%{wks.location}/test/%{prj.name}"
-		kind "SharedLib"
+		kind "ConsoleApp"
 		language "C++"
 		
 		files {
@@ -36,8 +43,10 @@ function ObjCommonTests:project()
 			}
 		}
 		
-		self:include()
-		ObjCommon:include()
+		self:include(includes)
+		ObjCommon:include(includes)
+		catch2:include(includes)
 
-		ObjCommon:link()
+		links:linkto(ObjCommon)
+		links:linkall()
 end

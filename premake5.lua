@@ -1,59 +1,8 @@
--- Functions for locating commonly used folders
-local _BuildFolder = path.getabsolute("build")
-function BuildFolder()
-	return path.getrelative(os.getcwd(), _BuildFolder)
-end
-
-local _ThirdPartyFolder = path.getabsolute("thirdparty")
-function ThirdPartyFolder()
-	return path.getrelative(os.getcwd(), _ThirdPartyFolder)
-end
-
-local _ProjectFolder = path.getabsolute("src")
-function ProjectFolder()
-	return path.getrelative(os.getcwd(), _ProjectFolder)
-end
-
-local _TestFolder = path.getabsolute("test")
-function TestFolder()
-	return path.getrelative(os.getcwd(), _TestFolder)
-end
-
--- Functions for including projects
-References = {
-    includeList = {},
-    linkList = {}
-}
-
-function References:include(name)
-    result = self.includeList[name] == nil
-
-    if result then
-        self.includeList[name] = true
-    end
-
-    return result
-end
-
-function References:link(name)
-    result = self.linkList[name] == nil
-
-    if result then
-        self.linkList[name] = true
-    end
-
-    return result
-end
-
-function References:reset()
-    self.includeList = {}
-    self.linkList = {}
-end
-
--- Target Directories
-TargetDirectoryBin = "%{wks.location}/bin/%{cfg.buildcfg}_%{cfg.platform}"
-TargetDirectoryLib = "%{wks.location}/lib/%{cfg.buildcfg}_%{cfg.platform}"
-TargetDirectoryTest = "%{wks.location}/lib/%{cfg.buildcfg}_%{cfg.platform}/tests"
+include "tools/scripts/folders.lua"
+include "tools/scripts/including.lua"
+include "tools/scripts/linking.lua"
+include "tools/scripts/options.lua"
+include "tools/scripts/platform.lua"
 
 -- ==================
 -- Workspace
@@ -103,9 +52,15 @@ workspace "OpenAssetTools"
         }
     filter {}
 
+    defines {
+        "__STDC_LIB_EXT1__",
+        "__STDC_WANT_LIB_EXT1__=1"
+    }
+
 -- ========================
 -- ThirdParty
 -- ========================
+include "thirdparty/catch2.lua"
 include "thirdparty/libtomcrypt.lua"
 include "thirdparty/libtommath.lua"
 include "thirdparty/minilzo.lua"
@@ -115,6 +70,7 @@ include "thirdparty/zlib.lua"
 
 -- ThirdParty group: All projects that are external dependencies
 group "ThirdParty"
+    catch2:project()
     libtommath:project()
     libtomcrypt:project()
     minilzo:project()
@@ -126,11 +82,13 @@ group ""
 -- ========================
 -- Projects
 -- ========================
+include "src/Common.lua"
 include "src/Crypto.lua"
 include "src/Linker.lua"
 include "src/Unlinker.lua"
 include "src/Utils.lua"
 include "src/ZoneCode.lua"
+include "src/ZoneCodeGeneratorLib.lua"
 include "src/ZoneCodeGenerator.lua"
 include "src/ZoneCommon.lua"
 include "src/ZoneLoading.lua"
@@ -142,10 +100,11 @@ include "src/ObjWriting.lua"
 
 -- Components group: All projects assist or are part of a tool
 group "Components"
+    Common:project()
     Crypto:project()
     Utils:project()
     ZoneCode:project()
-    ZoneCodeGenerator:project()
+    ZoneCodeGeneratorLib:project()
     ZoneCommon:project()
     ZoneLoading:project()
     ZoneWriting:project()
@@ -158,18 +117,19 @@ group ""
 group "Tools"
     Linker:project()
     Unlinker:project()
+    ZoneCodeGenerator:project()
 group ""
 
 -- ========================
 -- Tests
 -- ========================
 include "test/ObjCommonTests.lua"
-include "test/ZoneCodeGeneratorTests.lua"
+include "test/ZoneCodeGeneratorLibTests.lua"
 include "test/ZoneCommonTests.lua"
 
 -- Tests group: Unit test and other tests projects
 group "Tests"
     ObjCommonTests:project()
-    ZoneCodeGeneratorTests:project()
+    ZoneCodeGeneratorLibTests:project()
     ZoneCommonTests:project()
 group ""
