@@ -2424,7 +2424,13 @@ namespace T6
         int customBool2;
     };
 
-    /* 3479 */
+    union MemoryBlockData
+    {
+        char* mainData;
+        char* videoData;
+        char* streamData;
+    };
+    
     struct MemoryBlock
     {
         const char* name;
@@ -2433,7 +2439,7 @@ namespace T6
         bool streamMem;
         unsigned int size;
         unsigned int alignment;
-        char* data;
+        MemoryBlockData data;
     };
 
     struct cmodel_t2
