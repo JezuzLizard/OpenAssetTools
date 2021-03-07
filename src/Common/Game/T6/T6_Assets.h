@@ -1721,6 +1721,14 @@ namespace T6
         int customBool2;
     };
 
+    struct WeaponAttachmentUniqueFull
+    {
+        WeaponAttachmentUnique attachment;
+        const char* szXAnims[88];
+        uint16_t hideTags[32];
+        float locationDamageMultipliers[21];
+    };
+
     /* 2455 */
     struct WeaponCamo
     {
