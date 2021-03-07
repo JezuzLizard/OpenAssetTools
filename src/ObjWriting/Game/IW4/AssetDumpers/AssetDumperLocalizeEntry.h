@@ -8,6 +8,6 @@ namespace IW4
     class AssetDumperLocalizeEntry final : public IAssetDumper<LocalizeEntry>
     {
     public:
-        void DumpPool(Zone* zone, AssetPool<LocalizeEntry>* pool, const std::string& basePath) override;
+        void DumpPool(AssetDumpingContext& context, AssetPool<LocalizeEntry>* pool) override;
     };
 }

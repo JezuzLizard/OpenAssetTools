@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <cstring>
 
+#include "Game/T6/CommonT6.h"
 #include "Game/T6/InfoStringT6.h"
 
 using namespace T6;
@@ -1041,252 +1042,6 @@ cspField_t AssetDumperWeapon::weapon_fields[]
 
 namespace T6
 {
-    const char* szWeapTypeNames[]
-    {
-        "bullet",
-        "grenade",
-        "projectile",
-        "binoculars",
-        "gas",
-        "bomb",
-        "mine",
-        "melee",
-        "riotshield"
-    };
-
-    const char* szWeapClassNames[]
-    {
-        "rifle",
-        "mg",
-        "smg",
-        "spread",
-        "pistol",
-        "grenade",
-        "rocketlauncher",
-        "turret",
-        "non-player",
-        "gas",
-        "item",
-        "melee",
-        "Killstreak Alt Stored Weapon",
-        "pistol spread"
-    };
-
-    const char* szWeapOverlayReticleNames[]
-    {
-        "none",
-        "crosshair"
-    };
-
-    const char* szWeapInventoryTypeNames[]
-    {
-        "primary",
-        "offhand",
-        "item",
-        "altmode",
-        "melee",
-        "dwlefthand"
-    };
-
-    const char* szWeapFireTypeNames[]
-    {
-        "Full Auto",
-        "Single Shot",
-        "2-Round Burst",
-        "3-Round Burst",
-        "4-Round Burst",
-        "5-Round Burst",
-        "Stacked Fire",
-        "Minigun",
-        "Charge Shot",
-        "Jetgun"
-    };
-
-    const char* szWeapClipTypeNames[]
-    {
-        "bottom",
-        "top",
-        "left",
-        "dp28",
-        "ptrs",
-        "lmg"
-    };
-
-    const char* barrelTypeNames[]
-    {
-        "Single",
-        "Dual Barrel",
-        "Dual Barrel Alternate",
-        "Quad Barrel",
-        "Quad Barrel Alternate",
-        "Quad Barrel Double Alternate"
-    };
-
-    const char* penetrateTypeNames[]
-    {
-        "none",
-        "small",
-        "medium",
-        "large"
-    };
-
-    const char* impactTypeNames[]
-    {
-        "none",
-        "bullet_small",
-        "bullet_large",
-        "bullet_ap",
-        "bullet_xtreme",
-        "shotgun",
-        "grenade_bounce",
-        "grenade_explode",
-        "rifle_grenade",
-        "rocket_explode",
-        "rocket_explode_xtreme",
-        "projectile_dud",
-        "mortar_shell",
-        "tank_shell",
-        "bolt",
-        "blade"
-    };
-
-    const char* szWeapStanceNames[]
-    {
-        "stand",
-        "duck",
-        "prone"
-    };
-
-    const char* szProjectileExplosionNames[]
-    {
-        "grenade",
-        "rocket",
-        "flashbang",
-        "none",
-        "dud",
-        "smoke",
-        "heavy explosive",
-        "fire",
-        "napalmblob",
-        "bolt",
-        "shrapnel span"
-    };
-
-    const char* offhandClassNames[]
-    {
-        "None",
-        "Frag Grenade",
-        "Smoke Grenade",
-        "Flash Grenade",
-        "Gear",
-        "Supply Drop Marker"
-    };
-
-    const char* offhandSlotNames[]
-    {
-        "None",
-        "Lethal grenade",
-        "Tactical grenade",
-        "Equipment",
-        "Specific use"
-    };
-
-    const char* playerAnimTypeNames[]
-    {
-        "none",
-        "default",
-        "other",
-        "sniper",
-        "m203",
-        "hold",
-        "briefcase",
-        "reviver",
-        "radio",
-        "dualwield",
-        "remotecontrol",
-        "crossbow",
-        "minigun",
-        "beltfed",
-        "g11",
-        "rearclip",
-        "handleclip",
-        "rearclipsniper",
-        "ballisticknife",
-        "singleknife",
-        "nopump",
-        "hatchet",
-        "grimreaper",
-        "zipline",
-        "riotshield",
-        "tablet",
-        "turned",
-        "screecher",
-        "staff"
-    };
-
-    const char* activeReticleNames[]
-    {
-        "None",
-        "Pip-On-A-Stick",
-        "Bouncing Diamond",
-        "Missile Lock"
-    };
-
-    const char* guidedMissileNames[]
-    {
-        "None",
-        "Sidewinder",
-        "Hellfire",
-        "Javelin",
-        "Ballistic",
-        "WireGuided",
-        "TVGuided",
-        "Drone",
-        "HeatSeeking"
-    };
-
-    const char* stickinessNames[]
-    {
-        "Don't stick",
-        "Stick to all",
-        "Stick to all, except ai and clients",
-        "Stick to ground",
-        "Stick to ground, maintain yaw",
-        "Stick to flesh"
-    };
-
-    const char* rotateTypeNames[]
-    {
-        "Rotate both axis, grenade style",
-        "Rotate one axis, blade style",
-        "Rotate like a cylinder"
-    };
-
-    const char* overlayInterfaceNames[]
-    {
-        "None",
-        "Javelin",
-        "Turret Scope"
-    };
-
-    const char* ammoCounterClipNames[]
-    {
-        "None",
-        "Magazine",
-        "ShortMagazine",
-        "Shotgun",
-        "Rocket",
-        "Beltfed",
-        "AltWeapon"
-    };
-
-    const char* weapIconRatioNames[]
-    {
-        "1:1",
-        "2:1",
-        "4:1"
-    };
-
     class InfoStringFromWeaponConverter final : public InfoStringFromStructConverter
     {
     protected:
@@ -1481,7 +1236,7 @@ namespace T6
                         .iOffset);
 
                     if (camo)
-                        m_info_string.SetValueForKey(std::string(field.szName), std::string(camo->name));
+                        m_info_string.SetValueForKey(std::string(field.szName), std::string(AssetName(camo->name)));
                     else
                         m_info_string.SetValueForKey(std::string(field.szName), "");
                     break;
@@ -1502,7 +1257,7 @@ namespace T6
     };
 }
 
-void AssetDumperWeapon::CopyToFullDef(const WeaponVariantDef* weapon, WeaponFullDef* fullDef) const
+void AssetDumperWeapon::CopyToFullDef(const WeaponVariantDef* weapon, WeaponFullDef* fullDef)
 {
     fullDef->weapVariantDef = *weapon;
 
@@ -1623,7 +1378,35 @@ void AssetDumperWeapon::CopyToFullDef(const WeaponVariantDef* weapon, WeaponFull
     }
 }
 
+InfoString AssetDumperWeapon::CreateInfoString(XAssetInfo<WeaponVariantDef>* asset)
+{
+    const auto fullDef = std::make_unique<WeaponFullDef>();
+    memset(fullDef.get(), 0, sizeof(WeaponFullDef));
+    CopyToFullDef(asset->Asset(), fullDef.get());
+
+    InfoStringFromWeaponConverter converter(fullDef.get(), weapon_fields, std::extent<decltype(weapon_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
+        {
+            assert(scrStr < asset->m_zone->m_script_strings.size());
+            if (scrStr >= asset->m_zone->m_script_strings.size())
+                return "";
+
+            return asset->m_zone->m_script_strings[scrStr];
+        });
+
+    return converter.Convert();
+}
+
 bool AssetDumperWeapon::ShouldDump(XAssetInfo<WeaponVariantDef>* asset)
+{
+    return true;
+}
+
+bool AssetDumperWeapon::CanDumpAsRaw()
+{
+    return true;
+}
+
+bool AssetDumperWeapon::CanDumpAsGdtEntry()
 {
     return true;
 }
@@ -1633,24 +1416,18 @@ std::string AssetDumperWeapon::GetFileNameForAsset(Zone* zone, XAssetInfo<Weapon
     return "weapons/" + asset->m_name;
 }
 
-void AssetDumperWeapon::DumpAsset(Zone* zone, XAssetInfo<WeaponVariantDef>* asset, std::ostream& stream)
+GdtEntry AssetDumperWeapon::DumpGdtEntry(AssetDumpingContext& context, XAssetInfo<WeaponVariantDef>* asset)
 {
-    auto* fullDef = new WeaponFullDef;
-    memset(fullDef, 0, sizeof(WeaponFullDef));
-    CopyToFullDef(asset->Asset(), fullDef);
+    const auto infoString = CreateInfoString(asset);
+    GdtEntry gdtEntry(asset->m_name, GDF_NAME);
+    infoString.ToGdtProperties(FILE_TYPE_STR, gdtEntry);
 
-    InfoStringFromWeaponConverter converter(fullDef, weapon_fields, std::extent<decltype(weapon_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
-    {
-        assert(scrStr < asset->m_zone->m_script_strings.size());
-        if (scrStr >= asset->m_zone->m_script_strings.size())
-            return "";
+    return gdtEntry;
+}
 
-        return asset->m_zone->m_script_strings[scrStr];
-    });
-
-    const auto infoString = converter.Convert();
-    const auto stringValue = infoString.ToString("WEAPONFILE");
+void AssetDumperWeapon::DumpRaw(AssetDumpingContext& context, XAssetInfo<WeaponVariantDef>* asset, std::ostream& stream)
+{
+    const auto infoString = CreateInfoString(asset);
+    const auto stringValue = infoString.ToString(FILE_TYPE_STR);
     stream.write(stringValue.c_str(), stringValue.size());
-
-    delete fullDef;
 }

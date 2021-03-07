@@ -5,6 +5,7 @@
 #include <sstream>
 #include <type_traits>
 
+#include "Game/IW4/CommonIW4.h"
 #include "Game/IW4/InfoStringIW4.h"
 
 using namespace IW4;
@@ -687,179 +688,6 @@ cspField_t AssetDumperWeapon::weapon_fields[]
 
 namespace IW4
 {
-    const char* szWeapTypeNames[]
-    {
-        "bullet",
-        "grenade",
-        "projectile",
-        "riotshield",
-    };
-
-    const char* szWeapClassNames[]
-    {
-        "rifle",
-        "sniper",
-        "mg",
-        "smg",
-        "spread",
-        "pistol",
-        "grenade",
-        "rocketlauncher",
-        "turret",
-        "throwingknife",
-        "non-player",
-        "item",
-    };
-
-    const char* szWeapOverlayReticleNames[]
-    {
-        "none",
-        "crosshair",
-    };
-
-    const char* szWeapInventoryTypeNames[]
-    {
-        "primary",
-        "offhand",
-        "item",
-        "altmode",
-        "exclusive",
-        "scavenger",
-    };
-
-    const char* szWeapFireTypeNames[]
-    {
-        "Full Auto",
-        "Single Shot",
-        "2-Round Burst",
-        "3-Round Burst",
-        "4-Round Burst",
-        "Double Barrel",
-    };
-
-    const char* penetrateTypeNames[]
-    {
-        "none",
-        "small",
-        "medium",
-        "large",
-    };
-
-    const char* impactTypeNames[]
-    {
-        "none",
-        "bullet_small",
-        "bullet_large",
-        "bullet_ap",
-        "bullet_explode",
-        "shotgun",
-        "shotgun_explode",
-        "grenade_bounce",
-        "grenade_explode",
-        "rocket_explode",
-        "projectile_dud",
-    };
-
-    const char* szWeapStanceNames[]
-    {
-        "stand",
-        "duck",
-        "prone",
-    };
-
-    const char* szProjectileExplosionNames[]
-    {
-        "grenade",
-        "rocket",
-        "flashbang",
-        "none",
-        "dud",
-        "smoke",
-        "heavy explosive",
-    };
-
-    const char* offhandClassNames[]
-    {
-        "None",
-        "Frag Grenade",
-        "Smoke Grenade",
-        "Flash Grenade",
-        "Throwing Knife",
-        "Other",
-    };
-
-    const char* playerAnimTypeNames[]
-    {
-        "none",
-        "other",
-        "pistol",
-        "smg",
-        "autorifle",
-        "mg",
-        "sniper",
-        "rocketlauncher",
-        "explosive",
-        "grenade",
-        "turret",
-        "c4",
-        "m203",
-        "hold",
-        "briefcase",
-        "riotshield",
-        "laptop",
-        "throwingknife",
-    };
-
-    const char* activeReticleNames[]
-    {
-        "None",
-        "Pip-On-A-Stick",
-        "Bouncing diamond",
-    };
-
-    const char* guidedMissileNames[]
-    {
-        "None",
-        "Sidewinder",
-        "Hellfire",
-        "Javelin",
-    };
-
-    const char* stickinessNames[]
-    {
-        "Don't stick",
-        "Stick to all",
-        "Stick to all, orient to surface",
-        "Stick to ground",
-        "Stick to ground, maintain yaw",
-        "Knife",
-    };
-
-    const char* overlayInterfaceNames[]
-    {
-        "None",
-        "Javelin",
-        "Turret Scope",
-    };
-
-    const char* ammoCounterClipNames[]
-    {
-        "None",
-        "Magazine",
-        "ShortMagazine",
-        "Shotgun",
-        "Rocket",
-        "Beltfed",
-        "AltWeapon",
-    };
-
-    const char* weapIconRatioNames[]
-    {
-        "1:1",
-        "2:1",
-        "4:1",
-    };
-
     class InfoStringFromWeaponConverter final : public InfoStringFromStructConverter
     {
     protected:
@@ -1162,7 +990,35 @@ void AssetDumperWeapon::CopyToFullDef(const WeaponCompleteDef* weapon, WeaponFul
     }
 }
 
+InfoString AssetDumperWeapon::CreateInfoString(XAssetInfo<WeaponCompleteDef>* asset)
+{
+    const auto fullDef = std::make_unique<WeaponFullDef>();
+    memset(fullDef.get(), 0, sizeof(WeaponFullDef));
+    CopyToFullDef(asset->Asset(), fullDef.get());
+
+    InfoStringFromWeaponConverter converter(fullDef.get(), weapon_fields, std::extent<decltype(weapon_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
+        {
+            assert(scrStr < asset->m_zone->m_script_strings.size());
+            if (scrStr >= asset->m_zone->m_script_strings.size())
+                return "";
+
+            return asset->m_zone->m_script_strings[scrStr];
+        });
+
+    return converter.Convert();
+}
+
 bool AssetDumperWeapon::ShouldDump(XAssetInfo<WeaponCompleteDef>* asset)
+{
+    return true;
+}
+
+bool AssetDumperWeapon::CanDumpAsRaw()
+{
+    return true;
+}
+
+bool AssetDumperWeapon::CanDumpAsGdtEntry()
 {
     return true;
 }
@@ -1172,24 +1028,18 @@ std::string AssetDumperWeapon::GetFileNameForAsset(Zone* zone, XAssetInfo<Weapon
     return "weapons/" + asset->m_name;
 }
 
-void AssetDumperWeapon::DumpAsset(Zone* zone, XAssetInfo<WeaponCompleteDef>* asset, std::ostream& stream)
+GdtEntry AssetDumperWeapon::DumpGdtEntry(AssetDumpingContext& context, XAssetInfo<WeaponCompleteDef>* asset)
 {
-    auto* fullDef = new WeaponFullDef;
-    memset(fullDef, 0, sizeof(WeaponFullDef));
-    CopyToFullDef(asset->Asset(), fullDef);
+    const auto infoString = CreateInfoString(asset);
+    GdtEntry gdtEntry(asset->m_name, GDF_NAME);
+    infoString.ToGdtProperties(FILE_TYPE_STR, gdtEntry);
 
-    InfoStringFromWeaponConverter converter(fullDef, weapon_fields, std::extent<decltype(weapon_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
-    {
-        assert(scrStr < asset->m_zone->m_script_strings.size());
-        if (scrStr >= asset->m_zone->m_script_strings.size())
-            return "";
+    return gdtEntry;
+}
 
-        return asset->m_zone->m_script_strings[scrStr];
-    });
-
-    const auto infoString = converter.Convert();
-    const auto stringValue = infoString.ToString("WEAPONFILE");
+void AssetDumperWeapon::DumpRaw(AssetDumpingContext& context, XAssetInfo<WeaponCompleteDef>* asset, std::ostream& stream)
+{
+    const auto infoString = CreateInfoString(asset);
+    const auto stringValue = infoString.ToString(FILE_TYPE_STR);
     stream.write(stringValue.c_str(), stringValue.size());
-
-    delete fullDef;
 }

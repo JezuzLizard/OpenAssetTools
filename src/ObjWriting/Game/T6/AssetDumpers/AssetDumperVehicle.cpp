@@ -3,6 +3,8 @@
 #include <cassert>
 #include <type_traits>
 
+
+#include "Game/T6/CommonT6.h"
 #include "Game/T6/InfoStringT6.h"
 
 using namespace T6;
@@ -569,36 +571,6 @@ cspField_t AssetDumperVehicle::vehicle_fields[]
 
 namespace T6
 {
-    const char* s_vehicleClassNames[]
-    {
-        "4 wheel",
-        "motorcycle",
-        "tank",
-        "plane",
-        "boat",
-        "artillery",
-        "helicopter",
-    };
-
-    const char* s_vehicleCameraModes[]
-    {
-        "first",
-        "chase",
-        "view",
-        "strafe",
-        "horse",
-        "oldtank",
-        "hover",
-        "vtol",
-    };
-
-    const char* s_tractionTypeNames[]
-    {
-        "TRACTION_TYPE_FRONT",
-        "TRACTION_TYPE_BACK",
-        "TRACTION_TYPE_ALL_WD",
-    };
-
     class InfoStringFromVehicleConverter final : public InfoStringFromStructConverter
     {
     protected:
@@ -671,7 +643,31 @@ namespace T6
     };
 }
 
+InfoString AssetDumperVehicle::CreateInfoString(XAssetInfo<VehicleDef>* asset)
+{
+    InfoStringFromVehicleConverter converter(asset->Asset(), vehicle_fields, std::extent<decltype(vehicle_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
+        {
+            assert(scrStr < asset->m_zone->m_script_strings.size());
+            if (scrStr >= asset->m_zone->m_script_strings.size())
+                return "";
+
+            return asset->m_zone->m_script_strings[scrStr];
+        });
+
+    return converter.Convert();
+}
+
 bool AssetDumperVehicle::ShouldDump(XAssetInfo<VehicleDef>* asset)
+{
+    return true;
+}
+
+bool AssetDumperVehicle::CanDumpAsRaw()
+{
+    return true;
+}
+
+bool AssetDumperVehicle::CanDumpAsGdtEntry()
 {
     return true;
 }
@@ -681,18 +677,18 @@ std::string AssetDumperVehicle::GetFileNameForAsset(Zone* zone, XAssetInfo<Vehic
     return "vehicles/" + asset->m_name;
 }
 
-void AssetDumperVehicle::DumpAsset(Zone* zone, XAssetInfo<VehicleDef>* asset, std::ostream& stream)
+GdtEntry AssetDumperVehicle::DumpGdtEntry(AssetDumpingContext& context, XAssetInfo<VehicleDef>* asset)
 {
-    InfoStringFromVehicleConverter converter(asset->Asset(), vehicle_fields, std::extent<decltype(vehicle_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
-    {
-        assert(scrStr < asset->m_zone->m_script_strings.size());
-        if (scrStr >= asset->m_zone->m_script_strings.size())
-            return "";
+    const auto infoString = CreateInfoString(asset);
+    GdtEntry gdtEntry(asset->m_name, GDF_NAME);
+    infoString.ToGdtProperties(FILE_TYPE_STR, gdtEntry);
 
-        return asset->m_zone->m_script_strings[scrStr];
-    });
+    return gdtEntry;
+}
 
-    const auto infoString = converter.Convert();
-    const auto stringValue = infoString.ToString("VEHICLEFILE");
+void AssetDumperVehicle::DumpRaw(AssetDumpingContext& context, XAssetInfo<VehicleDef>* asset, std::ostream& stream)
+{
+    const auto infoString = CreateInfoString(asset);
+    const auto stringValue = infoString.ToString(FILE_TYPE_STR);
     stream.write(stringValue.c_str(), stringValue.size());
 }

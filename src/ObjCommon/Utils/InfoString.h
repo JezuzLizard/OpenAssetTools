@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "Obj/Gdt/GdtEntry.h"
 #include "Zone/ZoneTypes.h"
 
 class InfoString
@@ -21,6 +22,7 @@ public:
 
     std::string ToString() const;
     std::string ToString(const std::string& prefix) const;
+    void ToGdtProperties(const std::string& prefix, GdtEntry& gdtEntry) const;
 
     void FromString();
     void FromString(const std::string& prefix);
@@ -52,6 +54,7 @@ protected:
     const void* m_structure;
     const std::function<std::string(scr_string_t)> m_get_scr_string;
 
+    static const char* AssetName(const char* name);
     void FillFromString(const std::string& key, size_t offset);
     void FillFromStringBuffer(const std::string& key, size_t offset, size_t bufferSize);
     void FillFromInt(const std::string& key, size_t offset);

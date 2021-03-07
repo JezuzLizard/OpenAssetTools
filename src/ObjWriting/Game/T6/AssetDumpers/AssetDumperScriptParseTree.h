@@ -9,7 +9,9 @@ namespace T6
     {
     protected:
         bool ShouldDump(XAssetInfo<ScriptParseTree>* asset) override;
+        bool CanDumpAsRaw() override;
+
         std::string GetFileNameForAsset(Zone* zone, XAssetInfo<ScriptParseTree>* asset) override;
-        void DumpAsset(Zone* zone, XAssetInfo<ScriptParseTree>* asset, std::ostream& stream) override;
+        void DumpRaw(AssetDumpingContext& context, XAssetInfo<ScriptParseTree>* asset, std::ostream& stream) override;
     };
 }

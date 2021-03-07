@@ -86,6 +86,17 @@ std::string InfoString::ToString(const std::string& prefix) const
     return ss.str();
 }
 
+void InfoString::ToGdtProperties(const std::string& prefix, GdtEntry& gdtEntry) const
+{
+    for (const auto& key : m_keys_by_insertion)
+    {
+        const auto value = m_values.find(key);
+        gdtEntry.m_properties[key] = value->second;
+    }
+
+    gdtEntry.m_properties["configstringFileType"] = prefix;
+}
+
 void InfoString::FromString()
 {
 }
@@ -131,6 +142,14 @@ InfoString InfoStringFromStructConverterBase::Convert()
 {
     FillInfoString();
     return std::move(m_info_string);
+}
+
+const char* InfoStringFromStructConverterBase::AssetName(const char* name)
+{
+    if (name && name[0] == ',')
+        return &name[1];
+
+    return name;
 }
 
 void InfoStringFromStructConverterBase::FillFromString(const std::string& key, const size_t offset)
