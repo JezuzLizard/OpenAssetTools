@@ -2,16 +2,12 @@
 
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
-#include "Utils/InfoString.h"
+#include "InfoString/InfoString.h"
 
 namespace T6
 {
     class AssetDumperWeapon final : public AbstractAssetDumper<WeaponVariantDef>
     {
-        static constexpr const char* FILE_TYPE_STR = "WEAPONFILE";
-        static constexpr const char* GDF_NAME = "weapon.gdf";
-        static cspField_t weapon_fields[];
-
         static void CopyToFullDef(const WeaponVariantDef* weapon, WeaponFullDef* fullDef);
         static InfoString CreateInfoString(XAssetInfo<WeaponVariantDef>* asset);
 

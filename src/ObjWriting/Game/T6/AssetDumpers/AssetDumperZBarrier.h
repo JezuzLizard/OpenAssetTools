@@ -2,16 +2,12 @@
 
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
-#include "Utils/InfoString.h"
+#include "InfoString/InfoString.h"
 
 namespace T6
 {
     class AssetDumperZBarrier final : public AbstractAssetDumper<ZBarrierDef>
     {
-        static constexpr const char* FILE_TYPE_STR = "ZBARRIER";
-        static constexpr const char* GDF_NAME = "zbarrier.gdf";
-        static cspField_t zbarrier_fields[];
-
         static InfoString CreateInfoString(XAssetInfo<ZBarrierDef>* asset);
 
     protected:

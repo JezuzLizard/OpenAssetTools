@@ -2,16 +2,12 @@
 
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
-#include "Utils/InfoString.h"
+#include "InfoString/InfoString.h"
 
 namespace T6
 {
     class AssetDumperTracer final : public AbstractAssetDumper<TracerDef>
     {
-        static constexpr const char* FILE_TYPE_STR = "TRACER";
-        static constexpr const char* GDF_NAME = "tracer.gdf";
-        static cspField_t tracer_fields[];
-
         static InfoString CreateInfoString(XAssetInfo<TracerDef>* asset);
 
     protected:

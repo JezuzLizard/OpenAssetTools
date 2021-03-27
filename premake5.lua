@@ -54,7 +54,8 @@ workspace "OpenAssetTools"
 
     defines {
         "__STDC_LIB_EXT1__",
-        "__STDC_WANT_LIB_EXT1__=1"
+        "__STDC_WANT_LIB_EXT1__=1",
+        "_CRT_SECURE_NO_WARNINGS"
     }
 
 -- ========================
@@ -85,6 +86,7 @@ group ""
 include "src/Common.lua"
 include "src/Crypto.lua"
 include "src/Linker.lua"
+include "src/Parser.lua"
 include "src/Unlinker.lua"
 include "src/Utils.lua"
 include "src/ZoneCode.lua"
@@ -102,6 +104,7 @@ include "src/ObjWriting.lua"
 group "Components"
     Common:project()
     Crypto:project()
+    Parser:project()
     Utils:project()
     ZoneCode:project()
     ZoneCodeGeneratorLib:project()

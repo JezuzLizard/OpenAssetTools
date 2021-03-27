@@ -6,6 +6,7 @@
 #include "Utils/Arguments/UsageInformation.h"
 #include "ObjLoading.h"
 #include "ObjWriting.h"
+#include "Utils/FileUtils.h"
 
 const CommandLineOption* const OPTION_HELP =
     CommandLineOption::Builder::Create()
@@ -39,7 +40,7 @@ const CommandLineOption* const OPTION_OUTPUT_FOLDER =
     CommandLineOption::Builder::Create()
     .WithShortName("o")
     .WithLongName("output-folder")
-    .WithDescription("Specifies the output folder containing the contents of the unlinked zones. Defaults to ./%zoneName%")
+    .WithDescription("Specifies the output folder containing the contents of the unlinked zones. Defaults to \"" + std::string(UnlinkerArgs::DEFAULT_OUTPUT_FOLDER) + "\"")
     .WithParameter("outputFolderPath")
     .Build();
 
@@ -76,79 +77,20 @@ const CommandLineOption* const COMMAND_LINE_OPTIONS[]
 };
 
 UnlinkerArgs::UnlinkerArgs()
-    : m_argument_parser(COMMAND_LINE_OPTIONS, std::extent<decltype(COMMAND_LINE_OPTIONS)>::value)
+    : m_argument_parser(COMMAND_LINE_OPTIONS, std::extent<decltype(COMMAND_LINE_OPTIONS)>::value),
+      m_zone_pattern(R"(\?zone\?)"),
+      m_task(ProcessingTask::DUMP),
+      m_minimal_zone_def(false),
+      m_use_gdt(false),
+      m_verbose(false)
 {
-    m_task = ProcessingTask::DUMP;
-    m_output_folder = "./%zoneName%";
-
-    m_verbose = false;
-}
-
-bool UnlinkerArgs::ParsePathsString(const std::string& pathsString, std::set<std::string>& output)
-{
-    std::ostringstream currentPath;
-    bool pathStart = true;
-    int quotationPos = 0; // 0 = before quotations, 1 = in quotations, 2 = after quotations
-
-    for (auto character : pathsString)
-    {
-        switch (character)
-        {
-        case '"':
-            if (quotationPos == 0 && pathStart)
-            {
-                quotationPos = 1;
-            }
-            else if (quotationPos == 1)
-            {
-                quotationPos = 2;
-                pathStart = false;
-            }
-            else
-            {
-                return false;
-            }
-            break;
-
-        case ';':
-            if (quotationPos != 1)
-            {
-                std::string path = currentPath.str();
-                if (!path.empty())
-                {
-                    output.insert(path);
-                    currentPath = std::ostringstream();
-                }
-
-                pathStart = true;
-                quotationPos = 0;
-            }
-            else
-            {
-                currentPath << character;
-            }
-            break;
-
-        default:
-            currentPath << character;
-            pathStart = false;
-            break;
-        }
-    }
-
-    if (currentPath.tellp() > 0)
-    {
-        output.insert(currentPath.str());
-    }
-
-    return true;
 }
 
 void UnlinkerArgs::PrintUsage()
 {
-    UsageInformation usage("unlinker.exe");
+    UsageInformation usage("Unlinker.exe");
 
-    for (auto commandLineOption : COMMAND_LINE_OPTIONS)
+    for (const auto* commandLineOption : COMMAND_LINE_OPTIONS)
     {
         usage.AddCommandLineOption(commandLineOption);
     }
@@ -168,9 +110,9 @@ void UnlinkerArgs::SetVerbose(const bool isVerbose)
 
 bool UnlinkerArgs::SetImageDumpingMode()
 {
-    std::string specifiedValue = m_argument_parser.GetValueForOption(OPTION_IMAGE_FORMAT);
+    auto specifiedValue = m_argument_parser.GetValueForOption(OPTION_IMAGE_FORMAT);
     for (auto& c : specifiedValue)
-        c = tolower(c);
+        c = static_cast<char>(tolower(c));
 
     if (specifiedValue == "dds")
     {
@@ -227,11 +169,13 @@ bool UnlinkerArgs::ParseArgs(const int argc, const char** argv)
     // -o; --output-folder
     if (m_argument_parser.IsOptionSpecified(OPTION_OUTPUT_FOLDER))
         m_output_folder = m_argument_parser.GetValueForOption(OPTION_OUTPUT_FOLDER);
+    else
+        m_output_folder = DEFAULT_OUTPUT_FOLDER;
 
     // --search-path
     if (m_argument_parser.IsOptionSpecified(OPTION_SEARCH_PATH))
     {
-        if (!ParsePathsString(m_argument_parser.GetValueForOption(OPTION_SEARCH_PATH), m_user_search_paths))
+        if (!FileUtils::ParsePathsString(m_argument_parser.GetValueForOption(OPTION_SEARCH_PATH), m_user_search_paths))
         {
             return false;
         }
@@ -254,5 +198,5 @@ bool UnlinkerArgs::ParseArgs(const int argc, const char** argv)
 
 std::string UnlinkerArgs::GetOutputFolderPathForZone(Zone* zone) const
 {
-    return std::regex_replace(m_output_folder, std::regex("%zoneName%"), zone->m_name);
+    return std::regex_replace(m_output_folder, m_zone_pattern, zone->m_name);
 }

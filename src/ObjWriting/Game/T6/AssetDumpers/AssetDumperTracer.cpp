@@ -3,45 +3,12 @@
 #include <cassert>
 #include <type_traits>
 
-#include "Game/T6/CommonT6.h"
-#include "Game/T6/InfoStringT6.h"
+#include "Game/T6/ObjConstantsT6.h"
+#include "Game/T6/InfoString/EnumStrings.h"
+#include "Game/T6/InfoString/InfoStringFromStructConverter.h"
+#include "Game/T6/InfoString/TracerFields.h"
 
 using namespace T6;
-
-cspField_t AssetDumperTracer::tracer_fields[]
-{
-    { "type", offsetof(TracerDef, type), TFT_TRACERTYPE },
-    { "material", offsetof(TracerDef, material), CSPFT_MATERIAL },
-    { "drawInterval", offsetof(TracerDef, drawInterval), CSPFT_INT },
-    { "speed", offsetof(TracerDef, speed), CSPFT_FLOAT },
-    { "beamLength", offsetof(TracerDef, beamLength), CSPFT_FLOAT },
-    { "beamWidth", offsetof(TracerDef, beamWidth), CSPFT_FLOAT },
-    { "screwRadius", offsetof(TracerDef, screwRadius), CSPFT_FLOAT },
-    { "screwDist", offsetof(TracerDef, screwDist), CSPFT_FLOAT },
-    { "fadeTime", offsetof(TracerDef, fadeTime), CSPFT_FLOAT },
-    { "fadeScale", offsetof(TracerDef, fadeScale), CSPFT_FLOAT },
-    { "texRepeatRate", offsetof(TracerDef, texRepeatRate), CSPFT_FLOAT },
-    { "colorR0", offsetof(TracerDef, colors[0].r), CSPFT_FLOAT },
-    { "colorG0", offsetof(TracerDef, colors[0].g), CSPFT_FLOAT },
-    { "colorB0", offsetof(TracerDef, colors[0].b), CSPFT_FLOAT },
-    { "colorA0", offsetof(TracerDef, colors[0].a), CSPFT_FLOAT },
-    { "colorR1", offsetof(TracerDef, colors[1].r), CSPFT_FLOAT },
-    { "colorG1", offsetof(TracerDef, colors[1].g), CSPFT_FLOAT },
-    { "colorB1", offsetof(TracerDef, colors[1].b), CSPFT_FLOAT },
-    { "colorA1", offsetof(TracerDef, colors[1].a), CSPFT_FLOAT },
-    { "colorR2", offsetof(TracerDef, colors[2].r), CSPFT_FLOAT },
-    { "colorG2", offsetof(TracerDef, colors[2].g), CSPFT_FLOAT },
-    { "colorB2", offsetof(TracerDef, colors[2].b), CSPFT_FLOAT },
-    { "colorA2", offsetof(TracerDef, colors[2].a), CSPFT_FLOAT },
-    { "colorR3", offsetof(TracerDef, colors[3].r), CSPFT_FLOAT },
-    { "colorG3", offsetof(TracerDef, colors[3].g), CSPFT_FLOAT },
-    { "colorB3", offsetof(TracerDef, colors[3].b), CSPFT_FLOAT },
-    { "colorA3", offsetof(TracerDef, colors[3].a), CSPFT_FLOAT },
-    { "colorR4", offsetof(TracerDef, colors[4].r), CSPFT_FLOAT },
-    { "colorG4", offsetof(TracerDef, colors[4].g), CSPFT_FLOAT },
-    { "colorB4", offsetof(TracerDef, colors[4].b), CSPFT_FLOAT },
-    { "colorA4", offsetof(TracerDef, colors[4].a), CSPFT_FLOAT }
-};
 
 namespace T6
 {
@@ -74,13 +41,13 @@ namespace T6
 InfoString AssetDumperTracer::CreateInfoString(XAssetInfo<TracerDef>* asset)
 {
     InfoStringFromTracerConverter converter(asset->Asset(), tracer_fields, std::extent<decltype(tracer_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
-        {
-            assert(scrStr < asset->m_zone->m_script_strings.size());
-            if (scrStr >= asset->m_zone->m_script_strings.size())
-                return "";
+    {
+        assert(scrStr < asset->m_zone->m_script_strings.Count());
+        if (scrStr >= asset->m_zone->m_script_strings.Count())
+            return "";
 
-            return asset->m_zone->m_script_strings[scrStr];
-        });
+        return asset->m_zone->m_script_strings[scrStr];
+    });
 
     return converter.Convert();
 }
@@ -108,8 +75,8 @@ std::string AssetDumperTracer::GetFileNameForAsset(Zone* zone, XAssetInfo<Tracer
 GdtEntry AssetDumperTracer::DumpGdtEntry(AssetDumpingContext& context, XAssetInfo<TracerDef>* asset)
 {
     const auto infoString = CreateInfoString(asset);
-    GdtEntry gdtEntry(asset->m_name, GDF_NAME);
-    infoString.ToGdtProperties(FILE_TYPE_STR, gdtEntry);
+    GdtEntry gdtEntry(asset->m_name, ObjConstants::GDF_FILENAME_TRACER);
+    infoString.ToGdtProperties(ObjConstants::INFO_STRING_PREFIX_TRACER, gdtEntry);
 
     return gdtEntry;
 }
@@ -117,6 +84,6 @@ GdtEntry AssetDumperTracer::DumpGdtEntry(AssetDumpingContext& context, XAssetInf
 void AssetDumperTracer::DumpRaw(AssetDumpingContext& context, XAssetInfo<TracerDef>* asset, std::ostream& stream)
 {
     const auto infoString = CreateInfoString(asset);
-    const auto stringValue = infoString.ToString("TRACER");
+    const auto stringValue = infoString.ToString(ObjConstants::INFO_STRING_PREFIX_TRACER);
     stream.write(stringValue.c_str(), stringValue.size());
 }

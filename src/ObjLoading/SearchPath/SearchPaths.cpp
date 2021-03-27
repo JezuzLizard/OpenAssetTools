@@ -2,50 +2,19 @@
 
 #include <filesystem>
 
-SearchPaths::SearchPaths() = default;
-
-SearchPaths::~SearchPaths()
-= default;
-
-SearchPaths::SearchPaths(const SearchPaths& other)
-    : m_search_paths(other.m_search_paths)
-{
-    
-}
-
-SearchPaths::SearchPaths(SearchPaths&& other) noexcept
-    : m_search_paths(std::move(other.m_search_paths))
-{
-    
-}
-
-SearchPaths& SearchPaths::operator=(const SearchPaths& other)
-{
-    m_search_paths = other.m_search_paths;
-
-    return *this;
-}
-
-SearchPaths& SearchPaths::operator=(SearchPaths&& other) noexcept
-{
-    m_search_paths = std::move(other.m_search_paths);
-
-    return *this;
-}
-
-std::unique_ptr<std::istream> SearchPaths::Open(const std::string& fileName)
+SearchPathOpenFile SearchPaths::Open(const std::string& fileName)
 {
     for(auto* searchPathEntry : m_search_paths)
     {
         auto file = searchPathEntry->Open(fileName);
 
-        if(file)
+        if(file.IsOpen())
         {
-            return std::move(file);
+            return file;
         }
     }
 
-    return nullptr;
+    return SearchPathOpenFile();
 }
 
 std::string SearchPaths::GetPath()

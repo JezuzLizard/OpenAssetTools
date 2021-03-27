@@ -5,32 +5,11 @@
 #include <cmath>
 #include <type_traits>
 
-#include "Game/T6/InfoStringT6.h"
+#include "Game/T6/ObjConstantsT6.h"
+#include "Game/T6/InfoString/InfoStringFromStructConverter.h"
+#include "Game/T6/InfoString/PhysPresetFields.h"
 
 using namespace T6;
-
-cspField_t AssetDumperPhysPreset::physpreset_fields[]
-{
-    { "mass", offsetof(PhysPresetInfo, mass), CSPFT_FLOAT },
-    { "bounce", offsetof(PhysPresetInfo, bounce), CSPFT_FLOAT },
-    { "friction", offsetof(PhysPresetInfo, friction), CSPFT_FLOAT },
-    { "isFrictionInfinity", offsetof(PhysPresetInfo, isFrictionInfinity), CSPFT_QBOOLEAN },
-    { "bulletForceScale", offsetof(PhysPresetInfo, bulletForceScale), CSPFT_FLOAT },
-    { "explosiveForceScale", offsetof(PhysPresetInfo, explosiveForceScale), CSPFT_FLOAT },
-    { "piecesSpreadFraction", offsetof(PhysPresetInfo, piecesSpreadFraction), CSPFT_FLOAT },
-    { "piecesUpwardVelocity", offsetof(PhysPresetInfo, piecesUpwardVelocity), CSPFT_FLOAT },
-    { "canFloat", offsetof(PhysPresetInfo, canFloat), CSPFT_INT },
-    { "gravityScale", offsetof(PhysPresetInfo, gravityScale), CSPFT_FLOAT },
-    { "massOffsetX", offsetof(PhysPresetInfo, centerOfMassOffset.x), CSPFT_FLOAT },
-    { "massOffsetY", offsetof(PhysPresetInfo, centerOfMassOffset.y), CSPFT_FLOAT },
-    { "massOffsetZ", offsetof(PhysPresetInfo, centerOfMassOffset.z), CSPFT_FLOAT },
-    { "buoyancyMinX", offsetof(PhysPresetInfo, buoyancyBoxMin.x), CSPFT_FLOAT },
-    { "buoyancyMinY", offsetof(PhysPresetInfo, buoyancyBoxMin.y), CSPFT_FLOAT },
-    { "buoyancyMinZ", offsetof(PhysPresetInfo, buoyancyBoxMin.z), CSPFT_FLOAT },
-    { "buoyancyMaxX", offsetof(PhysPresetInfo, buoyancyBoxMax.x), CSPFT_FLOAT },
-    { "buoyancyMaxY", offsetof(PhysPresetInfo, buoyancyBoxMax.y), CSPFT_FLOAT },
-    { "buoyancyMaxZ", offsetof(PhysPresetInfo, buoyancyBoxMax.z), CSPFT_FLOAT },
-};
 
 namespace T6
 {
@@ -82,10 +61,10 @@ InfoString AssetDumperPhysPreset::CreateInfoString(XAssetInfo<PhysPreset>* asset
     auto* physPresetInfo = new PhysPresetInfo;
     CopyToPhysPresetInfo(asset->Asset(), physPresetInfo);
 
-    InfoStringFromPhysPresetConverter converter(physPresetInfo, physpreset_fields, std::extent<decltype(physpreset_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
+    InfoStringFromPhysPresetConverter converter(physPresetInfo, phys_preset_fields, std::extent<decltype(phys_preset_fields)>::value, [asset](const scr_string_t scrStr) -> std::string
         {
-            assert(scrStr < asset->m_zone->m_script_strings.size());
-            if (scrStr >= asset->m_zone->m_script_strings.size())
+            assert(scrStr < asset->m_zone->m_script_strings.Count());
+            if (scrStr >= asset->m_zone->m_script_strings.Count())
                 return "";
 
             return asset->m_zone->m_script_strings[scrStr];
@@ -117,8 +96,8 @@ std::string AssetDumperPhysPreset::GetFileNameForAsset(Zone* zone, XAssetInfo<Ph
 GdtEntry AssetDumperPhysPreset::DumpGdtEntry(AssetDumpingContext& context, XAssetInfo<PhysPreset>* asset)
 {
     const auto infoString = CreateInfoString(asset);
-    GdtEntry gdtEntry(asset->m_name, GDF_NAME);
-    infoString.ToGdtProperties(FILE_TYPE_STR, gdtEntry);
+    GdtEntry gdtEntry(asset->m_name, ObjConstants::GDF_FILENAME_PHYS_PRESET);
+    infoString.ToGdtProperties(ObjConstants::INFO_STRING_PREFIX_PHYS_PRESET, gdtEntry);
 
     return gdtEntry;
 }
@@ -126,6 +105,6 @@ GdtEntry AssetDumperPhysPreset::DumpGdtEntry(AssetDumpingContext& context, XAsse
 void AssetDumperPhysPreset::DumpRaw(AssetDumpingContext& context, XAssetInfo<PhysPreset>* asset, std::ostream& stream)
 {
     const auto infoString = CreateInfoString(asset);
-    const auto stringValue = infoString.ToString(FILE_TYPE_STR);
+    const auto stringValue = infoString.ToString(ObjConstants::INFO_STRING_PREFIX_PHYS_PRESET);
     stream.write(stringValue.c_str(), stringValue.size());
 }

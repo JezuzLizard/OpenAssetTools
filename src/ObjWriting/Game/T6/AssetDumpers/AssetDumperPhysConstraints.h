@@ -2,16 +2,12 @@
 
 #include "Dumping/AbstractAssetDumper.h"
 #include "Game/T6/T6.h"
-#include "Utils/InfoString.h"
+#include "InfoString/InfoString.h"
 
 namespace T6
 {
     class AssetDumperPhysConstraints final : public AbstractAssetDumper<PhysConstraints>
     {
-        static constexpr const char* FILE_TYPE_STR = "PHYSCONSTRAINTS";
-        static constexpr const char* GDF_NAME = "physconstraints.gdf";
-        static cspField_t phys_constraints_fields[];
-
         static InfoString CreateInfoString(XAssetInfo<PhysConstraints>* asset);
 
     protected:
