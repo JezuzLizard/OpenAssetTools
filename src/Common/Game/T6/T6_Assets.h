@@ -1549,6 +1549,32 @@ namespace T6
         WEAPON_FIRETYPECOUNT = 0xA,
     };
 
+    enum eAttachmentOverrideSounds
+    {
+        ATTACHMENT_OVERRIDE_SOUND_FIRE,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_PLAYER,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LOOP,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LOOP_PLAYER,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LOOP_END,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LOOP_END_PLAYER,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_START,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_STOP,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_START_PLAYER,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_STOP_PLAYER,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LAST,
+        ATTACHMENT_OVERRIDE_SOUND_FIRE_LAST_PLAYER,
+
+        NUM_ATTACHMENT_OVERRIDE_SOUNDS
+    };
+
+    enum eAttachmentOverrideEffects
+    {
+        ATTACHMENT_OVERRIDE_EFFECT_VIEW_FLASH,
+        ATTACHMENT_OVERRIDE_EFFECT_WORLD_FLASH,
+
+        NUM_ATTACHMENT_OVERRIDE_EFFECTS
+    };
+
     /* 2237 */
     struct WeaponAttachment
     {
@@ -1719,6 +1745,14 @@ namespace T6
         int customBool0;
         int customBool1;
         int customBool2;
+    };
+
+    struct WeaponAttachmentUniqueFull
+    {
+        WeaponAttachmentUnique attachment;
+        const char* szXAnims[88];
+        uint16_t hideTags[32];
+        float locationDamageMultipliers[21];
     };
 
     /* 2455 */
@@ -2424,7 +2458,13 @@ namespace T6
         int customBool2;
     };
 
-    /* 3479 */
+    union MemoryBlockData
+    {
+        char* mainData;
+        char* videoData;
+        char* streamData;
+    };
+    
     struct MemoryBlock
     {
         const char* name;
@@ -2433,7 +2473,7 @@ namespace T6
         bool streamMem;
         unsigned int size;
         unsigned int alignment;
-        char* data;
+        MemoryBlockData data;
     };
 
     struct cmodel_t2

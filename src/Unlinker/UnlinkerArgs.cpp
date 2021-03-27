@@ -6,53 +6,62 @@
 #include "Utils/Arguments/UsageInformation.h"
 #include "ObjLoading.h"
 #include "ObjWriting.h"
+#include "Utils/FileUtils.h"
 
-const CommandLineOption* const OPTION_HELP = CommandLineOption::Builder::Create()
-                                      .WithShortName("?")
-                                      .WithLongName("help")
-                                      .WithDescription("Displays usage information.")
-                                      .Build();
-
-const CommandLineOption* const OPTION_VERBOSE = CommandLineOption::Builder::Create()
-.WithShortName("v")
-.WithLongName("verbose")
-.WithDescription("Outputs a lot more and more detailed messages.")
-.Build();
-
-const CommandLineOption* const OPTION_MINIMAL_ZONE_FILE = CommandLineOption::Builder::Create()
-.WithShortName("min")
-.WithLongName("minimal-zone")
-.WithDescription(
-    "Minimizes the size of the zone file output by only including assets that are not a dependency of another asset.")
+const CommandLineOption* const OPTION_HELP =
+    CommandLineOption::Builder::Create()
+    .WithShortName("?")
+    .WithLongName("help")
+    .WithDescription("Displays usage information.")
     .Build();
 
-const CommandLineOption* const OPTION_LIST = CommandLineOption::Builder::Create()
-.WithShortName("l")
-.WithLongName("list")
-.WithDescription(
-    "Lists the contents of a zone instead of writing them to the disk.")
+const CommandLineOption* const OPTION_VERBOSE =
+    CommandLineOption::Builder::Create()
+    .WithShortName("v")
+    .WithLongName("verbose")
+    .WithDescription("Outputs a lot more and more detailed messages.")
     .Build();
 
-const CommandLineOption* const OPTION_OUTPUT_FOLDER = CommandLineOption::Builder::Create()
-.WithShortName("o")
-.WithLongName("output-folder")
-.WithDescription(
-    "Specifies the output folder containing the contents of the unlinked zones. Defaults to ./%zoneName%")
+const CommandLineOption* const OPTION_MINIMAL_ZONE_FILE =
+    CommandLineOption::Builder::Create()
+    .WithShortName("min")
+    .WithLongName("minimal-zone")
+    .WithDescription("Minimizes the size of the zone file output by only including assets that are not a dependency of another asset.")
+    .Build();
+
+const CommandLineOption* const OPTION_LIST =
+    CommandLineOption::Builder::Create()
+    .WithShortName("l")
+    .WithLongName("list")
+    .WithDescription("Lists the contents of a zone instead of writing them to the disk.")
+    .Build();
+
+const CommandLineOption* const OPTION_OUTPUT_FOLDER =
+    CommandLineOption::Builder::Create()
+    .WithShortName("o")
+    .WithLongName("output-folder")
+    .WithDescription("Specifies the output folder containing the contents of the unlinked zones. Defaults to \"" + std::string(UnlinkerArgs::DEFAULT_OUTPUT_FOLDER) + "\"")
     .WithParameter("outputFolderPath")
     .Build();
 
-const CommandLineOption* const OPTION_SEARCH_PATH = CommandLineOption::Builder::Create()
-.WithLongName("search-path")
-.WithDescription(
-    "Specifies a semi-colon separated list of paths to search for additional game files.")
+const CommandLineOption* const OPTION_SEARCH_PATH =
+    CommandLineOption::Builder::Create()
+    .WithLongName("search-path")
+    .WithDescription("Specifies a semi-colon separated list of paths to search for additional game files.")
     .WithParameter("searchPathString")
     .Build();
 
-const CommandLineOption* const OPTION_IMAGE_FORMAT = CommandLineOption::Builder::Create()
-.WithLongName("image-format")
-.WithDescription(
-    "Specifies the format of dumped image files. Valid values are: DDS, IWI")
+const CommandLineOption* const OPTION_IMAGE_FORMAT =
+    CommandLineOption::Builder::Create()
+    .WithLongName("image-format")
+    .WithDescription("Specifies the format of dumped image files. Valid values are: DDS, IWI")
     .WithParameter("imageFormatValue")
+    .Build();
+
+const CommandLineOption* const OPTION_GDT =
+    CommandLineOption::Builder::Create()
+    .WithLongName("gdt")
+    .WithDescription("Dumps assets in a GDT whenever possible.")
     .Build();
 
 const CommandLineOption* const COMMAND_LINE_OPTIONS[]
@@ -63,83 +72,25 @@ const CommandLineOption* const COMMAND_LINE_OPTIONS[]
     OPTION_LIST,
     OPTION_OUTPUT_FOLDER,
     OPTION_SEARCH_PATH,
-    OPTION_IMAGE_FORMAT
+    OPTION_IMAGE_FORMAT,
+    OPTION_GDT
 };
 
 UnlinkerArgs::UnlinkerArgs()
-    : m_argument_parser(COMMAND_LINE_OPTIONS, std::extent<decltype(COMMAND_LINE_OPTIONS)>::value)
+    : m_argument_parser(COMMAND_LINE_OPTIONS, std::extent<decltype(COMMAND_LINE_OPTIONS)>::value),
+      m_zone_pattern(R"(\?zone\?)"),
+      m_task(ProcessingTask::DUMP),
+      m_minimal_zone_def(false),
+      m_use_gdt(false),
+      m_verbose(false)
 {
-    m_task = ProcessingTask::DUMP;
-    m_output_folder = "./%zoneName%";
-
-    m_verbose = false;
-}
-
-bool UnlinkerArgs::ParsePathsString(const std::string& pathsString, std::set<std::string>& output)
-{
-    std::ostringstream currentPath;
-    bool pathStart = true;
-    int quotationPos = 0; // 0 = before quotations, 1 = in quotations, 2 = after quotations
-
-    for (auto character : pathsString)
-    {
-        switch (character)
-        {
-        case '"':
-            if (quotationPos == 0 && pathStart)
-            {
-                quotationPos = 1;
-            }
-            else if (quotationPos == 1)
-            {
-                quotationPos = 2;
-                pathStart = false;
-            }
-            else
-            {
-                return false;
-            }
-            break;
-
-        case ';':
-            if (quotationPos != 1)
-            {
-                std::string path = currentPath.str();
-                if (!path.empty())
-                {
-                    output.insert(path);
-                    currentPath = std::ostringstream();
-                }
-
-                pathStart = true;
-                quotationPos = 0;
-            }
-            else
-            {
-                currentPath << character;
-            }
-            break;
-
-        default:
-            currentPath << character;
-            pathStart = false;
-            break;
-        }
-    }
-
-    if (currentPath.tellp() > 0)
-    {
-        output.insert(currentPath.str());
-    }
-
-    return true;
 }
 
 void UnlinkerArgs::PrintUsage()
 {
-    UsageInformation usage("unlinker.exe");
+    UsageInformation usage("Unlinker.exe");
 
-    for (auto commandLineOption : COMMAND_LINE_OPTIONS)
+    for (const auto* commandLineOption : COMMAND_LINE_OPTIONS)
     {
         usage.AddCommandLineOption(commandLineOption);
     }
@@ -159,17 +110,17 @@ void UnlinkerArgs::SetVerbose(const bool isVerbose)
 
 bool UnlinkerArgs::SetImageDumpingMode()
 {
-    std::string specifiedValue = m_argument_parser.GetValueForOption(OPTION_IMAGE_FORMAT);
+    auto specifiedValue = m_argument_parser.GetValueForOption(OPTION_IMAGE_FORMAT);
     for (auto& c : specifiedValue)
-        c = tolower(c);
+        c = static_cast<char>(tolower(c));
 
-    if(specifiedValue == "dds")
+    if (specifiedValue == "dds")
     {
         ObjWriting::Configuration.ImageOutputFormat = ObjWriting::Configuration_t::ImageOutputFormat_e::DDS;
         return true;
     }
 
-    if(specifiedValue == "iwi")
+    if (specifiedValue == "iwi")
     {
         ObjWriting::Configuration.ImageOutputFormat = ObjWriting::Configuration_t::ImageOutputFormat_e::IWI;
         return true;
@@ -218,18 +169,20 @@ bool UnlinkerArgs::ParseArgs(const int argc, const char** argv)
     // -o; --output-folder
     if (m_argument_parser.IsOptionSpecified(OPTION_OUTPUT_FOLDER))
         m_output_folder = m_argument_parser.GetValueForOption(OPTION_OUTPUT_FOLDER);
+    else
+        m_output_folder = DEFAULT_OUTPUT_FOLDER;
 
     // --search-path
     if (m_argument_parser.IsOptionSpecified(OPTION_SEARCH_PATH))
     {
-        if (!ParsePathsString(m_argument_parser.GetValueForOption(OPTION_SEARCH_PATH), m_user_search_paths))
+        if (!FileUtils::ParsePathsString(m_argument_parser.GetValueForOption(OPTION_SEARCH_PATH), m_user_search_paths))
         {
             return false;
         }
     }
 
     // --image-format
-    if(m_argument_parser.IsOptionSpecified(OPTION_IMAGE_FORMAT))
+    if (m_argument_parser.IsOptionSpecified(OPTION_IMAGE_FORMAT))
     {
         if (!SetImageDumpingMode())
         {
@@ -237,10 +190,13 @@ bool UnlinkerArgs::ParseArgs(const int argc, const char** argv)
         }
     }
 
+    // --gdt
+    m_use_gdt = m_argument_parser.IsOptionSpecified(OPTION_GDT);
+
     return true;
 }
 
 std::string UnlinkerArgs::GetOutputFolderPathForZone(Zone* zone) const
 {
-    return std::regex_replace(m_output_folder, std::regex("%zoneName%"), zone->m_name);
+    return std::regex_replace(m_output_folder, m_zone_pattern, zone->m_name);
 }

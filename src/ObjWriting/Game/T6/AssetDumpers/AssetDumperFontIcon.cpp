@@ -1,6 +1,6 @@
 #include "AssetDumperFontIcon.h"
 
-#include "Dumping/CsvWriter.h"
+#include "Csv/CsvStream.h"
 #include "Game/T6/CommonT6.h"
 
 #include <sstream>
@@ -141,7 +141,7 @@ class AssetDumperFontIconInternal
         KnownAlias("Remote_LStick")
     };
 
-    CsvWriter m_csv;
+    CsvOutputStream m_csv;
 
     static FontIconEntry* FindEntryByHash(FontIcon* fontIcon, const int hash)
     {
@@ -260,12 +260,17 @@ bool AssetDumperFontIcon::ShouldDump(XAssetInfo<FontIcon>* asset)
     return true;
 }
 
+bool AssetDumperFontIcon::CanDumpAsRaw()
+{
+    return true;
+}
+
 std::string AssetDumperFontIcon::GetFileNameForAsset(Zone* zone, XAssetInfo<FontIcon>* asset)
 {
     return asset->m_name;
 }
 
-void AssetDumperFontIcon::DumpAsset(Zone* zone, XAssetInfo<FontIcon>* asset, std::ostream& stream)
+void AssetDumperFontIcon::DumpRaw(AssetDumpingContext& context, XAssetInfo<FontIcon>* asset, std::ostream& stream)
 {
     AssetDumperFontIconInternal dumper(stream);
     dumper.DumpFontIcon(asset->Asset());

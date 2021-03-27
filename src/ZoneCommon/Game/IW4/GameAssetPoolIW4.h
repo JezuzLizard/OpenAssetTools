@@ -10,11 +10,11 @@ class GameAssetPoolIW4 final : public ZoneAssetPools
 {
     int m_priority;
 
-    static const std::string ASSET_TYPE_INVALID;
-    static const std::string ASSET_TYPE_NAMES[];
+    static constexpr const char* ASSET_TYPE_INVALID = "invalid_asset_type";
+    static const char* ASSET_TYPE_NAMES[];
 
 protected:
-    XAssetInfoGeneric* AddAssetToPool(asset_type_t type, std::string name, void* asset, std::vector<XAssetInfoGeneric*>& dependencies) override;
+    XAssetInfoGeneric* AddAssetToPool(asset_type_t type, std::string name, void* asset, std::vector<XAssetInfoGeneric*> dependencies, std::vector<scr_string_t> usedScriptStrings, Zone* zone) override;
 
 public:
     std::unique_ptr<AssetPool<IW4::PhysPreset>> m_phys_preset;
@@ -60,5 +60,6 @@ public:
     void InitPoolDynamic(asset_type_t type) override;
 
     XAssetInfoGeneric* GetAsset(asset_type_t type, std::string name) const override;
-    const std::string& GetAssetTypeName(asset_type_t assetType) const override;
+    static const char* AssetTypeNameByType(asset_type_t assetType);
+    const char* GetAssetTypeName(asset_type_t assetType) const override;
 };

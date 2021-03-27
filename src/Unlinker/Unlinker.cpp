@@ -150,6 +150,55 @@ class Unlinker::Impl
         return true;
     }
 
+    static bool WriteZoneDefinitionFile(Zone* zone, const fs::path& zoneDefinitionFileFolder)
+    {
+        auto zoneDefinitionFilePath(zoneDefinitionFileFolder);
+        zoneDefinitionFilePath.append(zone->m_name);
+        zoneDefinitionFilePath.replace_extension(".zone");
+
+        std::ofstream zoneDefinitionFile(zoneDefinitionFilePath, std::fstream::out | std::fstream::binary);
+        if (!zoneDefinitionFile.is_open())
+        {
+            printf("Failed to open file for zone definition file of zone \"%s\".\n", zone->m_name.c_str());
+            return false;
+        }
+
+        auto result = false;
+        for (const auto* zoneDefWriter : ZONE_DEF_WRITERS)
+        {
+            if (zoneDefWriter->CanHandleZone(zone))
+            {
+                zoneDefWriter->WriteZoneDef(zoneDefinitionFile, zone);
+                result = true;
+                break;
+            }
+        }
+
+        if(!result)
+        {
+            printf("Failed to find writer for zone definition file of zone \"%s\".\n", zone->m_name.c_str());
+        }
+
+        zoneDefinitionFile.close();
+        return result;
+    }
+
+    static bool OpenGdtFile(Zone* zone, const fs::path& zoneDefinitionFileFolder, std::ofstream& stream)
+    {
+        auto gdtFilePath(zoneDefinitionFileFolder);
+        gdtFilePath.append(zone->m_name);
+        gdtFilePath.replace_extension(".gdt");
+
+        stream = std::ofstream(gdtFilePath, std::fstream::out | std::fstream::binary);
+        if (!stream.is_open())
+        {
+            printf("Failed to open file for zone definition file of zone \"%s\".\n", zone->m_name.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * \brief Performs the tasks specified by the command line arguments on the specified zone.
      * \param zone The zone to handle.
@@ -171,31 +220,31 @@ class Unlinker::Impl
             zoneDefinitionFileFolder.append("zone_source");
             fs::create_directories(zoneDefinitionFileFolder);
 
-            auto zoneDefinitionFilePath(zoneDefinitionFileFolder);
-            zoneDefinitionFilePath.append(zone->m_name);
-            zoneDefinitionFilePath.replace_extension(".zone");
-
-            std::ofstream zoneDefinitionFile(zoneDefinitionFilePath, std::fstream::out | std::fstream::binary);
-
-            if (zoneDefinitionFile.is_open())
-            {
-                for (const auto* zoneDefWriter : ZONE_DEF_WRITERS)
-                {
-                    if (zoneDefWriter->CanHandleZone(zone))
-                    {
-                        zoneDefWriter->WriteZoneDef(zone, zoneDefinitionFile);
-                        break;
-                    }
-                }
-                ObjWriting::DumpZone(zone, outputFolderPath);
-            }
-            else
-            {
-                printf("Failed to open file for zone definition file of zone \"%s\".\n", zone->m_name.c_str());
+            if (!WriteZoneDefinitionFile(zone, zoneDefinitionFileFolder))
                 return false;
+
+            std::ofstream gdtStream;
+            AssetDumpingContext context;
+            context.m_zone = zone;
+            context.m_base_path = outputFolderPath;
+
+            if(m_args.m_use_gdt)
+            {
+                if (!OpenGdtFile(zone, zoneDefinitionFileFolder, gdtStream))
+                    return false;
+                auto gdt = std::make_unique<GdtOutputStream>(gdtStream);
+                gdt->BeginStream();
+                gdt->WriteVersion(GdtVersion(zone->m_game->GetShortName(), 1));
+                context.m_gdt = std::move(gdt);
             }
 
-            zoneDefinitionFile.close();
+            ObjWriting::DumpZone(context);
+
+            if(m_args.m_use_gdt)
+            {
+                context.m_gdt->EndStream();
+                gdtStream.close();
+            }
         }
 
         return true;
