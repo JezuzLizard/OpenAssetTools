@@ -8,6 +8,7 @@
 #include "ObjLoading.h"
 #include "AssetLoaders/AssetLoaderFontIcon.h"
 #include "AssetLoaders/AssetLoaderLocalizeEntry.h"
+#include "AssetLoaders/AssetLoaderMapEnts.h"
 #include "AssetLoaders/AssetLoaderPhysConstraints.h"
 #include "AssetLoaders/AssetLoaderPhysPreset.h"
 #include "AssetLoaders/AssetLoaderQdb.h"
@@ -53,7 +54,7 @@ namespace T6
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_COMWORLD, ComWorld))
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_GAMEWORLD_SP, GameWorldSp))
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_GAMEWORLD_MP, GameWorldMp))
-        REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_MAP_ENTS, MapEnts))
+        REGISTER_ASSET_LOADER(AssetLoaderMapEnts)
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_GFXWORLD, GfxWorld))
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_LIGHT_DEF, GfxLightDef))
         REGISTER_ASSET_LOADER(BASIC_LOADER(ASSET_TYPE_FONT, Font_s))
