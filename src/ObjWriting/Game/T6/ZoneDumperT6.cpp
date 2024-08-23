@@ -1,5 +1,6 @@
 #include "ZoneDumperT6.h"
 
+#include "AssetDumpers/AssetDumperDDLRoot.h"
 #include "AssetDumpers/AssetDumperFontIcon.h"
 #include "AssetDumpers/AssetDumperGfxImage.h"
 #include "AssetDumpers/AssetDumperLeaderboardDef.h"
@@ -78,7 +79,7 @@ bool ZoneDumper::DumpZone(AssetDumpingContext& context) const
     DUMP_ASSET_POOL(AssetDumperStringTable, m_string_table, ASSET_TYPE_STRINGTABLE)
     DUMP_ASSET_POOL(AssetDumperLeaderboardDef, m_leaderboard, ASSET_TYPE_LEADERBOARD)
     // DUMP_ASSET_POOL(AssetDumperXGlobals, m_xglobals, ASSET_TYPE_XGLOBALS)
-    // DUMP_ASSET_POOL(AssetDumperDDLRoot, m_ddl, ASSET_TYPE_DDL)
+    DUMP_ASSET_POOL(AssetDumperDDLRoot, m_ddl, ASSET_TYPE_DDL)
     // DUMP_ASSET_POOL(AssetDumperGlasses, m_glasses, ASSET_TYPE_GLASSES)
     // DUMP_ASSET_POOL(AssetDumperEmblemSet, m_emblem_set, ASSET_TYPE_EMBLEMSET)
     DUMP_ASSET_POOL(AssetDumperScriptParseTree, m_script, ASSET_TYPE_SCRIPTPARSETREE)
