@@ -28,6 +28,15 @@ namespace T6
     DDL_INVALID_TYPE = 0xFFFFFFFF,
   };
 
+  enum ddlPermissionTypes_e
+  {
+    DDL_PERM_UNSPECIFIED,
+    DDL_PERM_CLIENT,
+    DDL_PERM_SERVER,
+    DDL_PERM_BOTH,
+    DDL_PERM_COUNT,
+  };
+
 	inline const std::string DDL_TYPE_NAMES[]{
 		"byte",
 		"short",
@@ -42,35 +51,42 @@ namespace T6
 		"",
 	};
 
-  class JsonDDLMemberLimits
-  {
-    public:
-    //bool usesBitfield;
-    //bool usesRangeLimits;
-    std::optional<int> bitCount;
-    std::optional<unsigned int> rangeLimit;
-		std::optional<unsigned int> serverDelta;
-		std::optional<unsigned int> clientDelta;
-    std::optional<std::bitset<32>> fixedPrecisionBits;
-    std::optional<std::bitset<32>> fixedMagnitudeBits;
-  }
+  	inline const std::string DDL_PERM_NAMES[]{
+    "unspecified",
+		"client",
+		"server",
+		"both",
+		"",
+	};
 
-  NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberSize);
+    class JsonDDLMemberLimits
+    {
+    public:
+        std::optional<int> bits;
+        std::optional<unsigned int> range;
+        std::optional<int> fixedPrecisionBits;
+        std::optional<int> fixedMagnitudeBits;
+    };
+
+  NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberLimits, bits, range, fixedPrecisionBits, fixedMagnitudeBits);
 
     class JsonDDLMemberDef
     {
     public:
 		std::string name;
-    std::optional<JsonDDLMemberLimits> limits;
-		int offset;
-		std::string type;
-		std::optional<int> externalIndex;
-		std::optional<int> arraySize;
-		std::optional<int> enumIndex;
-		std::optional<int> permission;
+        std::string type;
+        std::string permission;
+        std::optional<int> maxCharacters;
+		std::optional<int> offset;
+        std::optional<int> structIndex;
+		std::optional<int> arrayCount;
+        std::optional<int> enumIndex;
+        std::optional<int> permissionEnum;
+        std::optional<int> totalSize;
+        std::optional<JsonDDLMemberLimits> limits;
     };
 
-	NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberDef, name, size, offset, type, externalIndex, rangeLimit, serverDelta, clientDelta, arraySize, enumIndex, permission);
+	NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, totalSize, limits);
 
     class JsonDDLStructDef
     {
@@ -94,8 +110,8 @@ namespace T6
     {
     public:
 		int version;
-		std::optional<std::vector<JsonDDLStructDef>> structs;
-    std::optional<std::vector<JsonDDLEnumDef>> enums;
+		std::vector<JsonDDLStructDef> structs;
+    std::vector<JsonDDLEnumDef> enums;
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLDef, version, structs, enums);

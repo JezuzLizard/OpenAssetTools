@@ -13,7 +13,7 @@ bool AssetDumperDDLRoot::ShouldDump(XAssetInfo<ddlRoot_t>* asset)
 
 void AssetDumperDDLRoot::DumpAsset(AssetDumpingContext& context, XAssetInfo<ddlRoot_t>* asset)
 {
-    const auto fileName = std::format("ddl/{}root.json", asset->m_name);
+    const auto fileName = std::format("{}root.json", asset->m_name);
     const auto primaryAssetFile = context.OpenAssetFile(fileName);
 
     if (!primaryAssetFile)
