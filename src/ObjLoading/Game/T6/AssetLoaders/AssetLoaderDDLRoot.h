@@ -6,7 +6,7 @@
 
 namespace T6
 {
-    class AssetLoaderWeaponCamo final : public BasicAssetLoader<AssetWeaponCamo>
+    class AssetLoaderDDLRoot final : public BasicAssetLoader<AssetDDL>
     {
     public:
         _NODISCARD void* CreateEmptyAsset(const std::string& assetName, MemoryManager* memory) override;

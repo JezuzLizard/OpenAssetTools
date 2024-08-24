@@ -8,6 +8,10 @@
 
 namespace T6
 {
-    bool LoadDDLRootAsJson(
-        std::istream& stream, ddlRoot_t& ddlRoot, MemoryManager* memory, IAssetLoadingManager* manager, std::vector<XAssetInfoGeneric*>& dependencies);
+    bool LoadDDLRootAsJson(std::istream& stream,
+                           ddlRoot_t& ddlRoot,
+                           ISearchPath* searchPath,
+                           MemoryManager* memory,
+                           IAssetLoadingManager* manager,
+                           std::vector<XAssetInfoGeneric*>& dependencies);
 } // namespace T6

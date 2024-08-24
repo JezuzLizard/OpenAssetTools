@@ -1,5 +1,6 @@
 #include "ObjLoaderT6.h"
 
+#include "AssetLoaders/AssetLoaderDDLRoot.h"
 #include "AssetLoaders/AssetLoaderFontIcon.h"
 #include "AssetLoaders/AssetLoaderGfxImage.h"
 #include "AssetLoaders/AssetLoaderLeaderboard.h"
@@ -80,7 +81,7 @@ namespace T6
         REGISTER_ASSET_LOADER(AssetLoaderStringTable)
         REGISTER_ASSET_LOADER(AssetLoaderLeaderboard)
         REGISTER_ASSET_LOADER(BasicAssetLoader<AssetXGlobals>)
-        REGISTER_ASSET_LOADER(BasicAssetLoader<AssetDDL>)
+        REGISTER_ASSET_LOADER(AssetLoaderDDLRoot)
         REGISTER_ASSET_LOADER(BasicAssetLoader<AssetGlasses>)
         REGISTER_ASSET_LOADER(BasicAssetLoader<AssetEmblemSet>)
         REGISTER_ASSET_LOADER(AssetLoaderScriptParseTree)

@@ -32,11 +32,11 @@ namespace
 
                 jDef["_type"] = "ddlDef";
                 jDef["_game"] = "t6";
-                jDef["_version"] = 1;
-#ifdef DDL_DEBUG //Only dump unneeded data when debugging
-                for (auto j = 0; j < jsonDDLRoot.defs[i].structs.size(); j++)
+                jDef["_version"] = OAT_DDL_VERSION;
+#ifndef DDL_DEBUG //Only dump unneeded data when debugging
+                for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
-                    for (auto k = 0; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
+                    for (auto k = 0u; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
                     {
                         JsonDDLMemberDef& member = jsonDDLRoot.defs[i].structs[j].members[k];
                         member.enumIndex.reset();
@@ -71,33 +71,6 @@ namespace
         }
 
     private:
-        static const char* AssetName(const char* input)
-        {
-            if (input && input[0] == ',')
-                return &input[1];
-
-            return input;
-        }
-
-        static std::string TypeToName(const ddlPrimitiveTypes_e& type)
-        {
-            if (type <= DDL_INVALID_TYPE || type >= DDL_TYPE_COUNT)
-                return static_cast<int>(type) + "_unknown";
-
-            return DDL_TYPE_NAMES[type];
-        }
-
-        static ddlPrimitiveTypes_e NameToType(const std::string& typeName)
-        {
-            for (auto i = 0; i < DDL_TYPE_COUNT; i++)
-            {
-                if (typeName == DDL_TYPE_NAMES[i])
-                    return static_cast<ddlPrimitiveTypes_e>(i);
-            }
-
-            return DDL_INVALID_TYPE;
-        }
-
         static std::string PermissionTypeToName(const ddlPermissionTypes_e& type)
         {
             if (type <= DDL_PERM_UNSPECIFIED || type >= DDL_PERM_COUNT)
@@ -106,43 +79,12 @@ namespace
             return DDL_PERM_NAMES[type];
         }
 
-        static ddlPermissionTypes_e NameToPermissionType(const std::string& typeName)
+        static std::string TypeToName(const ddlPrimitiveTypes_e& type)
         {
-            for (auto i = 1; i < DDL_PERM_COUNT; i++)
-            {
-                if (typeName == DDL_PERM_NAMES[i])
-                    return static_cast<ddlPermissionTypes_e>(i);
-            }
+            if (type <= DDL_INVALID_TYPE || type >= DDL_TYPE_COUNT)
+                return static_cast<int>(type) + "_unknown";
 
-            return DDL_PERM_UNSPECIFIED;
-        }
-
-        static bool IsMemberStandardSize(const ddlMemberDef_t& ddlMemberDef)
-        {
-            const auto memberSize = (ddlMemberDef.size / ddlMemberDef.arraySize);
-            switch (ddlMemberDef.type)
-            {
-            case DDL_BYTE_TYPE:
-                if (memberSize == sizeof(char) * CHAR_BIT)
-                    return true;
-                break;
-            case DDL_SHORT_TYPE:
-                if (memberSize == sizeof(short) * CHAR_BIT)
-                    return true;
-                break;
-            case DDL_UINT_TYPE:
-            case DDL_INT_TYPE:
-            case DDL_FLOAT_TYPE:
-                if (memberSize == sizeof(int) * CHAR_BIT)
-                    return true;
-                break;
-            case DDL_UINT64_TYPE:
-                if (memberSize == sizeof(long long) * CHAR_BIT)
-                    return true;
-                break;
-            }
-
-            return false;
+            return DDL_TYPE_NAMES[type];
         }
 
         static void ResolveCustomTypes(JsonDDLRoot& jDDLRoot)
@@ -200,7 +142,7 @@ namespace
             //enum is based on the type, and also increases arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
                 jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size);
-            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !IsMemberStandardSize(ddlMemberDef))
+            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !DDL::IsMemberStandardSize(ddlMemberDef))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
             jDDLMemberDef.offset.emplace(ddlMemberDef.offset);
