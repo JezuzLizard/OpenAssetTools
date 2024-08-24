@@ -83,19 +83,21 @@ namespace T6
         std::optional<int> enumIndex;
         std::optional<int> permissionEnum;
         std::optional<int> totalSize;
+        std::optional<std::string> enum_;
         std::optional<JsonDDLMemberLimits> limits;
     };
 
-	NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, totalSize, limits);
+	NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, totalSize, enum_, limits);
 
     class JsonDDLStructDef
     {
     public:
 		std::string name;
 		std::vector<JsonDDLMemberDef> members;
+    std::optional<int> totalSize;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLStructDef, name, members);
+    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLStructDef, name, members, totalSize);
 
     class JsonDDLEnumDef
     {
@@ -111,16 +113,17 @@ namespace T6
     public:
 		int version;
 		std::vector<JsonDDLStructDef> structs;
-    std::vector<JsonDDLEnumDef> enums;
+        std::vector<JsonDDLEnumDef> enums;
+        std::optional<int> defSize;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLDef, version, structs, enums);
+    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLDef, version, structs, enums, defSize);
 
     class JsonDDLRoot
     {
     public:
-    std::vector<std::string> defFiles;
-    std::vector<JsonDDLDef> defs;
+        std::vector<std::string> defFiles;
+        std::vector<JsonDDLDef> defs;
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLRoot, defFiles, defs);

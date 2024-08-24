@@ -23,7 +23,7 @@ namespace
         {
             JsonDDLRoot jsonDDLRoot;
             CreateJsonDDLRoot(jsonDDLRoot, ddlRoot, context);
-            Resolver(jsonDDLRoot);
+            ResolveCustomTypes(jsonDDLRoot);
 
             for (auto i = 0u; i < jsonDDLRoot.defs.size(); i++)
             {
@@ -33,7 +33,7 @@ namespace
                 jDef["_type"] = "ddlDef";
                 jDef["_game"] = "t6";
                 jDef["_version"] = 1;
-#ifndef DDL_DEBUG //Only dump unneeded data when debugging
+#ifdef DDL_DEBUG //Only dump unneeded data when debugging
                 for (auto j = 0; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
                     for (auto k = 0; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
@@ -49,10 +49,13 @@ namespace
                             member.limits.reset();
                         }
                     }
+
+                    jsonDDLRoot.defs[i].structs[j].totalSize.reset();
                 }
+#else
+                jDef["defSize"] = ddlRoot.ddlDef[i].size;
 #endif
                 jDef["def"] = jsonDDLRoot.defs[i];
-
                 *secondaryAssetFile << std::setw(4) << jDef << "\n";
             }
             json jRoot;
@@ -60,6 +63,8 @@ namespace
             jRoot["_type"] = "ddlRoot";
             jRoot["_game"] = "t6";
             jRoot["_version"] = 1;
+            jRoot["_ddlchecksum"] = 1;
+            jRoot["_codeversion"] = 1;
             jRoot["defFiles"] = jsonDDLRoot.defFiles;
 
             m_primaryStream << std::setw(4) << jRoot << "\n";
@@ -112,14 +117,6 @@ namespace
             return DDL_PERM_UNSPECIFIED;
         }
 
-        static std::string ExternalIndexToName(const JsonDDLDef& jDDLDef, const int& index, bool isStruct)
-        {
-            if (isStruct)
-                return index < jDDLDef.structs.size() ? jDDLDef.structs.at(index).name : "couldn't resolve struct name";
-            else
-                return index < jDDLDef.enums.size() ? jDDLDef.enums.at(index).name : "couldn't resolve enum name";
-        }
-
         static bool IsMemberStandardSize(const ddlMemberDef_t& ddlMemberDef)
         {
             const auto memberSize = (ddlMemberDef.size / ddlMemberDef.arraySize);
@@ -148,24 +145,29 @@ namespace
             return false;
         }
 
-        static void Resolver(JsonDDLRoot& jDDLRoot)
+        static void ResolveCustomTypes(JsonDDLRoot& jDDLRoot)
         {
+            auto accumlatedSize = 0u;
             for (auto i = 0u; i < jDDLRoot.defs.size(); i++)
             {
-                for (auto j = 0; j < jDDLRoot.defs[i].structs.size(); j++)
+                for (auto j = 0u; j < jDDLRoot.defs[i].structs.size(); j++)
                 {
-                    for (auto k = 0; k < jDDLRoot.defs[i].structs[j].members.size(); k++)
+                    const auto& members = jDDLRoot.defs[i].structs[j].members;
+                    
+                    for (auto k = 0u; k < jDDLRoot.defs[i].structs[j].members.size(); k++)
                     {
                         JsonDDLMemberDef& member = jDDLRoot.defs[i].structs[j].members[k];
-                        if (member.type == "struct")
+                        if (member.structIndex > 0)
                         {
                             member.type = jDDLRoot.defs[i].structs[member.structIndex.value()].name;
                         }
-                        else if (member.type == "enum")
+                        if (member.enumIndex > 0)
                         {
-                            member.type = jDDLRoot.defs[i].enums[member.enumIndex.value()].name;
+                            member.enum_.emplace(jDDLRoot.defs[i].enums[member.enumIndex.value()].name);
                         }
                     }
+
+                    jDDLRoot.defs[i].structs[j].totalSize.emplace(members.back().offset.value() + members.back().totalSize.value());
                 }
             }
         }
@@ -195,10 +197,10 @@ namespace
             //.size field has different implications depending on the type
             //string type treat it as maxchars
             //struct is based on the size of the struct
-            //enum is based on
+            //enum is based on the type, and also increases arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
                 jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size);
-            else if (ddlMemberDef.type != DDL_ENUM_TYPE && ddlMemberDef.type != DDL_STRUCT_TYPE && !IsMemberStandardSize(ddlMemberDef))
+            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !IsMemberStandardSize(ddlMemberDef))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
             jDDLMemberDef.offset.emplace(ddlMemberDef.offset);
@@ -206,10 +208,12 @@ namespace
             if (ddlMemberDef.externalIndex > 0)
                 jDDLMemberDef.structIndex.emplace(ddlMemberDef.externalIndex);
 
-            if (ddlMemberDef.arraySize > 1) //Only required for actual arrays
-                jDDLMemberDef.arrayCount.emplace(ddlMemberDef.arraySize);
+            //Only required for actual arrays
             if (ddlMemberDef.enumIndex > 0)
                 jDDLMemberDef.enumIndex.emplace(ddlMemberDef.enumIndex);
+            else if (ddlMemberDef.arraySize > 1)
+                jDDLMemberDef.arrayCount.emplace(ddlMemberDef.arraySize);
+
             jDDLMemberDef.permission = PermissionTypeToName(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
             jDDLMemberDef.totalSize.emplace(ddlMemberDef.size);
         }
