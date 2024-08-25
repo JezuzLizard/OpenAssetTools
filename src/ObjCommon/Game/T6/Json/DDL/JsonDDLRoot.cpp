@@ -78,15 +78,15 @@ namespace T6
          },
     };
 
-    JsonDDLMemberDef::JsonDDLMemberDefException::JsonDDLMemberDefException(std::string& message)
+    JsonDDLMemberDef::Exception::Exception(std::string& message)
         : std::runtime_error(message)
     {
     }
 
-    void JsonDDLMemberDef::MemberLogicError(const std::string& message) const
+    void JsonDDLMemberDef::LogicError(const std::string& message) const
     {
         std::string prefaceAndMessage = std::format("DDL Member: {} Type: {} Struct {}: ", name, type, parentStruct) + message;
-        throw JsonDDLMemberDefException(prefaceAndMessage);
+        throw JsonDDLMemberDef::Exception(prefaceAndMessage);
     }
 
     bool JsonDDLMemberDef::IsStandardSize(const size_t size, const T6::ddlPrimitiveTypes_e type, const size_t arraySize) const
@@ -147,62 +147,47 @@ namespace T6
         if (calculated)
             return;
 
+        if (limits.has_value())
+        {
+            this->ValidateBitFields();
+            this->ValidateRange();
+            this->ValidateFixedPoint();
+        }
+
+        this->ValidateMaxCharacters(jDDLDef);
+
         if (enum_.has_value())
         {
+            auto index = jDDLDef.TypeToEnumIndex(enum_.value());
+            if (!enumIndex.has_value())
+            {
+                LogicError("could not create enumIndex for _enum field");
+            }
             auto& enumDef = jDDLDef.enums.at(enumIndex.value());
             enumDef.Validate(jDDLDef);
         }
 
-        auto size = 0u;
-        const auto typeEnum = NameToType(type);
-        if (typeEnum <= DDL_FIXEDPOINT_TYPE)
+        auto index = jDDLDef.TypeToStructIndex(type);
+        if (index.has_value())
         {
-            if (!limits.has_value())
-                size = DDL_TYPE_FEATURES[typeEnum].size;
-            else if (limits.value().bits.has_value())
-                size = limits.value().bits.value();
-            else if (limits.value().range.has_value())
-                size = std::bit_width(limits.value().range.value());
-            else if (limits.value().fixedMagnitudeBits.has_value() && limits.value().fixedPrecisionBits.has_value())
-                size = limits.value().fixedMagnitudeBits.value() + limits.value().fixedPrecisionBits.value();
-        }
-        else if (typeEnum == DDL_STRING_TYPE)
-        {
-            if (maxCharacters.has_value())
-                size = maxCharacters.value() * CHAR_BIT;
-        }
-        else if (typeEnum == DDL_STRUCT_TYPE)
-        {
-            if (structIndex.has_value())
-            {
-                if (jDDLDef.inCalculation.contains(structIndex.value()))
-                    MemberLogicError("circular dependency detected");
+            if (index.value() == 0)
+                LogicError("root struct cannot be used as a type");
+            if (jDDLDef.inCalculation.contains(index.value()))
+                LogicError("circular dependency detected");
 
-                auto& structDef = jDDLDef.structs.at(structIndex.value());
-                jDDLDef.inCalculation.insert(structIndex.value());
-                structDef.Calculate(jDDLDef);
-                size = structDef.structSize.value();
-            }
+            const auto& structDef = jDDLDef.structs.at(index.value());
+            jDDLDef.inCalculation.insert(index.value());
+            structDef.Validate(jDDLDef);
         }
 
-        if (!size)
-            MemberLogicError("could not calculate size");
+        ValidateName(jDDLDef);
+        ValidateType(jDDLDef);
+        ValidatePermission(jDDLDef);
+        ValidateArray(jDDLDef);
+        ValidateEnum_(jDDLDef);
 
         calculated = true;
         jDDLDef.inCalculation.clear();
-
-        memberSize.emplace(size * arrayCount.value_or(1));
-
-
-        Name(jDDLDef);
-        Type(jDDLDef);
-        Permission(jDDLDef);
-        Array(jDDLDef);
-        MaxCharacters(jDDLDef);
-        Enum_(jDDLDef);
-        BitFields();
-        Range();
-        FixedPoint();
     }
 
     void JsonDDLMemberDef::Calculate(T6::JsonDDLDef& jDDLDef)
@@ -240,7 +225,7 @@ namespace T6
             if (structIndex.has_value())
             {
                 if (jDDLDef.inCalculation.contains(structIndex.value()))
-                    MemberLogicError("circular dependency detected");
+                    LogicError("circular dependency detected");
 
                 auto& structDef = jDDLDef.structs.at(structIndex.value());
                 jDDLDef.inCalculation.insert(structIndex.value());
@@ -250,7 +235,7 @@ namespace T6
         }
 
         if (!size)
-            MemberLogicError("could not calculate size");
+            LogicError("could not calculate size");
 
         calculated = true;
         jDDLDef.inCalculation.clear();
@@ -258,21 +243,10 @@ namespace T6
         memberSize.emplace(size * arrayCount.value_or(1));
     }
 
-    void JsonDDLMemberDef::StoreParent(JsonDDLDef& jDDLDef)
-    {
-        for (auto i = 0u; i < jDDLDef.structs.size(); i++)
-        {
-            for (auto j = 0u; j < jDDLDef.structs[i].members.size(); j++)
-            {
-                jDDLDef.structs[i].members[j].parentStruct.assign(jDDLDef.structs[i].name);
-            }
-        }
-    }
-
-    void JsonDDLMemberDef::Name(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidateName(const JsonDDLDef& jDDLDef) const
     {
         if (name.empty())
-            MemberLogicError("name field cannot be empty");
+            LogicError("name field cannot be empty");
 
         std::string primary(name);
         utils::MakeStringLowerCase(primary);
@@ -287,7 +261,7 @@ namespace T6
                 nameRedefinitions++;
 
             if (nameRedefinitions > 1)
-                MemberLogicError("member cannot have the same name as a struct");
+                LogicError("member cannot have the same name as a struct");
         }
 
         for (auto i = 0u; i < jDDLDef.enums.size(); i++)
@@ -298,17 +272,17 @@ namespace T6
                 nameRedefinitions++;
 
             if (nameRedefinitions > 1)
-                MemberLogicError("member cannot have the same name as an enum");
+                LogicError("member cannot have the same name as an enum");
         }
     }
 
-    void JsonDDLMemberDef::Type(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidateType(const JsonDDLDef& jDDLDef) const
     {
         const auto typeEnum = JsonDDLMemberDef::NameToType(type);
         if (typeEnum <= DDL_STRING_TYPE)
             return;
         if (typeEnum < DDL_TYPE_COUNT)
-            MemberLogicError("type cannot directly be defined as enum or struct");
+            LogicError("type cannot directly be defined as enum or struct");
 
         std::string lowerName1(name);
         utils::MakeStringLowerCase(lowerName1);
@@ -324,56 +298,56 @@ namespace T6
         {
             lowerName2.assign(jDDLDef.enums[i].name);
             if (lowerName1 == lowerName2)
-                MemberLogicError("type field cannot be set to an enum, the enum_ field is required instead");
+                LogicError("type field cannot be set to an enum, the enum_ field is required instead");
         }
 
-        MemberLogicError("no definition found for type value");
+        LogicError("no definition found for type value");
     }
 
-    void JsonDDLMemberDef::Permission(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidatePermission(const JsonDDLDef& jDDLDef) const
     {
         if (permission.empty())
             return;
 
         const auto typeEnum = NameToPermissionType(permission);
         if (typeEnum <= DDL_PERM_UNSPECIFIED || typeEnum >= DDL_PERM_COUNT)
-            MemberLogicError("permission must be client, server, or both");
+            LogicError("permission must be client, server, or both");
     }
 
-    void JsonDDLMemberDef::Array(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidateArray(const JsonDDLDef& jDDLDef) const
     {
         if (!arrayCount.has_value())
             return;
         if (enum_.has_value())
-            MemberLogicError("arrayCount field cannot be combined with enum_ field");
+            LogicError("arrayCount field cannot be combined with enum_ field");
         if (arrayCount.value() <= 0)
-            MemberLogicError("arrayCount cannot be 0");
+            LogicError("arrayCount cannot be 0");
     }
 
-    void JsonDDLMemberDef::MaxCharacters(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidateMaxCharacters(const JsonDDLDef& jDDLDef) const
     {
         const auto isStringType = NameToType(type) == DDL_STRING_TYPE;
         if (isStringType)
         {
             if (!maxCharacters.has_value())
-                MemberLogicError("string type requires maxCharacters field");
+                LogicError("string type requires maxCharacters field");
             if (maxCharacters.value() <= 0)
-                MemberLogicError("maxCharacters cannot be 0");
+                LogicError("maxCharacters cannot be 0");
 
             return;
         }
         else if (!maxCharacters.has_value())
             return;
 
-        MemberLogicError("maxCharacters field cannot be used with types other than string");
+        LogicError("maxCharacters field cannot be used with types other than string");
     }
 
-    void JsonDDLMemberDef::Enum_(const JsonDDLDef& jDDLDef) const
+    void JsonDDLMemberDef::ValidateEnum_(const JsonDDLDef& jDDLDef) const
     {
         if (!enum_.has_value())
             return;
         if (arrayCount.has_value())
-            MemberLogicError("arrayCount field cannot be combined with enum_ field");
+            LogicError("arrayCount field cannot be combined with enum_ field");
 
         std::string lowerName1(name);
         utils::MakeStringLowerCase(lowerName1);
@@ -387,72 +361,74 @@ namespace T6
             return;
         }
 
-        MemberLogicError("no definition for enum");
+        LogicError("no definition for enum");
     }
 
-    void JsonDDLMemberDef::BitFields() const
+    void JsonDDLMemberDef::ValidateBitFields() const
     {
-        if (!limits.has_value())
-            return;
-
         if (!limits->bits.has_value())
             return;
 
         const auto typeEnum = NameToType(type);
         if ((DDL_TYPE_FEATURES[typeEnum].flags & DDL_FLAG_BITFIELDS) == 0)
-            MemberLogicError("type does not support bits field");
+            LogicError("type does not support bits field");
         if (limits->range.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
-            MemberLogicError("range, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with bits field");
+            LogicError("range, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with bits field");
         if (limits->bits.value() > DDL_TYPE_FEATURES[typeEnum].size)
-            MemberLogicError("bits exceeds maximum possible bits for type");
+            LogicError("bits exceeds maximum possible bits for type");
     }
 
-    void JsonDDLMemberDef::Range() const
+    void JsonDDLMemberDef::ValidateRange() const
     {
-        if (!limits.has_value())
-            return;
-
         if (!limits->range.has_value())
             return;
 
         const auto typeEnum = NameToType(type);
         if ((DDL_TYPE_FEATURES[typeEnum].flags & DDL_FLAG_LIMITS) == 0)
-            MemberLogicError("does not support range field");
+            LogicError("does not support range field");
         if (limits->bits.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
-            MemberLogicError("bits, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with range field");
+            LogicError("bits, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with range field");
         if (limits->range.value() > DDL_TYPE_FEATURES[typeEnum].max)
-            MemberLogicError("range exceeds maximum possible value for type");
+            LogicError("range exceeds maximum possible value for type");
     }
 
-    void JsonDDLMemberDef::FixedPoint() const
+    void JsonDDLMemberDef::ValidateFixedPoint() const
     {
-        if (!limits.has_value())
-            return;
-
         const auto typeEnum = NameToType(type);
         if (!limits->fixedMagnitudeBits.has_value() && !limits->fixedPrecisionBits.has_value())
             if (typeEnum == DDL_FIXEDPOINT_TYPE)
-                MemberLogicError("fixed_float requires both fixedMagnitudeBits, and fixedPrecisionBits fields");
+                LogicError("fixed_float requires both fixedMagnitudeBits, and fixedPrecisionBits fields");
             return;
 
         if (typeEnum != DDL_FIXEDPOINT_TYPE)
-            MemberLogicError("type must be fixed_float in order to use fixedMagnitudeBits, and FixedPrecisionBits");
+            LogicError("type must be fixed_float in order to use fixedMagnitudeBits, and FixedPrecisionBits");
         if (limits->range.has_value() || limits->bits.has_value())
-            MemberLogicError("range, and bits fields cannot be used with fixed_float type");
+            LogicError("range, and bits fields cannot be used with fixed_float type");
         if ((limits->fixedMagnitudeBits.value() + limits->fixedPrecisionBits.value()) > DDL_TYPE_FEATURES[typeEnum].size)
-            MemberLogicError("magnitude, and precision bits combined cannot exceed 32 bits");
+            LogicError("magnitude, and precision bits combined cannot exceed 32 bits");
     }
 
-    void JsonDDLStructDef::StructLogicError(const std::string& message) const
+    void JsonDDLStructDef::LogicError(const std::string& message) const
     {
         std::string prefaceAndMessage = std::format("DDL Struct: {} Def: ", name, parentDef) + message;
-        throw JsonDDLStructDefException(prefaceAndMessage);
+        throw JsonDDLStructDef::Exception(prefaceAndMessage);
     }
 
     void JsonDDLStructDef::Validate(const JsonDDLDef& jDDLDef) const
     {
-        Name(jDDLDef);
-        Members(jDDLDef);
+        if (parentDef.empty())
+            parentDef.assign(jDDLDef.filename);
+        ValidateName(jDDLDef);
+        ValidateMembers(jDDLDef);
+    }
+
+    void JsonDDLStructDef::CalculateHashes()
+    {
+        for (auto i = 0; i < members.size(); i++)
+        {
+            int hash = Common::Com_HashString(members[i].name.c_str());
+            hashTable.insert(i, hash);
+        }
     }
 
     void JsonDDLStructDef::Calculate(JsonDDLDef& jDDLDef)
@@ -461,10 +437,13 @@ namespace T6
         if (calculated)
             return;
 
+        this->CalculateHashes();
+
         auto size = 0u;
         for (auto i = 0u; i < members.size(); i++)
         {
             members[i].Calculate(jDDLDef);
+            members[i].offset.emplace(size);
             size += members[i].memberSize.value();
         }
 
@@ -473,15 +452,15 @@ namespace T6
         calculated = true;
     }
 
-    JsonDDLStructDef::JsonDDLStructDefException::JsonDDLStructDefException(std::string& message)
+    JsonDDLStructDef::Exception::Exception(std::string& message)
         : std::runtime_error(message)
     {
     }
 
-    void JsonDDLStructDef::Name(const JsonDDLDef& jDDLDef) const
+    void JsonDDLStructDef::ValidateName(const JsonDDLDef& jDDLDef) const
     {
         if (name.empty())
-            StructLogicError("name cannot be blank");
+            LogicError("name cannot be blank");
 
         std::string primary(name);
         utils::MakeStringLowerCase(primary);
@@ -496,7 +475,7 @@ namespace T6
                 nameRedefinitions++;
 
             if (nameRedefinitions > 1)
-                StructLogicError("multiple redefinitions of struct");
+                LogicError("multiple redefinitions of struct");
         }
 
         for (auto i = 0u; i < jDDLDef.enums.size(); i++)
@@ -507,34 +486,38 @@ namespace T6
                 nameRedefinitions++;
 
             if (nameRedefinitions > 1)
-                StructLogicError("struct cannot have same name as enum");
+                LogicError("struct cannot have same name as enum");
         }
     }
 
-    void JsonDDLStructDef::Members(const JsonDDLDef& jDDLDef) const
+    void JsonDDLStructDef::ValidateMembers(const JsonDDLDef& jDDLDef) const
     {
         if (members.empty())
-            StructLogicError("struct must have at least one member");
+            LogicError("struct must have at least one member");
 
         for (const auto& member : members)
+        {
+            member.parentStruct.assign(this->name);
             member.Validate(jDDLDef);
+        }
     }
 
     void JsonDDLStructDef::ReferenceCount(const JsonDDLDef& jDDLDef) const
     {
         if (!referenceCount)
-            StructLogicError("an unreferenced struct cannot be linked");
+            LogicError("an unreferenced struct cannot be linked");
     }
 
-    void JsonDDLEnumDef::EnumLogicError(const std::string& message) const
+    void JsonDDLEnumDef::LogicError(const std::string& message) const
     {
-        std::string prefaceAndMessage = std::format("DDL Struct: {} Def: ", name, parentDef.value_or("unknown")) + message;
-        throw JsonDDLEnumDefException(prefaceAndMessage);
+        std::string prefaceAndMessage = std::format("DDL Struct: {} Def: ", name, parentDef) + message;
+        throw JsonDDLEnumDef::Exception(prefaceAndMessage);
     }
 
     void JsonDDLEnumDef::Validate(const JsonDDLDef& jDDLDef) const
     {
-        Members(jDDLDef);
+        ValidateMembers(jDDLDef);
+        ValidateName(jDDLDef);
     }
 
     void JsonDDLEnumDef::CalculateHashes()
@@ -552,12 +535,12 @@ namespace T6
         calculated = true;
     }
 
-    JsonDDLEnumDef::JsonDDLEnumDefException::JsonDDLEnumDefException(std::string& message)
+    JsonDDLEnumDef::Exception::Exception(std::string& message)
         : std::runtime_error(message)
     {
     }
 
-    void JsonDDLEnumDef::Name(const JsonDDLDef& jDDLDef) const
+    void JsonDDLEnumDef::ValidateName(const JsonDDLDef& jDDLDef) const
     {
         std::set<std::string> occurrences;
 
@@ -570,31 +553,31 @@ namespace T6
                 continue;
             }
 
-            EnumLogicError(std::format("multiple occurrences of enum member \"{}\"", members[i]));
+            LogicError(std::format("multiple occurrences of enum member \"{}\"", members[i]));
         }
     }
 
-    void JsonDDLEnumDef::Members(const JsonDDLDef& jDDLDef) const
+    void JsonDDLEnumDef::ValidateMembers(const JsonDDLDef& jDDLDef) const
     {
         if (members.empty())
-            EnumLogicError("enum must have at least one member");
+            LogicError("enum must have at least one member");
     }
 
     void JsonDDLEnumDef::ReferenceCount(const JsonDDLDef& jDDLDef) const
     {
         if (!referenceCount)
-            EnumLogicError("an unreferenced enum cannot be linked");
+            LogicError("an unreferenced enum cannot be linked");
     }
 
-    void JsonDDLDef::DefLogicError(const std::string& message) const
+    void JsonDDLDef::LogicError(const std::string& message) const
     {
-        assert(filename.has_value());
+        assert(!filename.empty());
 
         std::string prefaceAndMessage = std::format("DDL Def: {} ", filename) + message;
-        throw JsonDDLDefException(prefaceAndMessage);
+        throw JsonDDLDef::Exception(prefaceAndMessage);
     }
 
-    std::optional<size_t> JsonDDLDef::TypeToStructIndex(const JsonDDLDef& jDDLDef, const std::string& typeName) const
+    std::optional<size_t> JsonDDLDef::TypeToStructIndex(const std::string& typeName) const
     {
         std::string lowerType(typeName);
         utils::MakeStringLowerCase(lowerType);
@@ -609,7 +592,7 @@ namespace T6
         return std::nullopt;
     }
 
-    std::optional<size_t> JsonDDLDef::TypeToEnumIndex(const JsonDDLDef& jDDLDef, const std::string& typeName) const
+    std::optional<size_t> JsonDDLDef::TypeToEnumIndex(const std::string& typeName) const
     {
         std::string lowerType(typeName);
         utils::MakeStringLowerCase(lowerType);
@@ -624,7 +607,7 @@ namespace T6
         return std::nullopt;
     }
 
-    std::optional<std::string> JsonDDLDef::StructIndexToType(const JsonDDLDef& jDDLDef, const size_t index) const
+    std::optional<std::string> JsonDDLDef::StructIndexToType(const size_t index) const
     {
         if (structs.size() < index)
             return structs[index].name;
@@ -632,7 +615,7 @@ namespace T6
         return std::nullopt;
     }
 
-    std::optional<std::string> JsonDDLDef::EnumIndexToType(const JsonDDLDef& jDDLDef, const size_t index) const
+    std::optional<std::string> JsonDDLDef::EnumIndexToType(const size_t index) const
     {
         if (enums.size() < index)
             return enums[index].name;
@@ -642,30 +625,71 @@ namespace T6
 
     void JsonDDLDef::Validate() const
     {
-        Root();
+        try
+        {
+            ValidateRoot();
+        }
+        catch (JsonDDLDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLEnumDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLStructDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLMemberDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
     }
 
     void JsonDDLDef::Calculate()
     {
-        for (auto i = 0; i < structs.size(); i++)
+        try
         {
-            std::string lowerName(structs[i].name);
-            utils::MakeStringLowerCase(lowerName);
-            if (lowerName == "root")
+            for (auto i = 0; i < structs.size(); i++)
             {
-                structs[i].Calculate(*this);
-            }
-        }
+                std::string lowerName(structs[i].name);
+                utils::MakeStringLowerCase(lowerName);
+                if (lowerName != "root")
+                {
+                    continue;
+                }
 
-        DefLogicError("root struct entry point missing");
+                structs[i].Calculate(*this);
+                return;
+            }
+
+            LogicError("root struct entry point missing");
+        }
+        catch (JsonDDLDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLEnumDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLStructDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
+        catch (JsonDDLMemberDef::Exception& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
     }
 
-    JsonDDLDef::JsonDDLDefException::JsonDDLDefException(std::string& message)
+    JsonDDLDef::Exception::Exception(std::string& message)
         : std::runtime_error(message)
     {
     }
 
-    void JsonDDLDef::Root() const
+    void JsonDDLDef::ValidateRoot() const
     {
         std::string lowerName;
         auto i = 0u;
@@ -674,12 +698,22 @@ namespace T6
             lowerName.assign(structs[i].name);
             utils::MakeStringLowerCase(lowerName);
 
-            if (lowerName != "root")
-                continue;
+            if (lowerName == "root")
+                break;
 
-            DefLogicError("root struct entry point missing");
+            LogicError("root struct entry point missing");
         }
 
         structs[i].Validate(*this);
+
+        for (const auto& struc : structs)
+        {
+            struc.ReferenceCount(*this);
+        }
+
+        for (const auto& enum_ : enums)
+        {
+            enum_.ReferenceCount(*this);
+        }
     }
 } // namespace T6
