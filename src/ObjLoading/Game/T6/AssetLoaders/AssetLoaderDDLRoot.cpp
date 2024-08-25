@@ -39,7 +39,10 @@ bool AssetLoaderDDLRoot::LoadFromRaw(
     if (LoadDDLRootAsJson(*file.m_stream, *ddlRoot, searchPath, memory, manager, dependencies))
         manager->AddAsset<AssetDDL>(assetName, ddlRoot, std::move(dependencies));
     else
-        std::cerr << "Failed to load weapon camo \"" << assetName << "\"\n";
+    {
+        std::cerr << "Failed to load ddlroot \"" << assetName << "\"\n";
+        return false;
+    }
 
     return true;
 }

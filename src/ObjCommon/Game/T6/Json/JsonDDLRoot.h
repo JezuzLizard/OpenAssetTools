@@ -14,7 +14,7 @@ namespace T6
 {
   constexpr auto OAT_DDL_VERSION = 1u;
 
-  enum ddlPrimitiveTypes_e
+  enum ddlPrimitiveTypes_e : size_t
   {
     DDL_BYTE_TYPE,
     DDL_SHORT_TYPE,
@@ -27,10 +27,9 @@ namespace T6
     DDL_STRUCT_TYPE,
     DDL_ENUM_TYPE,
     DDL_TYPE_COUNT,
-    DDL_INVALID_TYPE = 0xFFFFFFFF,
   };
 
-  enum ddlPermissionTypes_e
+  enum ddlPermissionTypes_e : size_t
   {
     DDL_PERM_UNSPECIFIED,
     DDL_PERM_CLIENT,
@@ -39,7 +38,7 @@ namespace T6
     DDL_PERM_COUNT,
   };
 
-  enum ddlTypeFlags_e
+  enum ddlTypeFlags_e : size_t
   {
     DDL_FLAG_SIGNED = 0x1,
     DDL_FLAG_LIMITS = 0x2,
@@ -77,7 +76,7 @@ namespace T6
         std::optional<size_t> fixedMagnitudeBits;
     };
 
-  NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberLimits, bits, range, fixedPrecisionBits, fixedMagnitudeBits);
+  NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberLimits, bits, range, fixedPrecisionBits, fixedMagnitudeBits);
 
     class JsonDDLMemberDef
     {
@@ -91,22 +90,23 @@ namespace T6
 		std::optional<size_t> arrayCount;
         std::optional<size_t> enumIndex;
         std::optional<size_t> permissionEnum;
-        std::optional<size_t> totalSize;
+        std::optional<size_t> memberSize;
         std::optional<std::string> enum_;
         std::optional<JsonDDLMemberLimits> limits;
     };
 
-	NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, totalSize, enum_, limits);
+	NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(
+        JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, memberSize, enum_, limits);
 
     class JsonDDLStructDef
     {
     public:
 		std::string name;
+    std::optional<size_t> structSize;
 		std::vector<JsonDDLMemberDef> members;
-    std::optional<size_t> totalSize;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLStructDef, name, members, totalSize);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLStructDef, name, members, structSize);
 
     class JsonDDLEnumDef
     {
@@ -115,18 +115,18 @@ namespace T6
 		std::vector<std::string> members;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLEnumDef, name, members);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLEnumDef, name, members);
 
     class JsonDDLDef
     {
     public:
 		int version;
+    std::optional<size_t> defSize;
+    std::vector<JsonDDLEnumDef> enums;
 		std::vector<JsonDDLStructDef> structs;
-        std::vector<JsonDDLEnumDef> enums;
-        std::optional<size_t> defSize;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLDef, version, structs, enums, defSize);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLDef, version, structs, enums, defSize);
 
     class JsonDDLRoot
     {
@@ -135,7 +135,7 @@ namespace T6
         std::vector<JsonDDLDef> defs;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION(JsonDDLRoot, defFiles, defs);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles, defs);
     namespace DDL
     {
       class FeatureSupport

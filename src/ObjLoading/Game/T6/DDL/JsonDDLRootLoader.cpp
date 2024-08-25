@@ -39,7 +39,7 @@ namespace
                     return static_cast<ddlPrimitiveTypes_e>(i);
             }
 
-            return DDL_INVALID_TYPE;
+            return DDL_TYPE_COUNT;
         }
 
         static ddlPermissionTypes_e NameToPermissionType(const std::string& typeName)
@@ -160,13 +160,54 @@ namespace
             private:
                 static bool Name(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& jDDLStructDef)
                 {
+                    std::string lowerName1(jDDLStructDef.name);
+                    utils::MakeStringLowerCase(lowerName1);
+                    std::string lowerName2;
+
+                    size_t nameRedefinitions = 0;
+                    for (auto i = 0u; i < jDDLDef.structs.size(); i++)
+                    {
+                        lowerName2.assign(jDDLDef.structs[i].name);
+                        utils::MakeStringLowerCase(lowerName2);
+                        if (lowerName2 == lowerName1)
+                            nameRedefinitions++;
+
+                        if (nameRedefinitions > 1)
+                            return false;
+                    }
+
+                    for (auto i = 0u; i < jDDLDef.enums.size(); i++)
+                    {
+                        lowerName2.assign(jDDLDef.enums[i].name);
+                        utils::MakeStringLowerCase(lowerName2);
+                        if (lowerName2 == lowerName1)
+                            nameRedefinitions++;
+
+                        if (nameRedefinitions > 1)
+                            return false;
+                    }
                     return true;
+                }
+
+                static bool Root(const JsonDDLDef& jDDLDef)
+                {
+                    std::string lowerName;
+                    for (auto i = 0u; i < jDDLDef.structs.size(); i++)
+                    {
+                        lowerName.assign(jDDLDef.structs[i].name);
+                        utils::MakeStringLowerCase(lowerName);
+
+                        if (lowerName == "root")
+                            return true;
+                    }
+
+                    return false;
                 }
 
                 static bool Permission(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
                 {
                     if (jDDLMemberDef.permission.empty())
-                        return false;
+                        return true;
 
                     const auto typeEnum = NameToPermissionType(jDDLMemberDef.permission);
                     if (typeEnum <= DDL_PERM_UNSPECIFIED || typeEnum >= DDL_PERM_COUNT)
@@ -177,7 +218,27 @@ namespace
 
                 static bool Type(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
                 {
-                    return true;
+                    const auto typeEnum = NameToType(jDDLMemberDef.type);
+                    if (typeEnum <= DDL_STRING_TYPE)
+                        return true;
+                    else if (typeEnum < DDL_TYPE_COUNT)
+                        return false;
+                    else
+                    {
+                        std::string lowerName1(jDDLMemberDef.name);
+                        utils::MakeStringLowerCase(lowerName1);
+                        std::string lowerName2;
+                        for (auto i = 0u; i < jDDLDef.structs.size(); i++)
+                        {
+                            lowerName2.assign(jDDLDef.structs[i].name);
+                            if (lowerName1 != lowerName2)
+                                continue;
+
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
 
                 static bool Array(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
@@ -197,7 +258,7 @@ namespace
                     return true;
                 }
 
-                static bool Enum_(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                static bool Enum_(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& jDDLStructDef)
                 {
                     return true;
                 }
@@ -206,7 +267,7 @@ namespace
             class Enum
             {
             private:
-                static bool Name(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                static bool Name(const JsonDDLDef& jDDLDef, const JsonDDLEnumDef& jDDLEnumDef)
                 {
                     return true;
                 }

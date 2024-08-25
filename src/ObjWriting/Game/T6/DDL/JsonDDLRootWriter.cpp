@@ -28,11 +28,12 @@ namespace
             for (auto i = 0u; i < jsonDDLRoot.defs.size(); i++)
             {
                 const auto secondaryAssetFile = context.OpenAssetFile(jsonDDLRoot.defFiles[i]);
-                json jDef;
+                ordered_json jDef;
 
                 jDef["_type"] = "ddlDef";
                 jDef["_game"] = "t6";
                 jDef["_version"] = OAT_DDL_VERSION;
+                jDef["_codeversion"] = 1;
 #ifndef DDL_DEBUG //Only dump unneeded data when debugging
                 for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
@@ -41,16 +42,15 @@ namespace
                         JsonDDLMemberDef& member = jsonDDLRoot.defs[i].structs[j].members[k];
                         member.enumIndex.reset();
                         member.offset.reset();
-                        member.permissionEnum.reset();
                         member.structIndex.reset();
-                        member.totalSize.reset();
+                        member.memberSize.reset();
                         if (member.structIndex > 0 || member.enumIndex > 0)
                         {
                             member.limits.reset();
                         }
                     }
 
-                    jsonDDLRoot.defs[i].structs[j].totalSize.reset();
+                    jsonDDLRoot.defs[i].structs[j].structSize.reset();
                 }
 #else
                 jDef["defSize"] = ddlRoot.ddlDef[i].size;
@@ -58,13 +58,11 @@ namespace
                 jDef["def"] = jsonDDLRoot.defs[i];
                 *secondaryAssetFile << std::setw(4) << jDef << "\n";
             }
-            json jRoot;
+            ordered_json jRoot;
 
             jRoot["_type"] = "ddlRoot";
             jRoot["_game"] = "t6";
-            jRoot["_version"] = 1;
-            jRoot["_ddlchecksum"] = 1;
-            jRoot["_codeversion"] = 1;
+            jRoot["_version"] = OAT_DDL_VERSION;
             jRoot["defFiles"] = jsonDDLRoot.defFiles;
 
             m_primaryStream << std::setw(4) << jRoot << "\n";
@@ -81,7 +79,7 @@ namespace
 
         static std::string TypeToName(const ddlPrimitiveTypes_e& type)
         {
-            if (type <= DDL_INVALID_TYPE || type >= DDL_TYPE_COUNT)
+            if (type >= DDL_TYPE_COUNT)
                 return static_cast<int>(type) + "_unknown";
 
             return DDL_TYPE_NAMES[type];
@@ -109,7 +107,7 @@ namespace
                         }
                     }
 
-                    jDDLRoot.defs[i].structs[j].totalSize.emplace(members.back().offset.value() + members.back().totalSize.value());
+                    jDDLRoot.defs[i].structs[j].structSize.emplace(members.back().offset.value() + members.back().memberSize.value());
                 }
             }
         }
@@ -127,6 +125,7 @@ namespace
             else
                 jDDLMemberLimits.bits.emplace(memberSize);
             
+            //If this happens it means the assertion that serverDelta, and clientDelta are not assigned separately is false
             assert((ddlMemberDef.rangeLimit == ddlMemberDef.serverDelta) && (ddlMemberDef.rangeLimit == ddlMemberDef.clientDelta));
         }
 
@@ -139,7 +138,7 @@ namespace
             //.size field has different implications depending on the type
             //string type treat it as maxchars
             //struct is based on the size of the struct
-            //enum is based on the type, and also increases arraySize to the count of its members
+            //enum is based on the type, and also modifies arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
                 jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size);
             else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !DDL::IsMemberStandardSize(ddlMemberDef))
@@ -157,7 +156,7 @@ namespace
                 jDDLMemberDef.arrayCount.emplace(ddlMemberDef.arraySize);
 
             jDDLMemberDef.permission = PermissionTypeToName(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
-            jDDLMemberDef.totalSize.emplace(ddlMemberDef.size);
+            jDDLMemberDef.memberSize.emplace(ddlMemberDef.size);
         }
 
         static void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)
