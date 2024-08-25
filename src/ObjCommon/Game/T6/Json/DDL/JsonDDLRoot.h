@@ -106,9 +106,11 @@ namespace T6
         std::optional<size_t> structIndex;
         std::optional<size_t> arrayCount;
         std::optional<size_t> memberSize;
-        std::optional<std::string> parentStruct;
+        std::string parentStruct;
         std::optional<size_t> offset;
         std::optional<JsonDDLMemberLimits> limits;
+        bool calculated;
+        size_t referenceCount;
 
         class JsonDDLMemberDefException : public std::runtime_error
         {
@@ -123,7 +125,7 @@ namespace T6
         ddlPrimitiveTypes_e NameToType(const std::string& typeName) const;
         ddlPermissionTypes_e NameToPermissionType(const std::string& typeName) const;
         void Validate(const JsonDDLDef& jDDLDef) const;
-        size_t CalculateBitSize(JsonDDLDef& jDDLDef);
+        void Calculate(JsonDDLDef& jDDLDef);
 
     private:
         void StoreParent(JsonDDLDef& jDDLDef);
@@ -147,11 +149,15 @@ namespace T6
         std::string name;
         std::optional<size_t> structSize;
         std::vector<JsonDDLMemberDef> members;
-        std::optional<std::string> parentDef;
+        std::string parentDef;
+        size_t referenceCount;
+        bool calculated;
+        std::map<size_t, size_t> hashTable;
 
         void StructLogicError(const std::string& message) const;
         void Validate(const JsonDDLDef& jDDLDef) const;
-        size_t CalculateBitSize(JsonDDLDef& jDDLDef);
+        void CalculateHashes();
+        void Calculate(JsonDDLDef& jDDLDef);
 
     private:
         class JsonDDLStructDefException : public std::runtime_error
@@ -162,9 +168,10 @@ namespace T6
 
         void Name(const JsonDDLDef& jDDLDef) const;
         void Members(const JsonDDLDef& jDDLDef) const;
+        void ReferenceCount(const JsonDDLDef& jDDLDef) const;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLStructDef, name, members, structSize);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLStructDef, name, structSize, members, hashTable);
 
     class JsonDDLEnumDef
     {
@@ -172,9 +179,13 @@ namespace T6
         std::string name;
         std::vector<std::string> members;
         std::optional<std::string> parentDef;
+        size_t referenceCount;
+        bool calculated;
+        std::map<int, int> hashTable;
 
         void EnumLogicError(const std::string& message) const;
         void Validate(const JsonDDLDef& jDDLDef) const;
+        void CalculateHashes();
 
     private:
         class JsonDDLEnumDefException : public std::runtime_error
@@ -185,9 +196,10 @@ namespace T6
 
         void Name(const JsonDDLDef& jDDLDef) const;
         void Members(const JsonDDLDef& jDDLDef) const;
+        void ReferenceCount(const JsonDDLDef& jDDLDef) const;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLEnumDef, name, members);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLEnumDef, name, members, hashTable);
 
     class JsonDDLDef
     {
@@ -197,11 +209,16 @@ namespace T6
         std::optional<size_t> defSize;
         std::vector<JsonDDLEnumDef> enums;
         std::vector<JsonDDLStructDef> structs;
+        std::set<bool> inCalculation;
 
         void DefLogicError(const std::string& message) const;
+        std::optional<size_t> TypeToStructIndex(const JsonDDLDef& jDDLDef, const std::string& typeName) const;
+        std::optional<size_t> TypeToEnumIndex(const JsonDDLDef& jDDLDef, const std::string& typeName) const;
+        std::optional<std::string> StructIndexToType(const JsonDDLDef& jDDLDef, const size_t index) const;
+        std::optional<std::string> EnumIndexToType(const JsonDDLDef& jDDLDef, const size_t index) const;
         void Validate() const;
-        size_t CalculateBitSize(JsonDDLDef& jDDLDef);
-
+        void Calculate();
+        
     private:
         class JsonDDLDefException : public std::runtime_error
         {
