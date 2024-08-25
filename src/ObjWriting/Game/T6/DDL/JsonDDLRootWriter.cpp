@@ -21,6 +21,11 @@ namespace
 
         void Dump(const ddlRoot_t& ddlRoot, AssetDumpingContext& context) const
         {
+            if (!ddlRoot.ddlDef)
+            {
+                std::cerr << "Tried to dump \"" << ddlRoot.name << "\" but it had no defs";
+                return;
+            }
             JsonDDLRoot jsonDDLRoot;
             CreateJsonDDLRoot(jsonDDLRoot, ddlRoot, context);
             ResolveCustomTypes(jsonDDLRoot);
@@ -69,22 +74,6 @@ namespace
         }
 
     private:
-        static std::string PermissionTypeToName(const ddlPermissionTypes_e& type)
-        {
-            if (type <= DDL_PERM_UNSPECIFIED || type >= DDL_PERM_COUNT)
-                return static_cast<int>(type) + "_unknown";
-
-            return DDL_PERM_NAMES[type];
-        }
-
-        static std::string TypeToName(const ddlPrimitiveTypes_e& type)
-        {
-            if (type >= DDL_TYPE_COUNT)
-                return static_cast<int>(type) + "_unknown";
-
-            return DDL_TYPE_NAMES[type];
-        }
-
         static void ResolveCustomTypes(JsonDDLRoot& jDDLRoot)
         {
             auto accumlatedSize = 0u;
@@ -98,13 +87,10 @@ namespace
                     {
                         JsonDDLMemberDef& member = jDDLRoot.defs[i].structs[j].members[k];
                         if (member.structIndex > 0)
-                        {
                             member.type = jDDLRoot.defs[i].structs[member.structIndex.value()].name;
-                        }
+
                         if (member.enumIndex > 0)
-                        {
                             member.enum_.emplace(jDDLRoot.defs[i].enums[member.enumIndex.value()].name);
-                        }
                     }
 
                     jDDLRoot.defs[i].structs[j].structSize.emplace(members.back().offset.value() + members.back().memberSize.value());
@@ -136,11 +122,11 @@ namespace
             jDDLMemberDef.type = TypeToName(static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type));
 
             //.size field has different implications depending on the type
-            //string type treat it as maxchars
+            //string type treat it as max bytes
             //struct is based on the size of the struct
             //enum is based on the type, and also modifies arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
-                jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size);
+                jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size / CHAR_BIT);
             else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !DDL::IsMemberStandardSize(ddlMemberDef))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 

@@ -28,34 +28,6 @@ namespace
         {
         }
 
-        static ddlPrimitiveTypes_e NameToType(const std::string& typeName)
-        {
-            std::string copy(typeName);
-            utils::MakeStringLowerCase(copy);
-
-            for (auto i = 0; i < DDL_TYPE_COUNT; i++)
-            {
-                if (copy == DDL_TYPE_NAMES[i])
-                    return static_cast<ddlPrimitiveTypes_e>(i);
-            }
-
-            return DDL_TYPE_COUNT;
-        }
-
-        static ddlPermissionTypes_e NameToPermissionType(const std::string& typeName)
-        {
-            std::string copy(typeName);
-            utils::MakeStringLowerCase(copy);
-
-            for (auto i = 1; i < DDL_PERM_COUNT; i++)
-            {
-                if (copy == DDL_PERM_NAMES[i])
-                    return static_cast<ddlPermissionTypes_e>(i);
-            }
-
-            return DDL_PERM_UNSPECIFIED;
-        }
-
         bool Load(ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
             const auto jRoot = json::parse(m_stream);
@@ -92,6 +64,21 @@ namespace
         class Validate
         {
         private:
+            static bool Root(const JsonDDLDef& jDDLDef)
+            {
+                std::string lowerName;
+                for (auto i = 0u; i < jDDLDef.structs.size(); i++)
+                {
+                    lowerName.assign(jDDLDef.structs[i].name);
+                    utils::MakeStringLowerCase(lowerName);
+
+                    if (lowerName == "root")
+                        return true;
+                }
+
+                return false;
+            }
+
             class Limits
             {
                 static bool FixedPoint(const JsonDDLMemberDef& jDDLMemberDef)
@@ -189,42 +176,22 @@ namespace
                     return true;
                 }
 
-                static bool Root(const JsonDDLDef& jDDLDef)
+                class Member
                 {
-                    std::string lowerName;
-                    for (auto i = 0u; i < jDDLDef.structs.size(); i++)
+                private:
+                    static bool Name(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
                     {
-                        lowerName.assign(jDDLDef.structs[i].name);
-                        utils::MakeStringLowerCase(lowerName);
 
-                        if (lowerName == "root")
-                            return true;
                     }
 
-                    return false;
-                }
-
-                static bool Permission(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
-                {
-                    if (jDDLMemberDef.permission.empty())
-                        return true;
-
-                    const auto typeEnum = NameToPermissionType(jDDLMemberDef.permission);
-                    if (typeEnum <= DDL_PERM_UNSPECIFIED || typeEnum >= DDL_PERM_COUNT)
-                        return false;
-
-                    return true;
-                }
-
-                static bool Type(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
-                {
-                    const auto typeEnum = NameToType(jDDLMemberDef.type);
-                    if (typeEnum <= DDL_STRING_TYPE)
-                        return true;
-                    else if (typeEnum < DDL_TYPE_COUNT)
-                        return false;
-                    else
+                    static bool Type(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
                     {
+                        const auto typeEnum = NameToType(jDDLMemberDef.type);
+                        if (typeEnum <= DDL_STRING_TYPE)
+                            return true;
+                        if (typeEnum < DDL_TYPE_COUNT)
+                            return false;
+
                         std::string lowerName1(jDDLMemberDef.name);
                         utils::MakeStringLowerCase(lowerName1);
                         std::string lowerName2;
@@ -236,32 +203,74 @@ namespace
 
                             return true;
                         }
+
+                        return false;
                     }
 
-                    return false;
-                }
+                    static bool Permission(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                    {
+                        if (jDDLMemberDef.permission.empty())
+                            return true;
 
-                static bool Array(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
-                {
-                    return true;
-                }
+                        const auto typeEnum = NameToPermissionType(jDDLMemberDef.permission);
+                        if (typeEnum <= DDL_PERM_UNSPECIFIED || typeEnum >= DDL_PERM_COUNT)
+                            return false;
 
-                static bool MaxCharacters(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
-                {
-                    if (!jDDLMemberDef.maxCharacters.has_value())
                         return true;
-                    if (NameToType(jDDLMemberDef.type) != DDL_STRING_TYPE)
-                        return false;
-                    if (jDDLMemberDef.maxCharacters.value() <= 0)
-                        return false;
+                    }
 
-                    return true;
-                }
+                    static bool Array(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                    {
+                        if (!jDDLMemberDef.arrayCount.has_value())
+                            return true;
+                        if (jDDLMemberDef.enum_.has_value())
+                            return false;
+                        if (jDDLMemberDef.arrayCount.value() <= 0)
+                            return false;
 
-                static bool Enum_(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& jDDLStructDef)
-                {
-                    return true;
-                }
+                        return true;
+                    }
+
+                    static bool MaxCharacters(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                    {
+                        const auto isStringType = NameToType(jDDLMemberDef.type) == DDL_STRING_TYPE;
+                        if (isStringType)
+                        {
+                            if (!jDDLMemberDef.maxCharacters.has_value())
+                                return false;
+                            if (jDDLMemberDef.maxCharacters.value() <= 0)
+                                return false;
+
+                            return true;
+                        }
+                        else if (!jDDLMemberDef.maxCharacters.has_value())
+                            return true;
+
+                        return false;
+                    }
+
+                    static bool Enum_(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMemberDef)
+                    {
+                        if (!jDDLMemberDef.enum_.has_value())
+                            return true;
+                        if (jDDLMemberDef.arrayCount.has_value())
+                            return false;
+
+                        std::string lowerName1(jDDLMemberDef.name);
+                        utils::MakeStringLowerCase(lowerName1);
+                        std::string lowerName2;
+                        for (auto i = 0u; i < jDDLDef.enums.size(); i++)
+                        {
+                            lowerName2.assign(jDDLDef.enums[i].name);
+                            if (lowerName1 != lowerName2)
+                                continue;
+
+                            return true;
+                        }
+
+                        return false;
+                    }
+                };
             };
 
             class Enum
@@ -271,10 +280,17 @@ namespace
                 {
                     return true;
                 }
+
+                static bool Members(const JsonDDLDef& jDDLDef, const JsonDDLEnumDef& jDDLEnumDef)
+                {
+                    if (jDDLEnumDef.members.empty())
+                        return false;
+                    return true;
+                }
             };
         };
 
-        bool AllocateDef(const JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
+        bool AllocateDefMembers(const JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
         {
             ddlDef.enumCount = jDDLDef.enums.size();
             ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
@@ -302,11 +318,13 @@ namespace
         bool CreateDDLDefFromJson(const JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
         {
             ddlDef.version = jDDLDef.version;
-            if (!AllocateDef(jDDLDef, ddlDef))
+            if (!AllocateDefMembers(jDDLDef, ddlDef))
                 return false;
+
+            return true;
         }
 
-        bool LoadDDLDef(const std::string defFilename, ISearchPath& searchPath, JsonDDLDef& jDDLDef) const
+        bool LoadDDLDefJson(const std::string defFilename, ISearchPath& searchPath, JsonDDLDef& jDDLDef) const
         {
             const auto secondaryAssetFile = searchPath.Open(defFilename);
             if (!secondaryAssetFile.IsOpen())
@@ -356,19 +374,30 @@ namespace
                 return false;
             }
 
-            auto* ddlDef = m_memory.Alloc<ddlDef_t>();
             for (auto i = 0u; i < jDDLRoot.defFiles.size(); i++)
+            {
+                JsonDDLDef jDDLDef;
+                if (!LoadDDLDefJson(jDDLRoot.defFiles[i], searchPath, jDDLDef))
+                    return false;
+
+                jDDLDefs.push_back(jDDLDef);
+            }
+
+            for (auto i = 0u; i < jDDLDefs.size(); i++)
+            {
+                jDDLDefs[i]
+            }
+
+            auto* ddlDef = m_memory.Alloc<ddlDef_t>();
+            for (auto i = 0u; i < jDDLDefs.size(); i++)
             {
                 if (i > 0u)
                 {
                     ddlDef->next = m_memory.Alloc<ddlDef_t>();
                     ddlDef = ddlDef->next;
                 }
-                JsonDDLDef jDDLDef;
-                if (!LoadDDLDef(jDDLRoot.defFiles[i], searchPath, jDDLDef))
+                if (!CreateDDLDefFromJson(jDDLDefs[i], *ddlDef))
                     return false;
-
-                jDDLDefs.push_back(jDDLDef);
             }
 
             return true;

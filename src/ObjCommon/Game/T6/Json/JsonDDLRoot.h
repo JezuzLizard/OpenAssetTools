@@ -20,9 +20,9 @@ namespace T6
     DDL_SHORT_TYPE,
     DDL_UINT_TYPE,
     DDL_INT_TYPE,
+    DDL_UINT64_TYPE,
     DDL_FLOAT_TYPE,
     DDL_FIXEDPOINT_TYPE,
-    DDL_UINT64_TYPE,
     DDL_STRING_TYPE,
     DDL_STRUCT_TYPE,
     DDL_ENUM_TYPE,
@@ -45,27 +45,39 @@ namespace T6
     DDL_FLAG_BITFIELDS = 0x4,
   };
 
-	inline const std::string DDL_TYPE_NAMES[]{
-		"byte",
-		"short",
-		"uint",
-		"int",
-		"uint64",
-		"float",
-		"fixed_float",
-		"string",
-		"struct",
-		"enum",
-		"",
-	};
+  class DDLFeatureSupport
+  {
+  public:
+      size_t size;
+      size_t flags;
+      uint64_t max;
+      int64_t min;
+  };
 
-  	inline const std::string DDL_PERM_NAMES[]{
-    "unspecified",
-		"client",
-		"server",
-		"both",
-		"",
-	};
+  inline const DDLFeatureSupport DDL_TYPE_FEATURES[];
+
+	inline const std::string DDL_TYPE_NAMES[];
+
+  	inline const std::string DDL_PERM_NAMES[];
+
+    class JsonDDLLoadException : public std::runtime_error
+    {
+    public:
+        JsonDDLLoadException(const std::string& message)
+            : std::runtime_error(message)
+        {
+        }
+    };
+
+    class ddlMemberDef_t_ext : ddlMemberDef_t
+    {
+    public:
+        bool IsStandardSize() const;
+        std::string PermissionTypeToName() const;
+        std::string TypeToName() const;
+        ddlPrimitiveTypes_e NameToType(const std::string& typeName) const;
+        ddlPermissionTypes_e NameToPermissionType(const std::string& typeName) const;
+    };
 
     class JsonDDLMemberLimits
     {
@@ -83,6 +95,7 @@ namespace T6
     public:
 		std::string name;
         std::string type;
+        std::optional<std::string> enum_;
         std::string permission;
         std::optional<size_t> maxCharacters;
 		std::optional<size_t> offset;
@@ -91,12 +104,17 @@ namespace T6
         std::optional<size_t> enumIndex;
         std::optional<size_t> permissionEnum;
         std::optional<size_t> memberSize;
-        std::optional<std::string> enum_;
         std::optional<JsonDDLMemberLimits> limits;
+
+        void Validate() const;
+    private: 
+        void FixedPoint() const;
+        void Range() const;
+        void BitFields() const;
     };
 
 	NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(
-        JsonDDLMemberDef, name, type, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, memberSize, enum_, limits);
+        JsonDDLMemberDef, name, type, enum_, permission, maxCharacters, offset, structIndex, arrayCount, enumIndex, permissionEnum, memberSize, limits);
 
     class JsonDDLStructDef
     {
@@ -136,68 +154,59 @@ namespace T6
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles, defs);
-    namespace DDL
-    {
-      class FeatureSupport
+
+      namespace DDL
       {
-      public:
-        size_t size;
-        size_t flags;
-        uint64_t max;
-        int64_t min;
-      };
+          bool IsStandardSize(const size_t size, const ddlPrimitiveTypes_e type, const size_t arraySize = 1)
+          {
+              const auto memberSize = (size / arraySize);
+              if (type < DDL_BYTE_TYPE || type > DDL_UINT64_TYPE)
+                  return false;
+              return DDL_TYPE_FEATURES[type].size == memberSize;
+          }
 
-      inline const FeatureSupport typeFeatures[] = {
-        {
-           .size = sizeof(char) * CHAR_BIT,
-           .flags = 0,
-           .max = UCHAR_MAX, 
-           .min = 0,
-        },
-        {
-           .size = sizeof(short) * CHAR_BIT,
-           .flags = 0,
-          .max = USHRT_MAX,
-           .min = 0,
-        },
+          std::string PermissionTypeToName(const ddlPermissionTypes_e type)
           {
-           .size = sizeof(int) * CHAR_BIT,
-           .flags = DDL_FLAG_LIMITS | DDL_FLAG_BITFIELDS,
-           .max = UINT_MAX, 
-           .min = 0,
-          },
-          {
-           .size = sizeof(int) * CHAR_BIT,
-           .flags = DDL_FLAG_SIGNED | DDL_FLAG_LIMITS | DDL_FLAG_BITFIELDS,
-           .max = INT_MAX, 
-           .min = INT_MIN,
-          },
-          {
-           .size = sizeof(float) * CHAR_BIT,
-           .flags = DDL_FLAG_SIGNED,
-           .max = INT_MAX,
-           .min = INT_MIN,
-           },
-          {
-           .size = sizeof(float) * CHAR_BIT,
-           .flags = 0,
-           .max = 0,
-           .min = 0,
-          },
-          {
-           .size = sizeof(uint64_t) * CHAR_BIT,
-           .flags = 0,
-           .max = UINT64_MAX,
-           .min = 0,
-          },
-      };
+              if (type <= DDL_PERM_UNSPECIFIED || type >= DDL_PERM_COUNT)
+                  return static_cast<int>(type) + "_unknown";
 
-    static bool IsMemberStandardSize(const ddlMemberDef_t& ddlMemberDef)
-    {
-        const auto memberSize = (ddlMemberDef.size / ddlMemberDef.arraySize);
-        if (ddlMemberDef.type < DDL_BYTE_TYPE || ddlMemberDef.type > DDL_UINT64_TYPE)
-          return false;
-        return typeFeatures[ddlMemberDef.type].size == memberSize;
-    }
-    } // namespace DDL
+              return DDL_PERM_NAMES[type];
+          }
+
+          std::string TypeToName(const ddlPrimitiveTypes_e type)
+          {
+              if (type >= DDL_TYPE_COUNT)
+                  return static_cast<int>(type) + "_unknown";
+
+              return DDL_TYPE_NAMES[type];
+          }
+
+          ddlPrimitiveTypes_e NameToType(const std::string& typeName)
+          {
+              std::string copy(typeName);
+              utils::MakeStringLowerCase(copy);
+
+              for (auto i = 0; i < DDL_TYPE_COUNT; i++)
+              {
+                  if (copy == DDL_TYPE_NAMES[i])
+                      return static_cast<ddlPrimitiveTypes_e>(i);
+              }
+
+              return DDL_TYPE_COUNT;
+          }
+
+          ddlPermissionTypes_e NameToPermissionType(const std::string& typeName)
+          {
+              std::string copy(typeName);
+              utils::MakeStringLowerCase(copy);
+
+              for (auto i = 1; i < DDL_PERM_COUNT; i++)
+              {
+                  if (copy == DDL_PERM_NAMES[i])
+                      return static_cast<ddlPermissionTypes_e>(i);
+              }
+
+              return DDL_PERM_UNSPECIFIED;
+          }
+      } // namespace DDL
 } // namespace T6
