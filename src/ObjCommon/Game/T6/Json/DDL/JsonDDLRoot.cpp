@@ -3,12 +3,13 @@
 #include "Game/T6/CommonT6.h"
 
 #include <iostream>
+#include <unordered_set>
 
 #include "Utils/StringUtils.h"
 
 namespace T6
 {
-    inline const std::string DDL_TYPE_NAMES[]{
+    inline const std::string DDL_TYPE_NAMES[] = {
         "byte",
         "short",
         "uint",
@@ -22,7 +23,7 @@ namespace T6
         "",
     };
 
-    inline const std::string DDL_PERM_NAMES[]{
+    inline const std::string DDL_PERM_NAMES[] = {
         "unspecified",
         "client",
         "server",
@@ -78,8 +79,71 @@ namespace T6
          },
     };
 
-    JsonDDLMemberDef::Exception::Exception(std::string& message)
+    //This isn't strictly necessary, but I'm doing this anyway just in case someone wanted to transpile to the official formats.
+    //By maintaining the same standards the canonical DDL linking that the T7 mod tools linker has, avoids potential future issues if someone wanted to link a dumped DDL dumped using the json code here. 
+    inline const std::unordered_set<std::string> DDL_KEYWORDS = {
+        "struct",
+        "root",
+        "enum",
+        "version",
+        "bool",
+        "byte",
+        "short",       
+        "uint",        
+        "int", 
+        "uint64",
+        "float",
+        "fixed",
+        "string",
+        "codeversion"
+        "checksum",
+        "nopadding",
+        "userflags",
+        "ddlchecksum",
+        "reserve",
+        "server",
+        "client",
+        "both",
+        "",
+    };
+
+    JsonDDLParseException::JsonDDLParseException(std::string& message)
         : std::runtime_error(message)
+    {
+    }
+
+    NameException::NameException(std::string& message)
+        : JsonDDLParseException::JsonDDLParseException(message)
+    {
+    }
+
+    void NameError(const std::string& message)
+    {
+        std::string prefaceAndMessage = std::format("") + message;
+        throw NameException::NameException(prefaceAndMessage);
+    }
+
+    void ValidateName(const std::string& name)
+    {
+        if (name.empty())
+            NameError("name field cannot be empty");
+
+        if (!std::isalpha(name[0]))
+            NameError(std::format("name field cannot begin with \"{}\"", name[0]));
+
+        for (auto i = 1u; i < name.length(); i++)
+        {
+            if (!std::isalnum(name[i]) && name.substr(i, 1) != "_")
+                NameError(std::format("name field cannot contain \"{}\"", name[i]));
+        }
+
+        const auto& keyword = DDL_KEYWORDS.find(name);
+        if (keyword != DDL_KEYWORDS.end())
+            NameError(std::format("name field cannot be reserved \"{}\"", keyword));
+    }
+
+    JsonDDLMemberDef::Exception::Exception(std::string& message)
+        : JsonDDLParseException::JsonDDLParseException(message)
     {
     }
 
@@ -89,12 +153,12 @@ namespace T6
         throw JsonDDLMemberDef::Exception(prefaceAndMessage);
     }
 
-    bool JsonDDLMemberDef::IsStandardSize(const size_t size, const T6::ddlPrimitiveTypes_e type, const size_t arraySize) const
+    bool JsonDDLMemberDef::IsStandardSize() const
     {
-        const auto memberSize = (size / arraySize);
+        const auto size = (memberSize / arrayCount);
         if (type < DDL_BYTE_TYPE || type > DDL_UINT64_TYPE)
             return false;
-        return DDL_TYPE_FEATURES[type].size == memberSize;
+        return DDL_TYPE_FEATURES[type].size == size;
     }
 
     std::string JsonDDLMemberDef::PermissionTypeToName(const ddlPermissionTypes_e type) const
@@ -141,6 +205,17 @@ namespace T6
         return DDL_PERM_UNSPECIFIED;
     }
 
+    void JsonDDLMemberDef::ReportCircularDependency(const JsonDDLDef& jDDLDef, const std::string message) const
+    {
+        std::string traceback("Traceback:\n");
+        for (auto i = 0u; i < jDDLDef.memberStack.size(); i++)
+        {
+            traceback += std::format("\tName: {}, Type: {} Parent: {}\n", jDDLDef.memberStack[i].name, jDDLDef.memberStack[i].type, jDDLDef.memberStack[i].parentStruct);
+        }
+        std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
+        throw JsonDDLMemberDef::Exception(prefaceAndMessage);
+    }
+
     void JsonDDLMemberDef::Validate(const JsonDDLDef& jDDLDef) const
     {
         referenceCount++;
@@ -159,11 +234,11 @@ namespace T6
         if (enum_.has_value())
         {
             auto index = jDDLDef.TypeToEnumIndex(enum_.value());
-            if (!enumIndex.has_value())
+            if (!index.has_value())
             {
                 LogicError("could not create enumIndex for _enum field");
             }
-            auto& enumDef = jDDLDef.enums.at(enumIndex.value());
+            auto& enumDef = jDDLDef.enums.at(index.value());
             enumDef.Validate(jDDLDef);
         }
 
@@ -172,12 +247,14 @@ namespace T6
         {
             if (index.value() == 0)
                 LogicError("root struct cannot be used as a type");
-            if (jDDLDef.inCalculation.contains(index.value()))
-                LogicError("circular dependency detected");
+            if (jDDLDef.inCalculation.at(index.value()))
+                ReportCircularDependency(jDDLDef, "circular dependency detected");
 
             const auto& structDef = jDDLDef.structs.at(index.value());
-            jDDLDef.inCalculation.insert(index.value());
+            jDDLDef.inCalculation[index.value()] = true;
+            jDDLDef.memberStack.push_back(*this);
             structDef.Validate(jDDLDef);
+            jDDLDef.memberStack.pop_back();
         }
 
         ValidateName(jDDLDef);
@@ -224,11 +301,11 @@ namespace T6
         {
             if (structIndex.has_value())
             {
-                if (jDDLDef.inCalculation.contains(structIndex.value()))
+                if (jDDLDef.inCalculation.at(structIndex.value()))
                     LogicError("circular dependency detected");
 
                 auto& structDef = jDDLDef.structs.at(structIndex.value());
-                jDDLDef.inCalculation.insert(structIndex.value());
+                jDDLDef.inCalculation[structIndex.value()];
                 structDef.Calculate(jDDLDef);
                 size = structDef.structSize.value();
             }
@@ -245,12 +322,11 @@ namespace T6
 
     void JsonDDLMemberDef::ValidateName(const JsonDDLDef& jDDLDef) const
     {
-        if (name.empty())
-            LogicError("name field cannot be empty");
-
-        std::string primary(name);
+        std::string primary = name;
         utils::MakeStringLowerCase(primary);
         std::string other;
+
+        T6::ValidateName(primary);
 
         size_t nameRedefinitions = 0;
         for (auto i = 0u; i < jDDLDef.structs.size(); i++)
@@ -284,7 +360,7 @@ namespace T6
         if (typeEnum < DDL_TYPE_COUNT)
             LogicError("type cannot directly be defined as enum or struct");
 
-        std::string lowerName1(name);
+        std::string lowerName1 = name;
         utils::MakeStringLowerCase(lowerName1);
         std::string lowerName2;
         for (auto i = 0u; i < jDDLDef.structs.size(); i++)
@@ -349,7 +425,7 @@ namespace T6
         if (arrayCount.has_value())
             LogicError("arrayCount field cannot be combined with enum_ field");
 
-        std::string lowerName1(name);
+        std::string lowerName1 = name;
         utils::MakeStringLowerCase(lowerName1);
         std::string lowerName2;
         for (auto i = 0u; i < jDDLDef.enums.size(); i++)
@@ -427,7 +503,7 @@ namespace T6
         for (auto i = 0; i < members.size(); i++)
         {
             int hash = Common::Com_HashString(members[i].name.c_str());
-            hashTable.insert(i, hash);
+            hashTable.insert(hash, i);
         }
     }
 
@@ -453,18 +529,17 @@ namespace T6
     }
 
     JsonDDLStructDef::Exception::Exception(std::string& message)
-        : std::runtime_error(message)
+        : JsonDDLParseException::JsonDDLParseException(message)
     {
     }
 
     void JsonDDLStructDef::ValidateName(const JsonDDLDef& jDDLDef) const
     {
-        if (name.empty())
-            LogicError("name cannot be blank");
-
-        std::string primary(name);
+        std::string primary = name;
         utils::MakeStringLowerCase(primary);
         std::string other;
+
+        T6::ValidateName(primary);
 
         size_t nameRedefinitions = 0;
         for (auto i = 0u; i < jDDLDef.structs.size(); i++)
@@ -497,7 +572,7 @@ namespace T6
 
         for (const auto& member : members)
         {
-            member.parentStruct.assign(this->name);
+            member.parentStruct.assign(name);
             member.Validate(jDDLDef);
         }
     }
@@ -536,7 +611,7 @@ namespace T6
     }
 
     JsonDDLEnumDef::Exception::Exception(std::string& message)
-        : std::runtime_error(message)
+        : JsonDDLParseException::JsonDDLParseException(message)
     {
     }
 
@@ -579,7 +654,7 @@ namespace T6
 
     std::optional<size_t> JsonDDLDef::TypeToStructIndex(const std::string& typeName) const
     {
-        std::string lowerType(typeName);
+        std::string lowerType = typeName;
         utils::MakeStringLowerCase(lowerType);
         for (auto i = 0u; i < structs.size(); i++)
         {
@@ -594,7 +669,7 @@ namespace T6
 
     std::optional<size_t> JsonDDLDef::TypeToEnumIndex(const std::string& typeName) const
     {
-        std::string lowerType(typeName);
+        std::string lowerType = typeName;
         utils::MakeStringLowerCase(lowerType);
         for (auto i = 0u; i < enums.size(); i++)
         {
@@ -645,6 +720,10 @@ namespace T6
         {
             std::cerr << e.what() << "\n";
         }
+        catch (T6::NameException& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
     }
 
     void JsonDDLDef::Calculate()
@@ -653,7 +732,7 @@ namespace T6
         {
             for (auto i = 0; i < structs.size(); i++)
             {
-                std::string lowerName(structs[i].name);
+                std::string lowerName = structs[i].name;
                 utils::MakeStringLowerCase(lowerName);
                 if (lowerName != "root")
                 {
@@ -682,10 +761,14 @@ namespace T6
         {
             std::cerr << e.what() << "\n";
         }
+        catch (T6::NameException& e)
+        {
+            std::cerr << e.what() << "\n";
+        }
     }
 
     JsonDDLDef::Exception::Exception(std::string& message)
-        : std::runtime_error(message)
+        : JsonDDLParseException(message)
     {
     }
 

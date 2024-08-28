@@ -1,7 +1,7 @@
 #include "JsonDDLRootWriter.h"
 
 #include "Game/T6/CommonT6.h"
-#include "Game/T6/Json/JsonDDLRoot.h"
+#include "Game/T6/Json/DDL/JsonDDLRoot.h"
 
 #include <iomanip>
 #include <nlohmann/json.hpp>
@@ -119,7 +119,15 @@ namespace
         {
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
-            jDDLMemberDef.type = TypeToName(static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type));
+            jDDLMemberDef.type = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+
+            jDDLMemberDef.memberSize.emplace(ddlMemberDef.size);
+
+            // Only required for actual arrays
+            if (ddlMemberDef.enumIndex > 0)
+                jDDLMemberDef.enumIndex.emplace(ddlMemberDef.enumIndex);
+            else if (ddlMemberDef.arraySize > 1)
+                jDDLMemberDef.arrayCount.emplace(ddlMemberDef.arraySize);
 
             //.size field has different implications depending on the type
             //string type treat it as max bytes
@@ -127,7 +135,7 @@ namespace
             //enum is based on the type, and also modifies arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
                 jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size / CHAR_BIT);
-            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !DDL::IsMemberStandardSize(ddlMemberDef))
+            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !jDDLMemberDef.IsStandardSize())
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
             jDDLMemberDef.offset.emplace(ddlMemberDef.offset);
@@ -135,14 +143,7 @@ namespace
             if (ddlMemberDef.externalIndex > 0)
                 jDDLMemberDef.structIndex.emplace(ddlMemberDef.externalIndex);
 
-            //Only required for actual arrays
-            if (ddlMemberDef.enumIndex > 0)
-                jDDLMemberDef.enumIndex.emplace(ddlMemberDef.enumIndex);
-            else if (ddlMemberDef.arraySize > 1)
-                jDDLMemberDef.arrayCount.emplace(ddlMemberDef.arraySize);
-
-            jDDLMemberDef.permission = PermissionTypeToName(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
-            jDDLMemberDef.memberSize.emplace(ddlMemberDef.size);
+            jDDLMemberDef.permission = static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission);
         }
 
         static void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)

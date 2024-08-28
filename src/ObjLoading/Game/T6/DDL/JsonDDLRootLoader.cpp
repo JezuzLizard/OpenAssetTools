@@ -146,20 +146,29 @@ namespace
             }
 
             const auto jRoot = json::parse(*secondaryAssetFile.m_stream);
+            std::string tool;
             std::string type;
-            unsigned version;
+            unsigned int version;
             std::string game;
 
+            jRoot.at("_tool").get_to(tool);
             jRoot.at("_type").get_to(type);
             jRoot.at("_version").get_to(version);
             jRoot.at("_game").get_to(game);
 
+            utils::MakeStringLowerCase(tool);
             utils::MakeStringLowerCase(type);
             utils::MakeStringLowerCase(game);
 
+            if (tool != "oat")
+            {
+                std::cerr << "Tried to load ddldef for \"" << m_assetname << "\" but asset format isn't for oat\n";
+                return false;
+            }
+
             if (type != "ddldef" || version != OAT_DDL_VERSION || game != "t6")
             {
-                std::cerr << "Tried to load ddldef for \"" << m_assetname << "\" but did not find expected type ddlDef of version " << OAT_DDL_VERSION
+                std::cerr << "Tried to load ddldef for \"" << m_assetname << "\" but did not find expected type ddldef of version " << OAT_DDL_VERSION
                           << " for game t6\n";
                 return false;
             }

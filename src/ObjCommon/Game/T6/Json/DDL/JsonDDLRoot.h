@@ -83,6 +83,19 @@ namespace T6
 
     inline const std::string DDL_PERM_NAMES[];
 
+    class JsonDDLParseException : public std::runtime_error
+    {
+    public:
+        //const char* what() const noexcept override;
+        JsonDDLParseException(std::string& message);
+    };
+
+    class NameException : public JsonDDLParseException
+    {
+    public:
+        NameException(std::string& message);
+    };
+
     class JsonDDLMemberLimits
     {
     public:
@@ -112,7 +125,7 @@ namespace T6
         mutable bool calculated;
         mutable size_t referenceCount;
 
-        class Exception : public std::runtime_error
+        class Exception : public JsonDDLParseException
         {
         public:
             Exception(std::string& message);
@@ -124,6 +137,7 @@ namespace T6
         std::string TypeToName(const ddlPrimitiveTypes_e type) const;
         ddlPrimitiveTypes_e NameToType(const std::string& typeName) const;
         ddlPermissionTypes_e NameToPermissionType(const std::string& typeName) const;
+        void ReportCircularDependency(const JsonDDLDef& jDDLDef, const std::string message) const;
         void Validate(const JsonDDLDef& jDDLDef) const;
         void Calculate(JsonDDLDef& jDDLDef);
 
@@ -159,7 +173,7 @@ namespace T6
         void CalculateHashes();
         void Calculate(JsonDDLDef& jDDLDef);
 
-        class Exception : public std::runtime_error
+        class Exception : public JsonDDLParseException
         {
         public:
             Exception(std::string& message);
@@ -188,7 +202,7 @@ namespace T6
         void ReferenceCount(const JsonDDLDef& jDDLDef) const;
         void CalculateHashes();
 
-        class Exception : public std::runtime_error
+        class Exception : public JsonDDLParseException
         {
         public:
             Exception(std::string& message);
@@ -209,7 +223,8 @@ namespace T6
         std::vector<JsonDDLEnumDef> enums;
         std::optional<size_t> defSize;
         std::string filename;
-        mutable std::set<bool> inCalculation;
+        mutable std::vector<JsonDDLMemberDef> memberStack;
+        mutable std::vector<bool> inCalculation;
 
         void LogicError(const std::string& message) const;
         std::optional<size_t> TypeToStructIndex(const std::string& typeName) const;
@@ -219,12 +234,13 @@ namespace T6
         void Validate() const;
         void Calculate();
         
-    private:
-        class Exception : public std::runtime_error
+        class Exception : public JsonDDLParseException
         {
         public:
             Exception(std::string& message);
         };
+
+    private:
 
         void ValidateRoot() const;
     };
