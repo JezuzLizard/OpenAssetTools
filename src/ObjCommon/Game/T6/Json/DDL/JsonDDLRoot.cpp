@@ -9,26 +9,26 @@
 
 namespace T6
 {
-    inline const std::string DDL_TYPE_NAMES[] = {
-        "byte",
-        "short",
-        "uint",
-        "int",
-        "uint64",
-        "float",
-        "fixed_float",
-        "string",
-        "struct",
-        "enum",
-        "",
+    inline const std::unordered_map<std::string, int> DDL_TYPE_NAMES = {
+        {"byte", DDL_BYTE_TYPE},
+         {"short", DDL_SHORT_TYPE},
+         {"uint", DDL_UINT_TYPE},
+         {"int", DDL_INT_TYPE},
+         {"uint64", DDL_UINT64_TYPE},
+         {"float", DDL_FLOAT_TYPE},
+         {"fixed_float", DDL_FIXEDPOINT_TYPE},
+         {"string", DDL_STRING_TYPE},
+         {"struct", DDL_STRUCT_TYPE},
+         {"enum", DDL_ENUM_TYPE},
+         {"", DDL_TYPE_COUNT}
     };
 
-    inline const std::string DDL_PERM_NAMES[] = {
-        "unspecified",
-        "client",
-        "server",
-        "both",
-        "",
+    inline const std::unordered_map<std::string, int> DDL_PERM_NAMES = {
+        {"unspecified", DDL_PERM_UNSPECIFIED},
+        {"client", DDL_PERM_CLIENT},
+        {"server", DDL_PERM_SERVER},
+        {"both", DDL_PERM_BOTH},
+        {"", DDL_PERM_COUNT}
     };
 
     inline const DDLFeatureSupport DDL_TYPE_FEATURES[] = {
@@ -83,7 +83,7 @@ namespace T6
     //By maintaining the same standards the canonical DDL linking that the T7 mod tools linker has, avoids potential future issues if someone wanted to link a dumped DDL dumped using the json code here. 
     inline const std::unordered_set<std::string> DDL_KEYWORDS = {
         "struct",
-        "root",
+        /*"root",*/
         "enum",
         "version",
         "bool",
@@ -137,9 +137,9 @@ namespace T6
                 NameError(std::format("name field cannot contain \"{}\"", name[i]));
         }
 
-        const auto& keyword = DDL_KEYWORDS.find(name);
-        if (keyword != DDL_KEYWORDS.end())
-            NameError(std::format("name field cannot be reserved \"{}\"", keyword));
+        const auto& it = DDL_KEYWORDS.find(name);
+        if (it != DDL_KEYWORDS.end())
+            NameError(std::format("name field cannot be reserved \"{}\"", it->data()));
     }
 
     JsonDDLMemberDef::Exception::Exception(std::string& message)
@@ -149,68 +149,72 @@ namespace T6
 
     void JsonDDLMemberDef::LogicError(const std::string& message) const
     {
-        std::string prefaceAndMessage = std::format("DDL Member: {} Type: {} Struct {}: ", name, type, parentStruct) + message;
+        std::string prefaceAndMessage = std::format("DDL Member: {} Type: {} Struct {}: ", name, this->TypeToName(), parentStruct) + message;
         throw JsonDDLMemberDef::Exception(prefaceAndMessage);
     }
 
-    bool JsonDDLMemberDef::IsStandardSize() const
+    const bool JsonDDLMemberDef::IsStandardSize() const
     {
-        const auto size = (memberSize / arrayCount);
-        if (type < DDL_BYTE_TYPE || type > DDL_UINT64_TYPE)
+        if (type.value() < DDL_BYTE_TYPE || type.value() > DDL_UINT64_TYPE)
             return false;
-        return DDL_TYPE_FEATURES[type].size == size;
+        return DDL_TYPE_FEATURES[type.value()].size == size.value() / arraySize.value_or(1);
     }
 
-    std::string JsonDDLMemberDef::PermissionTypeToName(const ddlPermissionTypes_e type) const
+    const std::string& JsonDDLMemberDef::PermissionTypeToName() const noexcept
     {
-        if (type <= DDL_PERM_UNSPECIFIED || type >= DDL_PERM_COUNT)
-            return static_cast<int>(type) + "_unknown";
+        for (const auto& [k, v] : DDL_PERM_NAMES)
+        {
+            if (v == type.value())
+                return k;
+        }
 
-        return DDL_PERM_NAMES[type];
+        return static_cast<int>(type.value()) + "_unknown";
     }
 
-    std::string JsonDDLMemberDef::TypeToName(const ddlPrimitiveTypes_e type) const
+    const std::string& JsonDDLMemberDef::TypeToName() const noexcept
     {
-        if (type >= DDL_TYPE_COUNT)
-            return static_cast<int>(type) + "_unknown";
+        for (const auto& [k, v] : DDL_TYPE_NAMES)
+        {
+            if (v == type.value())
+                return k;
+        }
 
-        return DDL_TYPE_NAMES[type];
+        return static_cast<int>(type.value()) + "_unknown";
     }
-
-    ddlPrimitiveTypes_e JsonDDLMemberDef::NameToType(const std::string& typeName) const
+    
+    ddlPrimitiveTypes_e JsonDDLMemberDef::NameToType(const std::string& typeName) const noexcept
     {
-        std::string copy(typeName);
+        std::string copy = typeName;
         utils::MakeStringLowerCase(copy);
 
-        for (auto i = 0; i < DDL_TYPE_COUNT; i++)
-        {
-            if (copy == DDL_TYPE_NAMES[i])
-                return static_cast<ddlPrimitiveTypes_e>(i);
-        }
+        auto it = DDL_TYPE_NAMES.find(copy);
+        if (it != DDL_TYPE_NAMES.end())
+            return static_cast<ddlPrimitiveTypes_e>(it->second);
 
         return DDL_TYPE_COUNT;
     }
 
-    ddlPermissionTypes_e JsonDDLMemberDef::NameToPermissionType(const std::string& typeName) const
+    ddlPermissionTypes_e JsonDDLMemberDef::NameToPermissionType(const std::string& typeName) const noexcept
     {
-        std::string copy(typeName);
+        std::string copy = typeName;
         utils::MakeStringLowerCase(copy);
 
-        for (auto i = 1; i < DDL_PERM_COUNT; i++)
-        {
-            if (copy == DDL_PERM_NAMES[i])
-                return static_cast<ddlPermissionTypes_e>(i);
-        }
+        auto it = DDL_TYPE_NAMES.find(copy);
+        if (it != DDL_TYPE_NAMES.end())
+            return static_cast<ddlPermissionTypes_e>(it->second);
 
         return DDL_PERM_UNSPECIFIED;
     }
 
-    void JsonDDLMemberDef::ReportCircularDependency(const JsonDDLDef& jDDLDef, const std::string message) const
+    void JsonDDLMemberDef::ReportCircularDependency(const JsonDDLDef& jDDLDef, std::string message) const
     {
         std::string traceback("Traceback:\n");
         for (auto i = 0u; i < jDDLDef.memberStack.size(); i++)
         {
-            traceback += std::format("\tName: {}, Type: {} Parent: {}\n", jDDLDef.memberStack[i].name, jDDLDef.memberStack[i].type, jDDLDef.memberStack[i].parentStruct);
+            traceback += std::format("\tName: {}, Type: {} Parent: {}\n",
+                                     jDDLDef.memberStack[i].name,
+                                     jDDLDef.memberStack[i].struct_.has_value() ? jDDLDef.memberStack[i].struct_.value() : jDDLDef.memberStack[i].TypeToName(),
+                                     jDDLDef.memberStack[i].parentStruct);
         }
         std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
         throw JsonDDLMemberDef::Exception(prefaceAndMessage);
@@ -224,12 +228,12 @@ namespace T6
 
         if (limits.has_value())
         {
-            this->ValidateBitFields();
-            this->ValidateRange();
-            this->ValidateFixedPoint();
+            ValidateBitFields();
+            ValidateRange();
+            ValidateFixedPoint();
         }
 
-        this->ValidateMaxCharacters(jDDLDef);
+        ValidateMaxCharacters(jDDLDef);
 
         if (enum_.has_value())
         {
@@ -242,7 +246,7 @@ namespace T6
             enumDef.Validate(jDDLDef);
         }
 
-        auto index = jDDLDef.TypeToStructIndex(type);
+        auto index = jDDLDef.TypeToStructIndex(this->TypeToName());
         if (index.has_value())
         {
             if (index.value() == 0)
@@ -279,45 +283,47 @@ namespace T6
             enumDef.CalculateHashes();
         }
 
-        auto size = 0u;
-        const auto typeEnum = NameToType(type);
-        if (typeEnum <= DDL_FIXEDPOINT_TYPE)
+        auto calculatedSize = 0;
+        if (type.value() <= DDL_FIXEDPOINT_TYPE)
         {
             if (!limits.has_value())
-                size = DDL_TYPE_FEATURES[typeEnum].size;
+                calculatedSize = DDL_TYPE_FEATURES[type.value()].size;
             else if (limits.value().bits.has_value())
-                size = limits.value().bits.value();
+                calculatedSize = limits.value().bits.value();
             else if (limits.value().range.has_value())
-                size = std::bit_width(limits.value().range.value());
+                calculatedSize = std::bit_width(limits.value().range.value());
             else if (limits.value().fixedMagnitudeBits.has_value() && limits.value().fixedPrecisionBits.has_value())
-                size = limits.value().fixedMagnitudeBits.value() + limits.value().fixedPrecisionBits.value();
+            {
+                limits.value().range.emplace(std::bit_width(limits.value().fixedPrecisionBits.value()));
+                calculatedSize = limits.value().fixedMagnitudeBits.value() + limits.value().fixedPrecisionBits.value();
+            }
         }
-        else if (typeEnum == DDL_STRING_TYPE)
+        else if (type.value() == DDL_STRING_TYPE)
         {
             if (maxCharacters.has_value())
-                size = maxCharacters.value() * CHAR_BIT;
+                calculatedSize = maxCharacters.value() * CHAR_BIT;
         }
-        else if (typeEnum == DDL_STRUCT_TYPE)
+        else if (type.value() == DDL_STRUCT_TYPE)
         {
-            if (structIndex.has_value())
+            if (externalIndex.has_value())
             {
-                if (jDDLDef.inCalculation.at(structIndex.value()))
+                if (jDDLDef.inCalculation.at(externalIndex.value()))
                     LogicError("circular dependency detected");
 
-                auto& structDef = jDDLDef.structs.at(structIndex.value());
-                jDDLDef.inCalculation[structIndex.value()];
+                auto& structDef = jDDLDef.structs.at(externalIndex.value());
+                jDDLDef.inCalculation[externalIndex.value()];
                 structDef.Calculate(jDDLDef);
-                size = structDef.structSize.value();
+                calculatedSize = structDef.size.value();
             }
         }
 
-        if (!size)
+        if (!calculatedSize)
             LogicError("could not calculate size");
 
         calculated = true;
         jDDLDef.inCalculation.clear();
 
-        memberSize.emplace(size * arrayCount.value_or(1));
+        size.emplace(calculatedSize * arraySize.value_or(1));
     }
 
     void JsonDDLMemberDef::ValidateName(const JsonDDLDef& jDDLDef) const
@@ -354,10 +360,9 @@ namespace T6
 
     void JsonDDLMemberDef::ValidateType(const JsonDDLDef& jDDLDef) const
     {
-        const auto typeEnum = JsonDDLMemberDef::NameToType(type);
-        if (typeEnum <= DDL_STRING_TYPE)
+        if (type <= DDL_STRING_TYPE)
             return;
-        if (typeEnum < DDL_TYPE_COUNT)
+        if (type < DDL_TYPE_COUNT)
             LogicError("type cannot directly be defined as enum or struct");
 
         std::string lowerName1 = name;
@@ -382,28 +387,23 @@ namespace T6
 
     void JsonDDLMemberDef::ValidatePermission(const JsonDDLDef& jDDLDef) const
     {
-        if (permission.empty())
-            return;
-
-        const auto typeEnum = NameToPermissionType(permission);
-        if (typeEnum <= DDL_PERM_UNSPECIFIED || typeEnum >= DDL_PERM_COUNT)
+        if (permission <= DDL_PERM_UNSPECIFIED || permission >= DDL_PERM_COUNT)
             LogicError("permission must be client, server, or both");
     }
 
     void JsonDDLMemberDef::ValidateArray(const JsonDDLDef& jDDLDef) const
     {
-        if (!arrayCount.has_value())
+        if (!arraySize.has_value())
             return;
         if (enum_.has_value())
-            LogicError("arrayCount field cannot be combined with enum_ field");
-        if (arrayCount.value() <= 0)
-            LogicError("arrayCount cannot be 0");
+            LogicError("arraySize field cannot be combined with enum_ field");
+        if (arraySize.value() <= 0)
+            LogicError("arraySize cannot be 0");
     }
 
     void JsonDDLMemberDef::ValidateMaxCharacters(const JsonDDLDef& jDDLDef) const
     {
-        const auto isStringType = NameToType(type) == DDL_STRING_TYPE;
-        if (isStringType)
+        if (type == DDL_STRING_TYPE)
         {
             if (!maxCharacters.has_value())
                 LogicError("string type requires maxCharacters field");
@@ -422,7 +422,7 @@ namespace T6
     {
         if (!enum_.has_value())
             return;
-        if (arrayCount.has_value())
+        if (arraySize.has_value())
             LogicError("arrayCount field cannot be combined with enum_ field");
 
         std::string lowerName1 = name;
@@ -445,12 +445,11 @@ namespace T6
         if (!limits->bits.has_value())
             return;
 
-        const auto typeEnum = NameToType(type);
-        if ((DDL_TYPE_FEATURES[typeEnum].flags & DDL_FLAG_BITFIELDS) == 0)
+        if ((DDL_TYPE_FEATURES[type.value()].flags & DDL_FLAG_BITFIELDS) == 0)
             LogicError("type does not support bits field");
         if (limits->range.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
             LogicError("range, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with bits field");
-        if (limits->bits.value() > DDL_TYPE_FEATURES[typeEnum].size)
+        if (limits->bits.value() > DDL_TYPE_FEATURES[type.value()].size)
             LogicError("bits exceeds maximum possible bits for type");
     }
 
@@ -459,28 +458,26 @@ namespace T6
         if (!limits->range.has_value())
             return;
 
-        const auto typeEnum = NameToType(type);
-        if ((DDL_TYPE_FEATURES[typeEnum].flags & DDL_FLAG_LIMITS) == 0)
+        if ((DDL_TYPE_FEATURES[type.value()].flags & DDL_FLAG_LIMITS) == 0)
             LogicError("does not support range field");
         if (limits->bits.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
             LogicError("bits, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with range field");
-        if (limits->range.value() > DDL_TYPE_FEATURES[typeEnum].max)
+        if (limits->range.value() > DDL_TYPE_FEATURES[type.value()].max)
             LogicError("range exceeds maximum possible value for type");
     }
 
     void JsonDDLMemberDef::ValidateFixedPoint() const
     {
-        const auto typeEnum = NameToType(type);
         if (!limits->fixedMagnitudeBits.has_value() && !limits->fixedPrecisionBits.has_value())
-            if (typeEnum == DDL_FIXEDPOINT_TYPE)
+            if (type == DDL_FIXEDPOINT_TYPE)
                 LogicError("fixed_float requires both fixedMagnitudeBits, and fixedPrecisionBits fields");
             return;
 
-        if (typeEnum != DDL_FIXEDPOINT_TYPE)
+        if (type != DDL_FIXEDPOINT_TYPE)
             LogicError("type must be fixed_float in order to use fixedMagnitudeBits, and FixedPrecisionBits");
         if (limits->range.has_value() || limits->bits.has_value())
             LogicError("range, and bits fields cannot be used with fixed_float type");
-        if ((limits->fixedMagnitudeBits.value() + limits->fixedPrecisionBits.value()) > DDL_TYPE_FEATURES[typeEnum].size)
+        if ((limits->fixedMagnitudeBits.value() + limits->fixedPrecisionBits.value()) > DDL_TYPE_FEATURES[type.value()].size)
             LogicError("magnitude, and precision bits combined cannot exceed 32 bits");
     }
 
@@ -502,8 +499,8 @@ namespace T6
     {
         for (auto i = 0; i < members.size(); i++)
         {
-            int hash = Common::Com_HashString(members[i].name.c_str());
-            hashTable.insert(hash, i);
+            const auto hash = Common::Com_HashString(members[i].name.c_str());
+            hashTable.emplace(hash, i);
         }
     }
 
@@ -520,10 +517,10 @@ namespace T6
         {
             members[i].Calculate(jDDLDef);
             members[i].offset.emplace(size);
-            size += members[i].memberSize.value();
+            size += members[i].size.value();
         }
 
-        structSize.emplace(size);
+        this->size.emplace(size);
 
         calculated = true;
     }
@@ -603,8 +600,8 @@ namespace T6
 
         for (auto i = 0; i < members.size(); i++)
         {
-            int hash = Common::Com_HashString(members[i].c_str());
-            hashTable.insert(hash, i);
+            const auto hash = Common::Com_HashString(members[i].c_str());
+            hashTable.emplace(hash, i);
         }
 
         calculated = true;
@@ -730,16 +727,16 @@ namespace T6
     {
         try
         {
-            for (auto i = 0; i < structs.size(); i++)
+            for (auto& struc : structs)
             {
-                std::string lowerName = structs[i].name;
+                std::string lowerName = struc.name;
                 utils::MakeStringLowerCase(lowerName);
                 if (lowerName != "root")
                 {
                     continue;
                 }
 
-                structs[i].Calculate(*this);
+                struc.Calculate(*this);
                 return;
             }
 
@@ -799,4 +796,5 @@ namespace T6
             enum_.ReferenceCount(*this);
         }
     }
+    
 } // namespace T6

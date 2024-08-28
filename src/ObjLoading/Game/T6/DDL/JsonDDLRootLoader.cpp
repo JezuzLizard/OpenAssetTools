@@ -31,46 +31,63 @@ namespace
         bool Load(ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
             const auto jRoot = json::parse(m_stream);
-            std::string type;
-            unsigned version;
-            std::string game;
+            std::optional<std::string> tool;
+            std::optional<std::string> type;
+            std::optional<size_t> version;
+            std::optional<std::string> game;
 
-            jRoot.at("_type").get_to(type);
-            jRoot.at("_version").get_to(version);
-            jRoot.at("_game").get_to(game);
+            JsonDDLRoot jDDLRoot;
 
-            utils::MakeStringLowerCase(type);
-            utils::MakeStringLowerCase(game);
+            /*
+            if (jRoot.at("_tool"))
+            {
+                jRoot.at("_tool").get_to(tool);
+                utils::MakeStringLowerCase(*tool);
+            }
 
-            if (type != "ddlroot" || version != OAT_DDL_VERSION || game != "t6")
+            if (jRoot.at("_type"))
+            {
+                jRoot.at("_type").get_to(type.value());
+                utils::MakeStringLowerCase(*type);
+            }
+
+            if (jRoot.at("_version"))
+                jRoot.at("_version").get_to(version.value());
+
+            if (jRoot.at("_game"))
+            {
+                jRoot.at("_game").get_to(game.value());
+                utils::MakeStringLowerCase(*game);
+            }
+
+            if (!type.has_value() || type.value() != "ddlroot" || version.value_or(0) != OAT_DDL_VERSION || !game.has_value() || game.value() != "t6"
+                || !tool.has_value() || tool.value() != "oat")
             {
                 std::cerr << "Tried to load ddl \"" << ddlRoot.name << "\" but did not find expected type ddlRoot of version " << OAT_DDL_VERSION << " for game t6\n";
                 return false;
             }
+            */
 
             try
             {
-                auto jDDLRoot = jRoot.get<JsonDDLRoot>();
-                return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
+                jDDLRoot = jRoot.get<JsonDDLRoot>();
             }
             catch (const json::exception& e)
             {
                 std::cerr << std::format("Failed to parse json of ddl: {}\n", e.what());
             }
-            return false;
+            return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
-
-    private:
 
         inline void from_json(const JsonDDLDef& in, ddlDef_t& out)
         {
-            for (auto i = 0u; i < out.enumCount; i++)
+            for (auto i = 0; i < out.enumCount; i++)
             {
-                for (auto j = 0u; j < out.enumList[i].memberCount; j++)
+                for (auto j = 0; j < out.enumList[i].memberCount; j++)
                 {
                     out.enumList[i].members[j] = in.enums[i].members[j].c_str();
                 }
-                for (auto j = 0u; j < out.enumList[i].memberCount; j++)
+                for (auto j = 0; j < out.enumList[i].memberCount; j++)
                 {
                     out.enumList[i].hashTable[j].hash = Common::Com_HashString(out.enumList[i].members[j]);
                     out.enumList[i].hashTable[j].index = in.enums[i].hashTable.at(out.enumList[i].hashTable[j].hash);
@@ -81,18 +98,27 @@ namespace
             {
                 for (auto j = 0; j < out.structList[i].memberCount; j++)
                 {
-                    out.structList[i].members[j].arraySize = in.structs[i].members[j].arrayCount.value_or(1);
-                    if (in.structs[i].members[j].limits.has_value())
+                    const auto& inMember = in.structs[i].members[j];
+                    auto& outMember = out.structList[i].members[j];
+                    
+                    outMember.size = inMember.size.value();
+                    outMember.offset = inMember.offset.value();
+                    outMember.type = inMember.type.value();
+                    outMember.externalIndex = inMember.externalIndex.value_or(0);
+                    if (inMember.limits)
                     {
-                        if (in.structs[i].members[j].limits.value().bits.has_value())
+                        if (inMember.limits->range)
                         {
-                            out.structList[i].members[j].
+                            outMember.rangeLimit = inMember.limits->range.value();
+                            outMember.serverDelta = inMember.limits->range.value();
+                            outMember.clientDelta = inMember.limits->range.value();
                         }
                     }
-                    out.structList[i].members[j].size = in.structs[i].members[j].memberSize.value();
-                    out.structList[i].members[j].clientDelta
+                    outMember.arraySize = inMember.arraySize.value_or(1);
+                    outMember.enumIndex = inMember.enumIndex.value_or(0);
+                    outMember.permission = inMember.permission;
                 }
-                for (auto j = 0u; j < out.structList[i].memberCount; j++)
+                for (auto j = 0; j < out.structList[i].memberCount; j++)
                 {
                     out.structList[i].hashTable[j].hash = Common::Com_HashString(out.structList[i].members[j].name);
                     out.structList[i].hashTable[j].index = in.structs[i].hashTable.at(out.structList[i].hashTable[j].hash);
@@ -130,6 +156,7 @@ namespace
             jDDLDef.Calculate();
 
             ddlDef.version = jDDLDef.version;
+            ddlDef.size = jDDLDef.size.value();
             if (!AllocateDefMembers(jDDLDef, ddlDef))
                 return false;
 
@@ -151,6 +178,7 @@ namespace
             unsigned int version;
             std::string game;
 
+            /*
             jRoot.at("_tool").get_to(tool);
             jRoot.at("_type").get_to(type);
             jRoot.at("_version").get_to(version);
@@ -172,10 +200,11 @@ namespace
                           << " for game t6\n";
                 return false;
             }
+            */
 
             try
             {
-                jDDLDef = jRoot.get<JsonDDLDef>();
+                jDDLDef = jRoot["def"].get<JsonDDLDef>();
                 return true;
             }
             catch (const json::exception& e)
@@ -205,9 +234,9 @@ namespace
                 jDDLDefs.push_back(jDDLDef);
             }
 
-            for (auto i = 0u; i < jDDLDefs.size(); i++)
+            for (auto& jDef : jDDLDefs)
             {
-                jDDLDefs[i].Validate();
+                jDef.Validate();
             }
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
