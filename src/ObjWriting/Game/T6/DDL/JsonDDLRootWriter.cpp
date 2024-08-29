@@ -30,39 +30,42 @@ namespace
             CreateJsonDDLRoot(jsonDDLRoot, ddlRoot, context);
             ResolveCustomTypes(jsonDDLRoot);
 
-            for (auto i = 0u; i < jsonDDLRoot.defs->size(); i++)
+            for (auto i = 0u; i < jsonDDLRoot.defs.size(); i++)
             {
                 const auto secondaryAssetFile = context.OpenAssetFile(jsonDDLRoot.defFiles[i]);
                 ordered_json jDef;
 
-                jDef["_type"] = "oat";
+                jDef["_tool"] = "oat";
                 jDef["_type"] = "ddlDef";
                 jDef["_game"] = "t6";
                 jDef["_version"] = OAT_DDL_VERSION;
                 jDef["_codeversion"] = 1;
 #ifdef DDL_DEBUG //Only dump unneeded data when debugging
-                for (auto j = 0u; j < jsonDDLRoot.defs->at(i).structs.size(); j++)
+                for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
-                    for (auto k = 0u; k < jsonDDLRoot.defs->at(i).structs[j].members.size(); k++)
+                    for (auto k = 0u; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
                     {
-                        JsonDDLMemberDef& member = jsonDDLRoot.defs->at(i).structs[j].members[k];
-                        member.enumIndex.reset();
+                        JsonDDLMemberDef& member = jsonDDLRoot.defs[i].structs[j].members[k];
+
                         member.offset.reset();
-                        member.externalIndex.reset();
                         member.size.reset();
-                        member.type.reset();
                         if (member.externalIndex > 0 || member.enumIndex > 0)
                         {
                             member.limits.reset();
                         }
+
+                        member.externalIndex.reset();
+                        member.enumIndex.reset();
+                        member.struct_.reset();
+                        member.enumIndex.reset();
                     }
 
-                    jsonDDLRoot.defs->at(i).structs[j].size.reset();
+                    jsonDDLRoot.defs[i].structs[j].size.reset();
                 }
 #else
                 jDef["defSize"] = ddlRoot.ddlDef[i].size;
 #endif
-                jDef["def"] = jsonDDLRoot.defs->at(i);
+                jDef["def"] = jsonDDLRoot.defs[i];
                 *secondaryAssetFile << std::setw(4) << jDef << "\n";
             }
             ordered_json jRoot;
@@ -77,24 +80,26 @@ namespace
 
         void ResolveCustomTypes(JsonDDLRoot& jDDLRoot)
         {
-            auto accumlatedSize = 0u;
-            for (auto i = 0u; i < jDDLRoot.defs->size(); i++)
+            for (auto i = 0u; i < jDDLRoot.defs.size(); i++)
             {
-                for (auto j = 0u; j < jDDLRoot.defs->at(i).structs.size(); j++)
+                for (auto j = 0u; j < jDDLRoot.defs[i].structs.size(); j++)
                 {
-                    const auto& members = jDDLRoot.defs->at(i).structs[j].members;
+                    const auto& members = jDDLRoot.defs[i].structs[j].members;
                     
-                    for (auto k = 0u; k < jDDLRoot.defs->at(i).structs[j].members.size(); k++)
+                    for (auto k = 0u; k < jDDLRoot.defs.at(i).structs[j].members.size(); k++)
                     {
-                        JsonDDLMemberDef& member = jDDLRoot.defs->at(i).structs[j].members[k];
+                        JsonDDLMemberDef& member = jDDLRoot.defs[i].structs[j].members[k];
                         if (member.externalIndex > 0)
-                            member.struct_.emplace(jDDLRoot.defs->at(i).structs[member.externalIndex.value()].name);
+                        {
+                            member.struct_.emplace(jDDLRoot.defs[i].structs[member.externalIndex.value()].name);
+                            member.type = member.struct_.value();
+                        }
 
                         if (member.enumIndex > 0)
-                            member.enum_.emplace(jDDLRoot.defs->at(i).enums[member.enumIndex.value()].name);
+                            member.enum_.emplace(jDDLRoot.defs[i].enums[member.enumIndex.value()].name);
                     }
 
-                    jDDLRoot.defs->at(i).structs[j].size.emplace(members.back().offset.value() + members.back().size.value());
+                    jDDLRoot.defs[i].structs[j].size.emplace(members.back().offset.value() + members.back().size.value());
                 }
             }
         }
@@ -120,7 +125,8 @@ namespace
         {
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
-            jDDLMemberDef.type = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+            jDDLMemberDef.typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+            jDDLMemberDef.type = jDDLMemberDef.TypeToName();
 
             jDDLMemberDef.size.emplace(ddlMemberDef.size);
 
@@ -192,7 +198,7 @@ namespace
             auto parentFolder = baseFilename.parent_path().string();
             auto filenameFinal = std::format("{}/{}.version_{}{}", parentFolder, filename, jsonDDLDef.version, extension);
             jDDLRoot.defFiles.push_back(filenameFinal);
-            jDDLRoot.defs->push_back(jsonDDLDef);
+            jDDLRoot.defs.push_back(jsonDDLDef);
 
             if (!ddlDef->next)
                 return;

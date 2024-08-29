@@ -79,7 +79,41 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
-        inline void from_json(const JsonDDLDef& in, ddlDef_t& out)
+        void ResolveCustomTypes(JsonDDLDef& jDDLDef) const
+        {
+            for (auto j = 0u; j < jDDLDef.structs.size(); j++)
+            {
+                const auto& members = jDDLDef.structs[j].members;
+
+                for (auto k = 0u; k < jDDLDef.structs[j].members.size(); k++)
+                {
+                    JsonDDLMemberDef& member = jDDLDef.structs[j].members[k];
+                    member.externalIndex = jDDLDef.TypeToStructIndex(member.type);
+                    if (member.externalIndex.value_or(0) == 0)
+                    {
+                        member.typeEnum = member.NameToType();
+                    }
+                    else
+                    {
+                        member.struct_.emplace(jDDLDef.structs[member.externalIndex.value()].name);
+                        member.type = member.struct_.value();
+                        member.typeEnum = DDL_STRUCT_TYPE;
+                    }
+
+                    if (!member.enum_.has_value())
+                        continue;
+
+                    member.enumIndex = jDDLDef.TypeToEnumIndex(member.enum_.value());
+                    if (member.enumIndex.value_or(0) > 0)
+                    {
+                        member.enum_.emplace(jDDLDef.enums[member.enumIndex.value()].name);
+                        member.typeEnum = DDL_ENUM_TYPE;
+                    }
+                }
+            }
+        }
+
+        inline void from_json(const JsonDDLDef& in, ddlDef_t& out) const
         {
             for (auto i = 0; i < out.enumCount; i++)
             {
@@ -101,9 +135,10 @@ namespace
                     const auto& inMember = in.structs[i].members[j];
                     auto& outMember = out.structList[i].members[j];
                     
+                    outMember.name = inMember.name.c_str();
                     outMember.size = inMember.size.value();
                     outMember.offset = inMember.offset.value();
-                    outMember.type = inMember.type.value();
+                    outMember.type = inMember.typeEnum;
                     outMember.externalIndex = inMember.externalIndex.value_or(0);
                     if (inMember.limits)
                     {
@@ -153,12 +188,15 @@ namespace
 
         bool CreateDDLDefFromJson(JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
         {
-            jDDLDef.Calculate();
+            if (!jDDLDef.Calculate())
+                return false;
 
             ddlDef.version = jDDLDef.version;
             ddlDef.size = jDDLDef.size.value();
             if (!AllocateDefMembers(jDDLDef, ddlDef))
                 return false;
+            
+            from_json(jDDLDef, ddlDef);
 
             return true;
         }
@@ -227,16 +265,18 @@ namespace
             for (auto i = 0u; i < jDDLRoot.defFiles.size(); i++)
             {
                 JsonDDLDef jDDLDef;
-                jDDLDef.filename.assign(jDDLRoot.defFiles[i]);
                 if (!LoadDDLDefJson(jDDLRoot.defFiles[i], searchPath, jDDLDef))
                     return false;
 
+                jDDLDef.filename.assign(jDDLRoot.defFiles[i]);
+                ResolveCustomTypes(jDDLDef);
                 jDDLDefs.push_back(jDDLDef);
             }
 
             for (auto& jDef : jDDLDefs)
             {
-                jDef.Validate();
+                if (!jDef.Validate())
+                    return false;
             }
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
