@@ -151,7 +151,7 @@ namespace T6
         "struct",
         /*"root",*/
         "enum",
-        "version",
+        /*"version",*/ //Canonically used in a member name.
         "bool",
         "byte",
         "short",

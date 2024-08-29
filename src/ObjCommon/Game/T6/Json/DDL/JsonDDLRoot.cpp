@@ -168,6 +168,7 @@ namespace T6
                 ReportCircularDependency(jDDLDef, "circular dependency detected");
 
             const auto& structDef = jDDLDef.structs.at(index.value());
+            structDef.referenceCount.emplace(structDef.referenceCount.value_or(0) + 1);
             jDDLDef.inCalculation[index.value()] = true;
             jDDLDef.memberStack.push_back(*this);
             structDef.Validate(jDDLDef);
@@ -184,17 +185,13 @@ namespace T6
         if (calculated)
             return;
 
-        if (enum_.has_value())
-        {
-            auto& enumDef = jDDLDef.enums.at(enumIndex.value());
-            enumDef.CalculateHashes();
-        }
+        const auto actualType = this->NameToType();
 
         auto calculatedSize = 0;
-        if (typeEnum <= DDL_FIXEDPOINT_TYPE)
+        if (actualType <= DDL_FIXEDPOINT_TYPE)
         {
-            if (!limits.has_value())
-                calculatedSize = DDL_TYPE_FEATURES[typeEnum].size;
+            if (!limits.has_value() && actualType != DDL_FIXEDPOINT_TYPE)
+                calculatedSize = DDL_TYPE_FEATURES[actualType].size;
             else if (limits.value().bits.has_value())
                 calculatedSize = limits.value().bits.value();
             else if (limits.value().range.has_value())
@@ -205,12 +202,12 @@ namespace T6
                 calculatedSize = limits.value().fixedMagnitudeBits.value() + limits.value().fixedPrecisionBits.value();
             }
         }
-        else if (typeEnum == DDL_STRING_TYPE)
+        else if (actualType == DDL_STRING_TYPE)
         {
             if (maxCharacters.has_value())
                 calculatedSize = maxCharacters.value() * CHAR_BIT;
         }
-        else if (typeEnum == DDL_STRUCT_TYPE)
+        else if (typeEnum == DDL_STRUCT_TYPE || typeEnum == DDL_ENUM_TYPE)
         {
             if (externalIndex.has_value())
             {
@@ -274,6 +271,10 @@ namespace T6
         if (typeEnum != DDL_ENUM_TYPE && typeEnum != DDL_STRUCT_TYPE)
             return;
 
+        const auto actualType = this->NameToType();
+        if (actualType > DDL_STRING_TYPE && actualType < DDL_TYPE_COUNT)
+            LogicError("type field cannot be enum or struct keyword");
+
         std::string lowerName1 = type;
         utils::MakeStringLowerCase(lowerName1);
         std::string lowerName2;
@@ -285,8 +286,11 @@ namespace T6
             if (lowerName1 != lowerName2)
                 continue;
 
-            LogicError("type field cannot be set to an enum, the enum_ field is required instead");
+            LogicError("type field cannot be set to an enum, the enum_ field is required to be set instead");
         }
+
+        if (actualType <= DDL_STRING_TYPE)
+            return;
 
         for (auto i = 0u; i < jDDLDef.structs.size(); i++)
         {
@@ -294,6 +298,7 @@ namespace T6
             utils::MakeStringLowerCase(lowerName2);
             if (lowerName1 == lowerName2)
                 return;
+
         }
 
         LogicError("no definition found for type value");
@@ -339,7 +344,7 @@ namespace T6
         if (arraySize.has_value())
             LogicError("arraySize field cannot be combined with enum_ field");
 
-        std::string lowerName1 = name;
+        std::string lowerName1 = enum_.value();
         utils::MakeStringLowerCase(lowerName1);
         std::string lowerName2;
         for (auto i = 0u; i < jDDLDef.enums.size(); i++)
@@ -403,7 +408,6 @@ namespace T6
 
     void JsonDDLStructDef::Validate(const JsonDDLDef& jDDLDef) const
     {
-        referenceCount.emplace(referenceCount.value_or(0) + 1);
         if (parentDef.empty())
             parentDef.assign(jDDLDef.filename);
 
@@ -659,6 +663,9 @@ namespace T6
                 std::string lowerName = struc.name;
                 utils::MakeStringLowerCase(lowerName);
 
+                if (lowerName == "root")
+                    struc.referenceCount.emplace(1);
+
                 struc.Calculate(*this);
             }
 
@@ -668,6 +675,10 @@ namespace T6
                 //Or they had an export/import system.
                 if (strct.referenceCount.value_or(0) != 0)
                     this->size.emplace(strct.size.value_or(0) + this->size.value_or(0));
+
+            for (auto& enum_ : enums)
+                enum_.CalculateHashes();
+
             return true;
         }
         catch (JsonDDLParseException& e)
