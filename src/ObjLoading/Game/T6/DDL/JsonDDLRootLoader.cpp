@@ -79,7 +79,7 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
-        void ResolveCustomTypes(JsonDDLDef& jDDLDef) const
+        bool ResolveCustomTypes(JsonDDLDef& jDDLDef) const
         {
             for (auto j = 0u; j < jDDLDef.structs.size(); j++)
             {
@@ -88,29 +88,37 @@ namespace
                 for (auto k = 0u; k < jDDLDef.structs[j].members.size(); k++)
                 {
                     JsonDDLMemberDef& member = jDDLDef.structs[j].members[k];
-                    member.linkData->externalIndex = jDDLDef.TypeToStructIndex(member.type);
-                    if (!member.linkData->externalIndex)
+                    member.linkData.externalIndex = jDDLDef.TypeToStructIndex(member.type);
+                    if (!member.linkData.externalIndex)
                     {
-                        member.linkData->typeEnum = member.NameToType();
+                        member.linkData.typeEnum = member.NameToType();
+                        if (member.linkData.typeEnum == DDL_TYPE_COUNT)
+                            return false;
                     }
                     else
                     {
-                        member.linkData->struct_.emplace(jDDLDef.structs[member.linkData->externalIndex].name);
-                        member.type = member.linkData->struct_.value();
-                        member.linkData->typeEnum = DDL_STRUCT_TYPE;
+                        member.linkData.struct_.emplace(jDDLDef.structs[member.linkData.externalIndex].name);
+                        member.type = member.linkData.struct_.value();
+                        member.linkData.typeEnum = DDL_STRUCT_TYPE;
                     }
+
+                    member.linkData.enumIndex = -1;
 
                     if (!member.enum_.has_value())
                         continue;
 
-                    member.linkData->enumIndex = jDDLDef.TypeToEnumIndex(member.enum_.value());
-                    if (member.linkData->enumIndex > -1)
+                    member.linkData.enumIndex = jDDLDef.TypeToEnumIndex(member.enum_.value());
+                    if (member.linkData.enumIndex > -1)
                     {
-                        member.enum_.emplace(jDDLDef.enums[member.linkData->enumIndex].name);
-                        member.linkData->typeEnum = DDL_ENUM_TYPE;
+                        member.enum_.emplace(jDDLDef.enums[member.linkData.enumIndex].name);
+                        member.linkData.typeEnum = DDL_ENUM_TYPE;
                     }
+                    else
+                        return false;
                 }
             }
+
+            return true;
         }
 
         inline void from_json(const JsonDDLDef& in, ddlDef_t& out) const
@@ -135,10 +143,10 @@ namespace
                     auto& outMember = out.structList[i].members[j];
                     
                     outMember.name = m_memory.Dup(inMember.name.c_str());
-                    outMember.size = inMember.linkData->size;
-                    outMember.offset = inMember.linkData->offset;
-                    outMember.type = inMember.linkData->typeEnum;
-                    outMember.externalIndex = inMember.linkData->externalIndex;
+                    outMember.size = inMember.linkData.size;
+                    outMember.offset = inMember.linkData.offset;
+                    outMember.type = inMember.linkData.typeEnum;
+                    outMember.externalIndex = inMember.linkData.externalIndex;
                     if (inMember.limits)
                     {
                         if (inMember.limits->range)
@@ -149,7 +157,7 @@ namespace
                         }
                     }
                     outMember.arraySize = inMember.arraySize.value_or(1);
-                    outMember.enumIndex = inMember.linkData->enumIndex;
+                    outMember.enumIndex = inMember.linkData.enumIndex;
                     outMember.permission = inMember.permission.value();
                 }
                 for (auto j = 0; j < out.structList[i].memberCount; j++)
@@ -286,7 +294,9 @@ namespace
                         return false;
 
                 jDDLDef.filename.assign(jDDLRoot.defFiles[i]);
-                ResolveCustomTypes(jDDLDef);
+                if (!ResolveCustomTypes(jDDLDef))
+                    return false;
+
                 jDDLDefs.push_back(jDDLDef);
             }
 

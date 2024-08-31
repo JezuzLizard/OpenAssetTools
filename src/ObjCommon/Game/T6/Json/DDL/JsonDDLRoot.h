@@ -71,6 +71,7 @@ namespace T6
     });
 
     class JsonDDLDef;
+    class JsonDDLStructDef;
 
     class DDLFeatureSupport
     {
@@ -212,10 +213,9 @@ namespace T6
         int externalIndex = 0;
         int enumIndex = -1;
         std::optional<std::string> struct_;
-        std::optional<ddlPermissionTypes_e> permissionScope;
     };
 
-    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberDefLinkData, size, offset, typeEnum, externalIndex, enumIndex, struct_, permissionScope);
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberDefLinkData, size, offset, typeEnum, externalIndex, enumIndex, struct_);
 
     class JsonDDLMemberDef
     {
@@ -227,9 +227,8 @@ namespace T6
         std::optional<ddlPermissionTypes_e> permission;
         std::optional<std::string> enum_;
         std::optional<int> maxCharacters;
-        std::optional<JsonDDLMemberDefLinkData> linkData;
+        JsonDDLMemberDefLinkData linkData;
         
-        mutable std::string parentStruct;
         mutable std::optional<size_t> referenceCount;
         mutable bool calculated = false;
 
@@ -245,6 +244,7 @@ namespace T6
         const std::string& TypeToName() const noexcept;
         ddlPrimitiveTypes_e NameToType() const noexcept;
         ddlPermissionTypes_e NameToPermissionType(const std::string& typeName) const noexcept;
+        const JsonDDLStructDef& GetParent(const JsonDDLDef& jDDLDef) const;
         void ReportCircularDependency(const JsonDDLDef& jDDLDef, const std::string message) const;
         void Validate(const JsonDDLDef& jDDLDef) const;
         void Calculate(JsonDDLDef& jDDLDef);
@@ -274,8 +274,9 @@ namespace T6
         std::optional<int> size;
         std::vector<JsonDDLMemberDef> members;
         std::vector<ddlHash_t> sortedHashTable;
+        std::optional<ddlPermissionTypes_e> permissionScope;
 
-        mutable std::string parentDef;
+        mutable JsonDDLDef& parentDef;
         mutable std::optional<size_t> referenceCount = 0;
         mutable bool calculated = false;
 
@@ -306,7 +307,7 @@ namespace T6
         std::vector<std::string> members;
         std::vector<ddlHash_t> sortedHashTable;
 
-        mutable std::string parentDef;
+        mutable JsonDDLDef& parentDef;
         mutable std::optional<size_t> referenceCount = 0;
         mutable bool calculated = false;
 
@@ -359,6 +360,10 @@ namespace T6
     private:
     };
 
+    class JsonDDLInclude : public JsonDDLDef
+    {
+    };
+
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLDef, version, size, enums, structs);
 
     class JsonDDLRoot
@@ -367,6 +372,7 @@ namespace T6
         std::vector<std::string> defFiles;
         std::vector<JsonDDLDef> defs;
         std::vector<std::string> includeFiles;
+        std::vector<JsonDDLInclude> includes;
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles);

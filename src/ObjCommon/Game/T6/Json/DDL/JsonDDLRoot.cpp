@@ -54,10 +54,9 @@ namespace T6
     void JsonDDLMemberDef::LogicError(const std::string& message) const
     {
         std::string prefaceAndMessage =
-            std::format("DDL Member: {} Type: {} Parent {}: ",
-                        name, linkData->struct_.has_value() ? linkData->struct_.value() : this->TypeToName(),
-                        parentStruct)
-            + message;
+            std::format("DDL Member: {} Type: {}",name,
+                                                    linkData.struct_.has_value() ? linkData.struct_.value() : this->TypeToName()/*,
+                                                     GetParent(jDDLDef)*/) + message;
 #ifdef DDL_DEBUG
         this;
         __debugbreak();
@@ -67,10 +66,10 @@ namespace T6
 
     const bool JsonDDLMemberDef::IsStandardSize() const
     {
-        if (linkData->typeEnum > DDL_FLOAT_TYPE)
+        if (linkData.typeEnum > DDL_FLOAT_TYPE)
             return false;
 
-        return DDL_TYPE_FEATURES[linkData->typeEnum].size == linkData->size / arraySize.value_or(1);
+        return DDL_TYPE_FEATURES[linkData.typeEnum].size == linkData.size / arraySize.value_or(1);
     }
 
     const std::string& JsonDDLMemberDef::PermissionTypeToName() const noexcept
@@ -95,7 +94,7 @@ namespace T6
 
         for (const auto& [k, v] : DDL_TYPE_NAMES)
         {
-            if (v == linkData->typeEnum)
+            if (v == linkData.typeEnum)
                 return k;
         }
 
@@ -126,6 +125,11 @@ namespace T6
         return DDL_PERM_UNSPECIFIED;
     }
 
+    const JsonDDLStructDef& JsonDDLMemberDef::GetParent(const JsonDDLDef& jDDLDef) const
+    {
+        return jDDLDef.structs[this->linkData.externalIndex];
+    }
+
     void JsonDDLMemberDef::ReportCircularDependency(const JsonDDLDef& jDDLDef, std::string message) const
     {
         std::string traceback("Traceback:\n");
@@ -133,9 +137,9 @@ namespace T6
         {
             traceback += std::format("\tName: {}, Type: {} Parent: {}\n",
                                      jDDLDef.memberStack[i].name,
-                                     jDDLDef.memberStack[i].linkData->struct_.has_value() ? jDDLDef.memberStack[i].linkData->struct_.value()
+                                     jDDLDef.memberStack[i].linkData.struct_.has_value() ? jDDLDef.memberStack[i].linkData.struct_.value()
                                                                                          : jDDLDef.memberStack[i].TypeToName(),
-                                     jDDLDef.memberStack[i].parentStruct);
+                                     jDDLDef.memberStack[i].GetParent(jDDLDef));
         }
         std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
 #ifdef DDL_DEBUG
@@ -201,6 +205,8 @@ namespace T6
         if (calculated)
             return;
 
+        permission.emplace(GetParent(jDDLDef).permissionScope.value());
+
         const auto actualType = this->NameToType();
 
         auto calculatedSize = 0;
@@ -223,15 +229,15 @@ namespace T6
             if (maxCharacters.has_value())
                 calculatedSize = maxCharacters.value() * CHAR_BIT;
         }
-        else if (linkData->typeEnum == DDL_STRUCT_TYPE || linkData->typeEnum == DDL_ENUM_TYPE)
+        else if (linkData.typeEnum == DDL_STRUCT_TYPE || linkData.typeEnum == DDL_ENUM_TYPE)
         {
-            if (linkData->externalIndex)
+            if (linkData.externalIndex)
             {
-                if (jDDLDef.inCalculation.at(linkData->externalIndex))
+                if (jDDLDef.inCalculation.at(linkData.externalIndex))
                     LogicError("circular dependency detected");
 
-                auto& structDef = jDDLDef.structs.at(linkData->externalIndex);
-                jDDLDef.inCalculation[linkData->externalIndex] = true;
+                auto& structDef = jDDLDef.structs.at(linkData.externalIndex);
+                jDDLDef.inCalculation[linkData.externalIndex] = true;
                 structDef.Calculate(jDDLDef);
                 calculatedSize = structDef.size.value();
             }
@@ -247,7 +253,7 @@ namespace T6
         if (!calculatedSize)
             LogicError("failed to calculate size");
 
-        linkData->size = calculatedSize;
+        linkData.size = calculatedSize;
 
         calculated = true;
         jDDLDef.inCalculation.clear();
@@ -293,10 +299,10 @@ namespace T6
 
     void JsonDDLMemberDef::ValidateType(const JsonDDLDef& jDDLDef) const
     {
-        if (linkData->typeEnum >= DDL_TYPE_COUNT)
+        if (linkData.typeEnum >= DDL_TYPE_COUNT)
             LogicError("unknown type");
 
-        if (linkData->typeEnum != DDL_ENUM_TYPE && linkData->typeEnum != DDL_STRUCT_TYPE)
+        if (linkData.typeEnum != DDL_ENUM_TYPE && linkData.typeEnum != DDL_STRUCT_TYPE)
             return;
 
         const auto actualType = this->NameToType();
@@ -334,10 +340,10 @@ namespace T6
 
     void JsonDDLMemberDef::ValidatePermission(const JsonDDLDef& jDDLDef) const
     {
-        if (this->parentStruct != "root")
+        if (GetParent(jDDLDef).name != "root")
             LogicError("permission cannot be defined outside of root");
-        if (permission <= DDL_PERM_UNSPECIFIED || permission >= DDL_PERM_COUNT)
-            LogicError("permission must be client, server, or both");
+        if (permission >= DDL_PERM_COUNT)
+            LogicError("permission must be client, server, both, or unspecified(defaults to both)");
     }
 
     void JsonDDLMemberDef::ValidateArray(const JsonDDLDef& jDDLDef) const
@@ -352,7 +358,7 @@ namespace T6
 
     void JsonDDLMemberDef::ValidateMaxCharacters(const JsonDDLDef& jDDLDef) const
     {
-        if (linkData->typeEnum == DDL_STRING_TYPE)
+        if (linkData.typeEnum == DDL_STRING_TYPE)
         {
             if (!maxCharacters.has_value())
                 LogicError("string type requires maxCharacters field");
@@ -372,7 +378,7 @@ namespace T6
         if (!enum_.has_value())
             return;
 
-        assert(linkData->typeEnum == DDL_ENUM_TYPE);
+        assert(linkData.typeEnum == DDL_ENUM_TYPE);
 
         if (arraySize.has_value())
             LogicError("arraySize field cannot be combined with enum_ field");
@@ -397,11 +403,11 @@ namespace T6
         if (!limits->bits.has_value())
             return;
 
-        if ((DDL_TYPE_FEATURES[linkData->typeEnum].flags & DDL_FLAG_BITFIELDS) == 0)
+        if ((DDL_TYPE_FEATURES[linkData.typeEnum].flags & DDL_FLAG_BITFIELDS) == 0)
             LogicError("type does not support bits field");
         if (limits->range.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
             LogicError("range, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with bits field");
-        if (limits->bits.value() > DDL_TYPE_FEATURES[linkData->typeEnum].size)
+        if (limits->bits.value() > DDL_TYPE_FEATURES[linkData.typeEnum].size)
             LogicError("bits exceeds maximum possible bits for type");
     }
 
@@ -411,32 +417,32 @@ namespace T6
             return;
 
         this;
-        if ((DDL_TYPE_FEATURES[linkData->typeEnum].flags & DDL_FLAG_LIMITS) == 0)
+        if ((DDL_TYPE_FEATURES[linkData.typeEnum].flags & DDL_FLAG_LIMITS) == 0)
             LogicError("does not support range field");
         if (limits->bits.has_value() || limits->fixedPrecisionBits.has_value() || limits->fixedMagnitudeBits.has_value())
             LogicError("bits, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with range field");
-        if (limits->range.value() > DDL_TYPE_FEATURES[linkData->typeEnum].max)
+        if (limits->range.value() > DDL_TYPE_FEATURES[linkData.typeEnum].max)
             LogicError("range exceeds maximum possible value for type");
     }
 
     void JsonDDLMemberDef::ValidateFixedPoint() const
     {
         if (!limits->fixedMagnitudeBits.has_value() && !limits->fixedPrecisionBits.has_value())
-            if (linkData->typeEnum == DDL_FIXEDPOINT_TYPE)
+            if (linkData.typeEnum == DDL_FIXEDPOINT_TYPE)
                 LogicError("fixed_float requires both fixedMagnitudeBits, and fixedPrecisionBits fields");
             return;
 
-        if (linkData->typeEnum != DDL_FIXEDPOINT_TYPE)
+        if (linkData.typeEnum != DDL_FIXEDPOINT_TYPE)
             LogicError("type must be fixed_float in order to use fixedMagnitudeBits, and FixedPrecisionBits");
         if (limits->range.has_value() || limits->bits.has_value())
             LogicError("range, and bits fields cannot be used with fixed_float type");
-        if ((limits->fixedMagnitudeBits.value() + limits->fixedPrecisionBits.value()) > DDL_TYPE_FEATURES[linkData->typeEnum].size)
+        if ((limits->fixedMagnitudeBits.value() + limits->fixedPrecisionBits.value()) > DDL_TYPE_FEATURES[linkData.typeEnum].size)
             LogicError("magnitude, and precision bits combined cannot exceed 32 bits");
     }
 
     void JsonDDLStructDef::LogicError(const std::string& message) const
     {
-        std::string prefaceAndMessage = std::format("DDL Struct: {} Def: ", name, parentDef) + message;
+        std::string prefaceAndMessage = std::format("DDL Struct: {} Def: {}", name, parentDef.filename) + message;
 #ifdef DDL_DEBUG
         this;
         __debugbreak();
@@ -446,8 +452,8 @@ namespace T6
 
     void JsonDDLStructDef::Validate(const JsonDDLDef& jDDLDef) const
     {
-        if (parentDef.empty())
-            parentDef.assign(jDDLDef.filename);
+        if (parentDef.filename.empty())
+            parentDef = jDDLDef;
 
         ValidateName(jDDLDef);
         ValidateMembers(jDDLDef);
@@ -481,9 +487,11 @@ namespace T6
         auto size = 0u;
         for (auto i = 0u; i < members.size(); i++)
         {
+            if (name == "root")
+                permissionScope.emplace(members[i].permission.value_or(DDL_PERM_BOTH));
             members[i].Calculate(jDDLDef);
-            members[i].linkData->offset = size;
-            size += members[i].linkData->size;
+            members[i].linkData.offset = size;
+            size += members[i].linkData.size;
         }
 
         this->size.emplace(size);
@@ -535,7 +543,6 @@ namespace T6
 
         for (const auto& member : members)
         {
-            member.parentStruct.assign(name);
             member.Validate(jDDLDef);
         }
     }

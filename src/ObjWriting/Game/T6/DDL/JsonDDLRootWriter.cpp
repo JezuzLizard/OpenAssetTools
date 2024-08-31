@@ -40,29 +40,19 @@ namespace
                 jDef["_game"] = "t6";
                 jDef["_version"] = OAT_DDL_VERSION;
                 jDef["_codeversion"] = 1;
-#ifndef DDL_DEBUG //Only dump unneeded data when debugging
+#ifdef DDL_DEBUG //Only dump unneeded data when debugging
                 for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
                     for (auto k = 0u; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
                     {
                         JsonDDLMemberDef& member = jsonDDLRoot.defs[i].structs[j].members[k];
 
-                        member.linkData.offset.reset();
-                        member.linkData.size.reset();
-                        if (member.linkData.externalIndex.value_or(-1) > 0)
-                        {
-                            member.limits.reset();
-                        }
-
-                        member.linkData.struct_.reset();
-
                         // Only required for actual arrays
-                        if (member.linkData.enumIndex.value_or(-1) < 0)
-                            member.linkData.enumIndex.reset();
-                        if (member.arraySize.value_or(1) == 1)
+                        if (member.arraySize.value_or(1) == 1 || member.linkData.typeEnum == DDL_STRING_TYPE)
                             member.arraySize.reset();
 
-                        member.linkData.externalIndex.reset();
+                        if (member.GetParent(jsonDDLRoot.defs[i]).name != "root")
+                            member.permission.reset()
                     }
 
                     jsonDDLRoot.defs[i].structs[j].size.reset();
@@ -113,17 +103,17 @@ namespace
                     for (auto k = 0u; k < jDDLRoot.defs.at(i).structs[j].members.size(); k++)
                     {
                         JsonDDLMemberDef& member = jDDLRoot.defs[i].structs[j].members[k];
-                        if (member.linkData->externalIndex > 0)
+                        if (member.linkData.externalIndex > 0)
                         {
-                            member.linkData->struct_.emplace(jDDLRoot.defs[i].structs[member.linkData->externalIndex].name);
-                            member.type = member.linkData->struct_.value();
+                            member.linkData.struct_.emplace(jDDLRoot.defs[i].structs[member.linkData.externalIndex].name);
+                            member.type = member.linkData.struct_.value();
                         }
 
-                        if (member.linkData->enumIndex > -1)
-                            member.enum_.emplace(jDDLRoot.defs[i].enums[member.linkData->enumIndex].name);
+                        if (member.linkData.enumIndex > -1)
+                            member.enum_.emplace(jDDLRoot.defs[i].enums[member.linkData.enumIndex].name);
                     }
 
-                    jDDLRoot.defs[i].structs[j].size.emplace(members.back().linkData->offset + members.back().linkData->size);
+                    jDDLRoot.defs[i].structs[j].size.emplace(members.back().linkData.offset + members.back().linkData.size);
                 }
             }
         }
@@ -149,12 +139,12 @@ namespace
         {
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
-            jDDLMemberDef.linkData->typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+            jDDLMemberDef.linkData.typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
             jDDLMemberDef.type = jDDLMemberDef.TypeToName();
 
-            jDDLMemberDef.linkData->size = ddlMemberDef.size;
+            jDDLMemberDef.linkData.size = ddlMemberDef.size;
 
-            jDDLMemberDef.linkData->enumIndex = ddlMemberDef.enumIndex;
+            jDDLMemberDef.linkData.enumIndex = ddlMemberDef.enumIndex;
             jDDLMemberDef.arraySize.emplace(ddlMemberDef.arraySize);
 
             //.size field has different implications depending on the type
@@ -166,9 +156,9 @@ namespace
             else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !jDDLMemberDef.IsStandardSize())
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
-            jDDLMemberDef.linkData->offset = ddlMemberDef.offset;
+            jDDLMemberDef.linkData.offset = ddlMemberDef.offset;
             
-            jDDLMemberDef.linkData->externalIndex = ddlMemberDef.externalIndex;
+            jDDLMemberDef.linkData.externalIndex = ddlMemberDef.externalIndex;
 
             jDDLMemberDef.permission.emplace(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
         }
