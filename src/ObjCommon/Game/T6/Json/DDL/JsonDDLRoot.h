@@ -203,22 +203,31 @@ namespace T6
 
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberLimits, bits, range, fixedPrecisionBits, fixedMagnitudeBits);
 
+    class JsonDDLMemberDefLinkData
+    {
+    public:
+        int size = 0;
+        int offset = 0;
+        ddlPrimitiveTypes_e typeEnum = DDL_TYPE_COUNT;
+        int externalIndex = 0;
+        int enumIndex = -1;
+        std::optional<std::string> struct_;
+        std::optional<ddlPermissionTypes_e> permissionScope;
+    };
+
+    NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberDefLinkData, size, offset, typeEnum, externalIndex, enumIndex, struct_, permissionScope);
+
     class JsonDDLMemberDef
     {
     public:
         std::string name;
-        std::optional<size_t> size;
-        std::optional<size_t> offset;
-        ddlPrimitiveTypes_e typeEnum = DDL_TYPE_COUNT;
         std::string type;
-        std::optional<size_t> externalIndex;
         std::optional<JsonDDLMemberLimits> limits;
-        std::optional<size_t> arraySize;
-        std::optional<size_t> enumIndex;
-        ddlPermissionTypes_e permission = DDL_PERM_COUNT;
+        std::optional<int> arraySize;
+        std::optional<ddlPermissionTypes_e> permission;
         std::optional<std::string> enum_;
-        std::optional<std::string> struct_;
-        std::optional<size_t> maxCharacters;
+        std::optional<int> maxCharacters;
+        std::optional<JsonDDLMemberDefLinkData> linkData;
         
         mutable std::string parentStruct;
         mutable std::optional<size_t> referenceCount;
@@ -241,6 +250,7 @@ namespace T6
         void Calculate(JsonDDLDef& jDDLDef);
 
     private:
+        void InheritPermission(JsonDDLDef& jDDLDef);
         void ValidateName(const JsonDDLDef& jDDLDef) const;
         void ValidateType(const JsonDDLDef& jDDLDef) const;
         void ValidatePermission(const JsonDDLDef& jDDLDef) const;
@@ -253,15 +263,17 @@ namespace T6
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(
-        JsonDDLMemberDef, name, size, offset, type, externalIndex, limits, arraySize, enumIndex, permission, enum_, struct_, maxCharacters);
+        JsonDDLMemberDef, name, type, limits, arraySize, permission, enum_, maxCharacters);
+    //NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(
+        //JsonDDLMemberDef, name, size, offset, type, externalIndex, limits, arraySize, enumIndex, permission, enum_, struct_, maxCharacters);
 
     class JsonDDLStructDef
     {
     public:
         std::string name;
-        std::optional<size_t> size;
+        std::optional<int> size;
         std::vector<JsonDDLMemberDef> members;
-        std::map<int, int> hashTable;
+        std::vector<ddlHash_t> sortedHashTable;
 
         mutable std::string parentDef;
         mutable std::optional<size_t> referenceCount = 0;
@@ -292,7 +304,7 @@ namespace T6
     public:
         std::string name;
         std::vector<std::string> members;
-        std::map<int, int> hashTable;
+        std::vector<ddlHash_t> sortedHashTable;
 
         mutable std::string parentDef;
         mutable std::optional<size_t> referenceCount = 0;
@@ -320,7 +332,7 @@ namespace T6
     {
     public:
         int version;
-        std::optional<size_t> size;
+        std::optional<int> size;
         std::vector<JsonDDLEnumDef> enums;
         std::vector<JsonDDLStructDef> structs;
         
@@ -329,10 +341,10 @@ namespace T6
         mutable std::vector<bool> inCalculation;
 
         void LogicError(const std::string& message) const;
-        std::optional<size_t> TypeToStructIndex(const std::string& typeName) const noexcept;
-        std::optional<size_t> TypeToEnumIndex(const std::string& typeName) const noexcept;
+        size_t TypeToStructIndex(const std::string& typeName) const noexcept;
+        int TypeToEnumIndex(const std::string& typeName) const noexcept;
         std::optional<std::string> StructIndexToType(const size_t index) const noexcept;
-        std::optional<std::string> EnumIndexToType(const size_t index) const noexcept;
+        std::optional<std::string> EnumIndexToType(const int index) const noexcept;
         bool Validate() const;
         void ValidateRoot() const;
         void PreCalculate() const;
@@ -354,6 +366,7 @@ namespace T6
     public:
         std::vector<std::string> defFiles;
         std::vector<JsonDDLDef> defs;
+        std::vector<std::string> includeFiles;
     };
 
     NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles);
