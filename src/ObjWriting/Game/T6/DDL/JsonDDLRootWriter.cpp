@@ -1,7 +1,7 @@
 #include "JsonDDLRootWriter.h"
 
 #include "Game/T6/CommonT6.h"
-#include "Game/T6/Json/DDL/JsonDDLRoot.h"
+#include "DDL/JsonDDLRoot.h"
 
 #include <iomanip>
 #include <nlohmann/json.hpp>
@@ -52,7 +52,7 @@ namespace
                             member.arraySize.reset();
 
                         if (member.GetParent(jsonDDLRoot.defs[i]).name != "root")
-                            member.permission.reset()
+                            member.permission.reset();
                     }
 
                     jsonDDLRoot.defs[i].structs[j].size.reset();

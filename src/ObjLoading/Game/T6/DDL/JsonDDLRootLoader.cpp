@@ -1,7 +1,7 @@
 #include "JsonDDLRootLoader.h"
 
 #include "Game/T6/CommonT6.h"
-#include "Game/T6/Json/DDL/JsonDDLRoot.h"
+#include "DDL/JsonDDLRoot.h"
 
 #include "Utils/StringUtils.h"
 
