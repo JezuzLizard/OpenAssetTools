@@ -1,11 +1,5 @@
 #pragma once
 
-#include "CommonDDLStruct.h"
-#include "CommonDDLEnum.h"
-#include "CommonDDLMember.h"
-#include "Utils/ClassUtils.h"
-#include "CommonDDLRoot.h"
-
 class CommonDDLInclude;
 
 class CommonDDLDef
@@ -29,12 +23,6 @@ public:
     std::optional<CommonDDLStructDef&> FindStruct(const DDLString& name, bool checkIncludes = false);
     std::optional<CommonDDLEnumDef&> FindEnum(const DDLString& name, bool checkIncludes = false);
     std::vector<CommonDDLInclude>& GetIncludes();
-
-    class Exception : public JsonDDLParseException
-    {
-    public:
-        Exception(std::string& message);
-    };
 
     virtual const DDLGameFeatures& GetFeatures(){};
 

@@ -1,6 +1,4 @@
 #include "CommonDDL.h"
-#include "CommonDDLDef.h"
-#include "Utils/Alignment.h"
 
 CommonDDLEnumDef::CommonDDLEnumDef(CommonDDLDef& parent)
     : m_parent(parent)
@@ -37,19 +35,19 @@ void CommonDDLEnumDef::ResetCalculated()
     m_calculated = false;
 }
 
-std::vector<DDLHash>& CommonDDLEnumDef::GetHashTable()
+std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 {
     return m_hash_table;
 }
 
 void CommonDDLEnumDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Struct: {} Def: ", m_name, GetParentConst()) + message;
+    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParentConst().m_filename) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
 #endif
-    throw CommonDDLEnumDef::Exception(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 void CommonDDLEnumDef::Validate() const
@@ -64,11 +62,6 @@ void CommonDDLEnumDef::Validate() const
 }
 
 void CommonDDLEnumDef::CalculateHashes()
-{
-}
-
-CommonDDLEnumDef::Exception::Exception(std::string& message)
-    : JsonDDLParseException::JsonDDLParseException(message)
 {
 }
 

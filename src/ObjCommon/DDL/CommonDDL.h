@@ -1,22 +1,13 @@
 #pragma once
-#include "Utils/ClassUtils.h"
 #include "Utils/StringUtils.h"
 
-#include <memory>
-#include <cstdint>
-#include <string>
-#include <vector>
 #include <unordered_set>
 #include <set>
-#include <unordered_map>
-#include <stdexcept>
-#include <optional>
 #include <format>
 #include <iostream>
 #include <cassert>
 #include <algorithm>
 
-constexpr auto OAT_DDL_VERSION = 1u;
 constexpr auto OAT_DDL_FLOAT_BITS = (sizeof(float) * CHAR_BIT);
 
 enum ddlTypeFlags_e : size_t
@@ -37,7 +28,7 @@ enum ddlUserDefinedTypeFlags_e : size_t
 typedef int ddlHash;
 typedef int ddlHashIndex;
 
-class DDLHash
+class DDLHashEntry
 {
 public:
     ddlHash hash;
@@ -68,6 +59,10 @@ public:
 class DDLString : public std::string
 {
 public:
+    DDLString() : std::string()
+    {
+    }
+
     DDLString GetLower()
     {
         DDLString copy = *this;
@@ -95,6 +90,10 @@ public:
         utils::MakeStringUpperCase(copy);
         return copy;
     }
+
+    std::string stdString;
+
+private:
 };
 
 // This isn't strictly necessary, but I'm doing this anyway just in case someone wanted to transpile to the official formats.
@@ -126,14 +125,21 @@ inline const std::unordered_set<std::string> DDL_KEYWORDS = {
     "",
 };
 
-class JsonDDLParseException : public std::runtime_error
+namespace DDL
 {
-public:
-    JsonDDLParseException(std::string& message);
-};
+    class Exception : public std::runtime_error
+    {
+    public:
+        Exception(std::string& message) 
+            : std::runtime_error(message)
+        {
 
-class NameException : public JsonDDLParseException
-{
-public:
-    NameException(std::string& message);
-};
+        }
+    };
+} // namespace DDL
+
+#include "CommonDDLDef.h"
+#include "CommonDDLEnum.h"
+#include "CommonDDLStruct.h"
+#include "CommonDDLMember.h"
+#include "CommonDDLRoot.h"

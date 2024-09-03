@@ -1,6 +1,4 @@
 #pragma once
-#include "CommonDDL.h"
-#include "Utils/ClassUtils.h"
 
 class CommonDDLStructDef
 {
@@ -13,14 +11,8 @@ public:
     void LogicError(const std::string& message) const;
     void Validate() const;
     void ReferenceCount() const;
-    virtual void CalculateHashes(){};
+    virtual void CalculateHashes() {};
     void Calculate();
-
-    class Exception : public JsonDDLParseException
-    {
-    public:
-        Exception(std::string& message);
-    };
 
     void SetCalculated();
     void ResetCalculated();
@@ -28,7 +20,7 @@ public:
     const size_t GetRefCount() const;
     CommonDDLDef& GetParent();
     const CommonDDLDef& GetParentConst() const;
-    std::vector<DDLHash>& GetHashTable();
+    std::vector<DDLHashEntry>& GetHashTable();
 
     CommonDDLStructDef(CommonDDLDef& parent);
 
@@ -36,7 +28,7 @@ private:
     CommonDDLDef& m_parent;
     mutable size_t m_reference_count = 0;
     mutable bool m_calculated = false;
-    std::vector<DDLHash> m_hash_table;
+    std::vector<DDLHashEntry> m_hash_table;
 
     void ValidateName() const;
     void ValidateMembers() const;

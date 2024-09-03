@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Utils/ClassUtils.h"
-
 class CommonDDLMemberLimits
 {
 public:
@@ -44,12 +42,6 @@ public:
     std::optional<int> m_max_characters;
     CommonDDLMemberDefLinkData m_link_data;
 
-    class Exception : public JsonDDLParseException
-    {
-    public:
-        Exception(std::string& message);
-    };
-
     void LogicError(const std::string& message) const;
     virtual const bool IsStandardSize() const {};
     virtual const bool IsStandardType() const {};
@@ -77,14 +69,13 @@ public:
     void Calculate();
     void ResetCalculated();
 
-    CommonDDLMemberDef(const CommonDDLStructDef& parent);
+    CommonDDLMemberDef(CommonDDLStructDef& parent);
 
 private:
     mutable size_t m_reference_count = 0;
     mutable bool m_calculated = false;
     CommonDDLStructDef& m_parent;
 
-    void InheritPermission();
     void ValidateName() const;
     void ValidateType() const;
     void ValidatePermission() const;

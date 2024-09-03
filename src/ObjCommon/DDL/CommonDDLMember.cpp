@@ -1,12 +1,7 @@
 #include "CommonDDL.h"
 
-#include "CommonDDLDef.h"
-#include "Utils/Alignment.h"
-
-#include <cassert>
-
-    CommonDDLMemberDef::Exception::Exception(std::string& message)
-    : JsonDDLParseException::JsonDDLParseException(message)
+CommonDDLMemberDef::CommonDDLMemberDef(CommonDDLStructDef& parent)
+    : m_parent(parent)
 {
 }
 
@@ -41,12 +36,12 @@ void CommonDDLMemberDef::LogicError(const std::string& message) const
                                                 m_name,
                                                 m_link_data.m_struct.has_value()
                                                     ? m_link_data.m_struct.value()
-                                                    : TypeToName(), GetParentConst()) + message;
+                                                    : TypeToName(), GetParentConst().m_name) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
 #endif
-    throw CommonDDLMemberDef::Exception(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 void CommonDDLMemberDef::ReportCircularDependency(std::string message) const
@@ -66,7 +61,7 @@ void CommonDDLMemberDef::ReportCircularDependency(std::string message) const
     this;
     __debugbreak();
 #endif
-    throw CommonDDLMemberDef::Exception(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 void CommonDDLMemberDef::Validate() const

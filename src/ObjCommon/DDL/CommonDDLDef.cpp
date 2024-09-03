@@ -1,5 +1,4 @@
 #include "CommonDDL.h"
-#include "CommonDDLDef.h"
 
 CommonDDLDef::CommonDDLDef(const int version, const std::string filename)
     : m_version(version),
@@ -74,7 +73,7 @@ void CommonDDLDef::LogicError(const std::string& message) const
     this;
     __debugbreak();
 #endif
-    throw CommonDDLDef::Exception(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 size_t CommonDDLDef::TypeToStructIndex(const DDLString& typeName) const noexcept
@@ -122,7 +121,7 @@ bool CommonDDLDef::Validate() const
         ValidateRoot();
         return true;
     }
-    catch (JsonDDLParseException& e)
+    catch (DDL::Exception& e)
     {
         std::cerr << e.what() << "\n";
     }
@@ -182,17 +181,12 @@ bool CommonDDLDef::Calculate()
 
         return true;
     }
-    catch (JsonDDLParseException& e)
+    catch (DDL::Exception& e)
     {
         std::cerr << e.what() << "\n";
     }
 
     return false;
-}
-
-CommonDDLDef::Exception::Exception(std::string& message)
-    : JsonDDLParseException(message)
-{
 }
 
 void CommonDDLDef::ValidateRoot() const
@@ -229,23 +223,13 @@ void CommonDDLDef::ValidateRoot() const
     }
 }
 
-JsonDDLParseException::JsonDDLParseException(std::string& message)
-    : std::runtime_error(message)
-{
-}
-
-NameException::NameException(std::string& message)
-    : JsonDDLParseException::JsonDDLParseException(message)
-{
-}
-
 void CommonDDLDef::NameError(const std::string& message) const
 {
     std::string prefaceAndMessage = std::format("File: {} ", this->m_filename) + message;
 #ifdef DDL_DEBUG
     __debugbreak();
 #endif
-    throw NameException::NameException(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 void CommonDDLDef::ValidateName(const DDLString& name) const

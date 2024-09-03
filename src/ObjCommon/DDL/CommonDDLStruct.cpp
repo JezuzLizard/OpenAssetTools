@@ -1,15 +1,13 @@
 #include "CommonDDL.h"
 
-#include "CommonDDLDef.h"
-#include "Utils/Endianness.h"
-
-#include <algorithm>
-#include <zlib.h>
-
 CommonDDLStructDef::CommonDDLStructDef(CommonDDLDef& parent)
     : m_parent(parent)
 {
+}
 
+void CommonDDLStructDef::SetCalculated()
+{
+    m_calculated = true;
 }
 
 void CommonDDLStructDef::ResetCalculated()
@@ -32,18 +30,18 @@ const size_t CommonDDLStructDef::GetRefCount() const
     return m_reference_count;
 }
 
-std::vector<DDLHash>& CommonDDLStructDef::GetHashTable()
+std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable()
 {
     return m_hash_table;
 }
 
 void CommonDDLStructDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Struct: {} Def: {}", m_name, GetParentConst()) + message;
+    std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParentConst().m_filename) + message;
 #ifdef DDL_DEBUG
     __debugbreak();
 #endif
-    throw CommonDDLStructDef::Exception(prefaceAndMessage);
+    throw DDL::Exception(prefaceAndMessage);
 }
 
 void CommonDDLStructDef::Validate() const
@@ -56,10 +54,6 @@ void CommonDDLStructDef::Validate() const
     ValidateMembers();
 
     m_calculated = true;
-}
-
-void CommonDDLStructDef::CalculateHashes()
-{
 }
 
 void CommonDDLStructDef::Calculate()
@@ -82,11 +76,6 @@ void CommonDDLStructDef::Calculate()
     m_size = size;
 
     m_calculated = true;
-}
-
-CommonDDLStructDef::Exception::Exception(std::string& message)
-    : JsonDDLParseException::JsonDDLParseException(message)
-{
 }
 
 void CommonDDLStructDef::ValidateName() const

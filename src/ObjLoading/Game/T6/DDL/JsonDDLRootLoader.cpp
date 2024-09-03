@@ -1,13 +1,10 @@
 #include "JsonDDLRootLoader.h"
 
-#include "Game/T6/CommonT6.h"
-#include "DDL/JsonDDLRoot.h"
-
-#include "Utils/StringUtils.h"
+#include "Game/T6/DDLConstantsT6.h"
+#include "Json/DDL/JsonDDL.h"
 
 #include <format>
 #include <iostream>
-#include <nlohmann/json.hpp>
 
 using namespace nlohmann;
 using namespace T6;
@@ -88,30 +85,32 @@ namespace
                 for (auto k = 0u; k < jDDLDef.structs[j].members.size(); k++)
                 {
                     JsonDDLMemberDef& member = jDDLDef.structs[j].members[k];
-                    member.linkData.externalIndex = jDDLDef.TypeToStructIndex(member.type);
-                    if (!member.linkData.externalIndex)
+                    member.data.m_link_data.m_external_index = member.data.GetParentConst().GetParentConst().TypeToStructIndex();
+                    if (!member.data.m_link_data.m_external_index)
                     {
-                        member.linkData.typeEnum = member.NameToType();
-                        if (member.linkData.typeEnum == DDL_TYPE_COUNT)
+                        member.data.m_link_data.m_type_enum = member.data.NameToType();
+                        if (member.data.m_link_data.m_type_enum == DDL_TYPE_COUNT)
                             return false;
                     }
                     else
                     {
-                        member.linkData.struct_.emplace(jDDLDef.structs[member.linkData.externalIndex].name);
-                        member.type = member.linkData.struct_.value();
-                        member.linkData.typeEnum = DDL_STRUCT_TYPE;
+                        member.data.m_link_data.m_struct.emplace(jDDLDef.structs[member.data.m_link_data.m_external_index].name);
+                        member.type = member.data.m_link_data.m_struct.value();
+                        size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_STRUCT;
+                        member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
                     }
 
-                    member.linkData.enumIndex = -1;
+                    member.data.m_link_data.enumIndex = -1;
 
                     if (!member.enum_.has_value())
                         continue;
 
-                    member.linkData.enumIndex = jDDLDef.TypeToEnumIndex(member.enum_.value());
-                    if (member.linkData.enumIndex > -1)
+                    member.data.m_link_data.enumIndex = member.TypeToEnumIndex();
+                    if (member.data.m_link_data.enumIndex > -1)
                     {
-                        member.enum_.emplace(jDDLDef.enums[member.linkData.enumIndex].name);
-                        member.linkData.typeEnum = DDL_ENUM_TYPE;
+                        member.enum_.emplace(jDDLDef.enums[member.data.m_link_data.enumIndex].name);
+                        size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_ENUM;
+                        member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
                     }
                     else
                         return false;
@@ -143,10 +142,10 @@ namespace
                     auto& outMember = out.structList[i].members[j];
                     
                     outMember.name = m_memory.Dup(inMember.name.c_str());
-                    outMember.size = inMember.linkData.size;
-                    outMember.offset = inMember.linkData.offset;
-                    outMember.type = inMember.linkData.typeEnum;
-                    outMember.externalIndex = inMember.linkData.externalIndex;
+                    outMember.size = inMember.data.m_link_data.size;
+                    outMember.offset = inMember.data.m_link_data.offset;
+                    outMember.type = inMember.data.m_link_data.typeEnum;
+                    outMember.externalIndex = inMember.data.m_link_data.externalIndex;
                     if (inMember.limits)
                     {
                         if (inMember.limits->range)
@@ -157,7 +156,7 @@ namespace
                         }
                     }
                     outMember.arraySize = inMember.arraySize.value_or(1);
-                    outMember.enumIndex = inMember.linkData.enumIndex;
+                    outMember.enumIndex = inMember.data.m_link_data.enumIndex;
                     outMember.permission = inMember.permission.value();
                 }
                 for (auto j = 0; j < out.structList[i].memberCount; j++)
@@ -165,7 +164,21 @@ namespace
                     out.structList[i].hashTable[j] = in.structs[i].sortedHashTable.at(j);
                 }
             }
-        };
+        }
+
+        void ConvertJsonDDL(const JsonDDLDef& jDDLDef, CommonDDLDef& cDDLDef)
+        {
+            for (auto i = 0u; i < jDDLDef.enums.size(); i++)
+            {
+                CommonDDLEnumDef cDDLEnum(cDDLDef);
+                cDDLEnum.m_name.assign(jDDLDef.enums[i].name);
+                for (auto j = 0u; j < jDDLDef.enums[i].members.size(); j++)
+                {
+                    DDLString memberName()
+                    cDDLEnum.m_members.assign(jDDLDef.enums[i].members.begin(), jDDLDef.enums[i].members[j].end());
+                }
+            }
+        }
 
         bool AllocateDefMembers(const JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
         {
@@ -266,7 +279,7 @@ namespace
             constexpr size_t MAX_ENUMS = 32;
             constexpr size_t MAX_MEMBERS = 1023;
 
-            std::vector<JsonDDLDef> jDDLDefs;
+            std::vector<CommonDDLDef> cDDLDefs;
             if (!jDDLRoot.defFiles.size())
             {
                 std::cerr << "ddl \"" << m_assetname << "\" has no def file entries\n";
@@ -293,11 +306,12 @@ namespace
                     if (jDDLDef.structs[j].members.size() > MAX_MEMBERS)
                         return false;
 
-                jDDLDef.filename.assign(jDDLRoot.defFiles[i]);
                 if (!ResolveCustomTypes(jDDLDef))
                     return false;
 
-                jDDLDefs.push_back(jDDLDef);
+                CommonDDLDef cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i]);
+                ConvertJsonDDL(jDDLDef, cDDLDef);
+                cDDLDefs.push_back(cDDLDef);
             }
 
             for (auto& jDef : jDDLDefs)

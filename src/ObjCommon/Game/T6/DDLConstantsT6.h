@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/T6/CommonT6.h"
-#include "DDL/CommonDDLDef.h"
+#include "DDL/CommonDDL.h"
 
 namespace T6
 {
@@ -103,6 +103,13 @@ namespace T6
 
     class DDL
     {
+    public:
+        DDL()
+        {
+
+        }
+
+    private:
         class Def : public CommonDDLDef
         {
             const DDLGameFeatures& GetFeatures() override
@@ -120,7 +127,7 @@ namespace T6
 
                 for (auto i = 0; i < m_members.size(); i++)
                 {
-                    DDLHash ddlHash = {};
+                    DDLHashEntry ddlHash = {};
                     ddlHash.hash = Common::Com_HashString(m_members[i].c_str());
                     ddlHash.index = i;
                     GetHashTable().push_back(ddlHash);
@@ -128,7 +135,7 @@ namespace T6
 
                 std::sort(GetHashTable().begin(),
                           GetHashTable().end(),
-                          [](const DDLHash& a, const DDLHash& b)
+                          [](const DDLHashEntry& a, const DDLHashEntry& b)
                           {
                               return a.hash < b.hash;
                           });
@@ -143,7 +150,7 @@ namespace T6
             {
                 for (auto i = 0; i < m_members.size(); i++)
                 {
-                    DDLHash ddlHash = {};
+                    DDLHashEntry ddlHash = {};
                     ddlHash.hash = Common::Com_HashString(m_members[i].m_name.c_str());
                     ddlHash.index = i;
                     GetHashTable().push_back(ddlHash);
@@ -151,7 +158,7 @@ namespace T6
 
                 std::sort(GetHashTable().begin(),
                           GetHashTable().end(),
-                          [](const DDLHash& a, const DDLHash& b)
+                          [](const DDLHashEntry& a, const DDLHashEntry& b)
                           {
                               return a.hash < b.hash;
                           });

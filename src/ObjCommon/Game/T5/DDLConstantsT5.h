@@ -1,8 +1,8 @@
 #pragma once
-#include "Game/T5/CommonT5.h"
 
+#include "Game/T5/CommonT5.h"
 #include "DDL/CommonDDL.h"
-#include "DDL/CommonDDLDef.h"
+#include <unordered_map>
 
 namespace T5
 {
