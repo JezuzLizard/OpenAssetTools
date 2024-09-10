@@ -76,49 +76,7 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
-        bool ResolveCustomTypes(JsonDDLDef& jDDLDef) const
-        {
-            for (auto j = 0u; j < jDDLDef.structs.size(); j++)
-            {
-                const auto& members = jDDLDef.structs[j].members;
-
-                for (auto k = 0u; k < jDDLDef.structs[j].members.size(); k++)
-                {
-                    JsonDDLMemberDef& member = jDDLDef.structs[j].members[k];
-                    member.data.m_link_data.m_external_index = member.data.GetParentConst().GetParentConst().TypeToStructIndex();
-                    if (!member.data.m_link_data.m_external_index)
-                    {
-                        member.data.m_link_data.m_type_enum = member.data.NameToType();
-                        if (member.data.m_link_data.m_type_enum == DDL_TYPE_COUNT)
-                            return false;
-                    }
-                    else
-                    {
-                        member.data.m_link_data.m_struct.emplace(jDDLDef.structs[member.data.m_link_data.m_external_index].name);
-                        member.type = member.data.m_link_data.m_struct.value();
-                        size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_STRUCT;
-                        member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
-                    }
-
-                    member.data.m_link_data.enumIndex = -1;
-
-                    if (!member.enum_.has_value())
-                        continue;
-
-                    member.data.m_link_data.enumIndex = member.TypeToEnumIndex();
-                    if (member.data.m_link_data.enumIndex > -1)
-                    {
-                        member.enum_.emplace(jDDLDef.enums[member.data.m_link_data.enumIndex].name);
-                        size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_ENUM;
-                        member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
-                    }
-                    else
-                        return false;
-                }
-            }
-
-            return true;
-        }
+        /*
 
         inline void from_json(const JsonDDLDef& in, ddlDef_t& out) const
         {
@@ -165,18 +123,70 @@ namespace
                 }
             }
         }
+        */
 
-        void ConvertJsonDDL(const JsonDDLDef& jDDLDef, CommonDDLDef& cDDLDef)
+        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Def& cDDLDef, bool inInclude) const
         {
-            for (auto i = 0u; i < jDDLDef.enums.size(); i++)
+            for (const auto& enum_ : jDDLDef.enums)
             {
-                CommonDDLEnumDef cDDLEnum(cDDLDef);
-                cDDLEnum.m_name.assign(jDDLDef.enums[i].name);
-                for (auto j = 0u; j < jDDLDef.enums[i].members.size(); j++)
+                T6::DDL::Enum cDDLEnum(cDDLDef);
+                cDDLEnum.m_name.AssignLowerCase(enum_.name);
+                for (const DDLString member : enum_.members)
                 {
-                    DDLString memberName()
-                    cDDLEnum.m_members.assign(jDDLDef.enums[i].members.begin(), jDDLDef.enums[i].members[j].end());
+                    cDDLEnum.m_members.push_back(member);
                 }
+
+                if (cDDLDef.m_enums.find(cDDLEnum.m_name) != cDDLDef.m_enums.end())
+                {
+                    std::cerr << "duplicate enum definition in def\n";
+                    return false;
+                }
+
+                cDDLDef.m_enums.emplace(cDDLEnum.m_name, cDDLEnum);
+            }
+
+            for (const auto& struc : jDDLDef.structs)
+            {
+                T6::DDL::Struct cDDLStruct(cDDLDef);
+                cDDLStruct.m_name.AssignLowerCase(struc.name);
+                for (const auto& member : struc.members)
+                {
+                    T6::DDL::Member cDDLMember(cDDLStruct);
+                    if (member.enum_.has_value())
+                        cDDLMember.m_enum->AssignLowerCase(member.enum_.value());
+                    cDDLMember.m_name.AssignLowerCase(member.name);
+                    cDDLMember.m_type.AssignLowerCase(member.type);
+                    if (member.permission.has_value())
+                        cDDLMember.m_permission = cDDLMember.NameToPermissionType(member.permission.value());
+                    cDDLMember.m_array_size = member.arraySize;
+                    if (member.limits.has_value())
+                        cDDLMember.m_limits.emplace(member.limits->bits, member.limits->range, member.limits->fixedPrecisionBits, member.limits->fixedMagnitudeBits);
+                    
+                    cDDLMember.m_max_characters = member.maxCharacters;
+
+                    if (cDDLStruct.m_members.find(cDDLMember.m_name) != cDDLStruct.m_members.end())
+                    {
+                        std::cerr << "duplicate member definition in struct\n";
+                        return false;
+                    }
+
+                    cDDLStruct.m_members.emplace(cDDLMember.m_name, cDDLMember);
+                }
+
+                if (cDDLDef.m_structs.find(cDDLStruct.m_name) != cDDLDef.m_structs.end())
+                {
+                    std::cerr << "duplicate struct definition\n";
+                    return false;
+                }
+
+                cDDLDef.m_structs.emplace(cDDLStruct.m_name, cDDLStruct);
+            }
+
+            std::vector<CommonDDLInclude> cDDLIncludes;
+            for (auto& [filenames, def] : jDDLRoot.includeDefs)
+            {
+                T6::DDL::Def cDDLInclude(def.version, filenames.second);
+                ConvertJsonDDLDef(jDDLRoot, def, cDDLInclude, true);
             }
         }
 
@@ -279,7 +289,7 @@ namespace
             constexpr size_t MAX_ENUMS = 32;
             constexpr size_t MAX_MEMBERS = 1023;
 
-            std::vector<CommonDDLDef> cDDLDefs;
+            std::vector<T6::DDL::Def> cDDLDefs;
             if (!jDDLRoot.defFiles.size())
             {
                 std::cerr << "ddl \"" << m_assetname << "\" has no def file entries\n";
@@ -295,22 +305,28 @@ namespace
                 if (jDDLDef.enums.size() > MAX_ENUMS)
                     return false;
 
-                for (auto j = 0u; j < jDDLDef.enums.size(); j++)
-                    if (jDDLDef.enums[j].members.size() > MAX_MEMBERS)
+                for (const auto& enum_ : jDDLDef.enums)
+                    if (enum_.members.size() > MAX_MEMBERS)
                         return false;
 
                 if (jDDLDef.structs.size() > MAX_STRUCTS)
                     return false;
 
-                for (auto j = 0u; j < jDDLDef.structs.size(); j++)
-                    if (jDDLDef.structs[j].members.size() > MAX_MEMBERS)
+                for (const auto& struc : jDDLDef.structs)
+                    if (struc.members.size() > MAX_MEMBERS)
                         return false;
 
-                if (!ResolveCustomTypes(jDDLDef))
+                for (auto& jDDLIncludeFile : jDDLRoot.defs[i].includeFiles)
+                {
+                    JsonDDLDef jDDLInclude;
+                    if (!LoadDDLDefJson(jDDLIncludeFile, searchPath, jDDLInclude))
+                        return false;
+                    jDDLRoot.includeDefs.insert_or_assign({jDDLRoot.defFiles[i], jDDLIncludeFile}, jDDLInclude);
+                }
+                T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i]);
+                if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLDef, false))
                     return false;
 
-                CommonDDLDef cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i]);
-                ConvertJsonDDL(jDDLDef, cDDLDef);
                 cDDLDefs.push_back(cDDLDef);
             }
 

@@ -5,6 +5,7 @@ class CommonDDLEnumDef
 public:
     DDLString m_name;
     std::vector<DDLString> m_members;
+    std::optional<DDLString> m_include_file;
 
     void LogicError(const std::string& message) const;
     void Validate() const;

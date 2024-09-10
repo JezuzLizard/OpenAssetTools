@@ -5,8 +5,9 @@ class CommonDDLStructDef
 public:
     DDLString m_name;
     int m_size = -1;
-    std::vector<CommonDDLMemberDef> m_members;
+    std::unordered_map<DDLString, CommonDDLMemberDef> m_members;
     int m_permission_scope;
+    std::optional<DDLString> m_include_file;
 
     void LogicError(const std::string& message) const;
     void Validate() const;
@@ -21,6 +22,7 @@ public:
     CommonDDLDef& GetParent();
     const CommonDDLDef& GetParentConst() const;
     std::vector<DDLHashEntry>& GetHashTable();
+    void Resolve();
 
     CommonDDLStructDef(CommonDDLDef& parent);
 

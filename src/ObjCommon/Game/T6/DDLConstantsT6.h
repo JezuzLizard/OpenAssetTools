@@ -108,18 +108,39 @@ namespace T6
         {
 
         }
-
-    private:
         class Def : public CommonDDLDef
         {
+        public:
+            Def(const int version, const std::string filename)
+                : CommonDDLDef(version, filename)
+            {
+
+            }
+
             const DDLGameFeatures& GetFeatures() override
             {
                 return DDL_GAME_FEATURES;
+            }
+
+            void Convert(const CommonDDLDef& from, void* to) override
+            {
+                auto* ddlDef = reinterpret_cast<ddlDef_t*>(to);
+            }
+
+            void Convert(const void* from, CommonDDLDef& to) override
+            {
+                const auto* ddlDef = reinterpret_cast<const ddlDef_t*>(from);
             }
         };
 
         class Enum : public CommonDDLEnumDef
         {
+        public:
+            DDL::Enum(CommonDDLDef& parent)
+                : CommonDDLEnumDef(parent)
+            {
+
+            }
             void CalculateHashes() override
             {
                 if (IsCalculated())
@@ -146,6 +167,12 @@ namespace T6
 
         class Struct : public CommonDDLStructDef
         {
+        public:
+            DDL::Struct(CommonDDLDef& parent)
+                : CommonDDLStructDef(parent)
+            {
+
+            }
             void CalculateHashes() override
             {
                 for (auto i = 0; i < m_members.size(); i++)
@@ -167,6 +194,11 @@ namespace T6
 
         class Member : public CommonDDLMemberDef
         {
+        public:
+            DDL::Member(CommonDDLStructDef& parent)
+                : CommonDDLMemberDef(parent)
+            {
+            }
             const bool IsStandardSize() const override
             {
                 if (m_link_data.m_type_enum > DDL_FLOAT_TYPE)
@@ -222,12 +254,12 @@ namespace T6
                 return m_link_data.m_type_enum == DDL_STRING_TYPE;
             }
  
-            const size_t GetGameStructType() const override
+            constexpr size_t GetGameStructType() const override
             {
                 return DDL_STRUCT_TYPE;
             };
 
-            const size_t GetGameEnumType() const override
+            constexpr size_t GetGameEnumType() const override
             {
                 return DDL_ENUM_TYPE;
             };

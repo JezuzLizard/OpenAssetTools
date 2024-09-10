@@ -16,6 +16,11 @@ public:
     virtual void CalculateFixedPoint(){};
     virtual void CalculateRangeLimits(){};
     virtual void CalculateBitLimits(){};
+
+    CommonDDLMemberLimits(std::optional<size_t> bits,
+                          std::optional<size_t> range,
+                          std::optional<size_t> precision = std::nullopt,
+                          std::optional<size_t> magnitude = std::nullopt);
 };
 
 class CommonDDLMemberDefLinkData
@@ -27,7 +32,7 @@ public:
     ddlUserDefinedTypeFlags_e m_user_type_flags = DDL_USER_TYPE_NONE;
     int m_external_index = 0;
     int m_enum_index = -1;
-    std::optional<DDLString> m_struct;
+    std::optional<std::reference_wrapper<const CommonDDLStructDef>> m_struct;
 };
 
 class CommonDDLMemberDef
@@ -57,8 +62,8 @@ public:
     virtual const bool TypeCanUseLimits() const {};
     virtual const bool TypeCanUseFixedFloatingPoint() const {};
     virtual const bool IsStringType() const {};
-    virtual const size_t GetGameStructType() const {};
-    virtual const size_t GetGameEnumType() const {};
+    virtual constexpr size_t GetGameStructType() const {};
+    virtual constexpr size_t GetGameEnumType() const {};
     virtual const bool IsValidType() const {};
     virtual const bool IsValidPermission() const {};
     const bool HasEnum() const;
@@ -68,12 +73,14 @@ public:
     void Validate() const;
     void Calculate();
     void ResetCalculated();
+    void Resolve();
 
-    CommonDDLMemberDef(CommonDDLStructDef& parent);
+    CommonDDLMemberDef(const std::string& name, CommonDDLStructDef& parent);
 
 private:
     mutable size_t m_reference_count = 0;
     mutable bool m_calculated = false;
+    mutable bool m_resolved = false;
     CommonDDLStructDef& m_parent;
 
     void ValidateName() const;

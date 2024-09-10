@@ -2,6 +2,7 @@
 #include "Utils/StringUtils.h"
 
 #include <unordered_set>
+#include <unordered_map>
 #include <set>
 #include <format>
 #include <iostream>
@@ -63,6 +64,11 @@ public:
     {
     }
 
+    DDLString(const basic_string& _Right)
+        : std::string(_Right)
+    {
+    }
+
     DDLString GetLower()
     {
         DDLString copy = *this;
@@ -91,7 +97,17 @@ public:
         return copy;
     }
 
-    std::string stdString;
+    void Assign(std::string right)
+    {
+        this->assign(right);
+    }
+
+    void AssignLowerCase(std::string right)
+    {
+        DDLString copy = right;
+        utils::MakeStringLowerCase(copy);
+        this->assign(copy);
+    }
 
 private:
 };

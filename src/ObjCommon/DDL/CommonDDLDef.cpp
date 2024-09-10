@@ -1,67 +1,78 @@
 #include "CommonDDL.h"
+#include "CommonDDLEnum.h"
+#include "CommonDDLStruct.h"
 
-CommonDDLDef::CommonDDLDef(const int version, const std::string filename)
+CommonDDLDef::CommonDDLDef(const int version, const std::string& filename)
     : m_version(version),
       m_size(0u),
       m_filename(std::move(filename))
 {
 }
 
-std::optional<CommonDDLStructDef&> CommonDDLDef::FindStruct(const DDLString& name, bool checkIncludes)
+CommonDDLInclude::CommonDDLInclude(const int version, const std::string& filename)
+    : CommonDDLDef::CommonDDLDef(version, filename)
 {
-    for (auto& struc : m_structs)
-    {
-        if (struc.m_name.GetLowerConst() == "root")
-            continue;
-        if (struc.m_name.GetLowerConst() == name.GetLowerConst())
-            return struc;
-    }
+
+}
+
+std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByName(const DDLString& name, bool checkIncludes)
+{
+    if (m_structs.find(name) != m_structs.end())
+        return m_structs[name];
 
     if (checkIncludes)
     {
         for (auto& include : GetIncludes())
         {
-            for (auto& struc : include.m_structs)
-            {
-                if (struc.m_name.GetLowerConst() == "root")
-                    continue;
-                if (struc.m_name.GetLowerConst() == name.GetLowerConst())
-                    return struc;
-            }
+            if (include.m_structs.find(name) != include.m_structs.end())
+                return include.m_structs[name];
         }
     }
     return std::nullopt;
 }
 
-std::optional<CommonDDLEnumDef&> CommonDDLDef::FindEnum(const DDLString& name, bool checkIncludes)
+std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByName(const DDLString& name, bool checkIncludes)
 {
-    for (auto& enum_ : m_enums)
-    {
-        if (enum_.m_name.GetLowerConst() == "root")
-            continue;
-        if (enum_.m_name.GetLowerConst() == name.GetLowerConst())
-            return enum_;
-    }
+    if (m_enums.find(name) != m_enums.end())
+        return m_enums[name];
 
     if (checkIncludes)
     {
         for (auto& include : GetIncludes())
         {
-            for (auto& enum_ : include.m_enums)
-            {
-                if (enum_.m_name.GetLowerConst() == "root")
-                    continue;
-                if (enum_.m_name.GetLowerConst() == name.GetLowerConst())
-                    return enum_;
-            }
+            if (include.m_enums.find(name) != include.m_enums.end())
+                return include.m_enums[name];
         }
     }
+    return std::nullopt;
+}
+
+std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByIndex(const size_t index)
+{
+    if (index < m_structs.size())
+    {
+    }
+
+    return std::nullopt;
+}
+
+std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByIndex(const int index)
+{
+    if (index >= 0 && index < m_enums.size())
+    {
+    }
+
     return std::nullopt;
 }
 
 std::vector<CommonDDLInclude>& CommonDDLDef::GetIncludes()
 {
     return m_includes;
+}
+
+void CommonDDLDef::SetIncludes(std::vector<CommonDDLInclude>& includes)
+{
+    m_includes = includes;
 }
 
 void CommonDDLDef::LogicError(const std::string& message) const
@@ -76,40 +87,56 @@ void CommonDDLDef::LogicError(const std::string& message) const
     throw DDL::Exception(prefaceAndMessage);
 }
 
-size_t CommonDDLDef::TypeToStructIndex(const DDLString& typeName) const noexcept
+const size_t CommonDDLDef::TypeToStructIndex(const DDLString& typeName) const noexcept
 {
-    for (auto i = 0u; i < m_structs.size(); i++)
+    auto i = 0u;
+    for (const auto& [k, struc] : m_structs)
     {
-        if (m_structs[i].m_name.GetLowerConst() == typeName.GetLowerConst())
+        if (k == typeName)
             return i;
+        i++;
     }
 
-    return 0;
+    return 0u;
 }
 
-int CommonDDLDef::TypeToEnumIndex(const DDLString& typeName) const noexcept
+const int CommonDDLDef::TypeToEnumIndex(const DDLString& typeName) const noexcept
 {
-    for (auto i = 0u; i < m_enums.size(); i++)
+    auto i = 0u;
+    for (const auto& [k, enum_] : m_enums)
     {
-        if (m_enums[i].m_name.GetLowerConst() == typeName.GetLowerConst())
+        if (k == typeName)
             return i;
+        i++;
     }
 
     return -1;
 }
 
-std::optional<DDLString> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
+const std::optional<DDLString> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
 {
-    if (index < m_structs.size())
-        return m_structs[index].m_name;
+    auto i = 0u;
+    for (const auto& [k, struc] : m_structs)
+    {
+        if (i == index)
+            return struc.m_name;
+        i++;
+    }
 
     return std::nullopt;
 }
 
-std::optional<DDLString> CommonDDLDef::EnumIndexToType(const int index) const noexcept
+const std::optional<DDLString> CommonDDLDef::EnumIndexToType(const int index) const noexcept
 {
-    if (index > -1 && index < m_enums.size())
-        return m_enums[index].m_name;
+    auto i = 0u;
+    for (const auto& [k, enum_] : m_enums)
+    {
+        if (i == index)
+        {
+            return enum_.m_name;
+        }
+        i++;
+    }
 
     return std::nullopt;
 }
@@ -131,13 +158,13 @@ bool CommonDDLDef::Validate() const
 
 void CommonDDLDef::PreCalculate()
 {
-    for (auto& struc : m_structs)
+    for (auto& [k, struc] : m_structs)
     {
         struc.ResetCalculated();
-        for (auto& member : struc.m_members)
+        for (auto& [k2, member] : struc.m_members)
             member.ResetCalculated();
     }
-    for (auto& enum_ : m_enums)
+    for (auto& [k, enum_] : m_enums)
         enum_.ResetCalculated();
 
     m_in_calculation.clear();
@@ -150,16 +177,16 @@ bool CommonDDLDef::Calculate()
 
     try
     {
-        for (auto& struc : m_structs)
+        for (auto& [k, struc] : m_structs)
         {
-            if (struc.m_name.GetLowerConst() == "root")
+            if (k == "root")
             {
                 struc.Calculate();
                 break;
             }
         }
 
-        for (auto& struc : m_structs)
+        for (auto& [k, struc] : m_structs)
             // Structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
             // Treyarch likely had an include system that would paste structs from an external file into the the defs that include.
             // Or they had an export/import system.
@@ -167,16 +194,16 @@ bool CommonDDLDef::Calculate()
                 m_size += struc.m_size;
 
         // Link unreferenced structs anyway
-        for (auto& struc : m_structs)
+        for (auto& [k, struc] : m_structs)
             if (!struc.GetRefCount())
                 struc.Calculate();
 
         // Link unreferenced enums anyway
-        for (auto& enum_ : m_enums)
+        for (auto& [k, enum_] : m_enums)
             if (!enum_.GetRefCount())
                 enum_.CalculateHashes();
 
-        for (auto& enum_ : m_enums)
+        for (auto& [k, enum_] : m_enums)
             enum_.CalculateHashes();
 
         return true;
@@ -191,11 +218,11 @@ bool CommonDDLDef::Calculate()
 
 void CommonDDLDef::ValidateRoot() const
 {
-    for (auto i = 0u; i < m_structs.size(); i++)
+    for (const auto& [k, struc] : m_structs)
     {
-        if (m_structs[i].m_name.GetLowerConst() == "root")
+        if (k == "root")
         {
-            m_structs[i].Validate();
+            struc.Validate();
             break;
         }
 
@@ -208,18 +235,18 @@ void CommonDDLDef::ValidateRoot() const
     // actually reference it in root). Treyarch canonically allowed defs to include structs/enums from common files, the evidence is that there are multiple
     // instances of the same struct appearing in multiple defs, with instances of it not having any references occuring multiple times.
 
-    for (auto i = 0u; i < m_enums.size(); i++)
+    for (const auto& [k, enum_] : m_enums)
     {
-        m_enums[i].ReferenceCount();
-        if (!m_enums[i].GetRefCount())
-            m_enums[i].Validate();
+        enum_.ReferenceCount();
+        if (!enum_.GetRefCount())
+            enum_.Validate();
     }
 
-    for (auto i = 0u; i < m_structs.size(); i++)
+    for (const auto& [k, struc] : m_structs)
     {
-        m_structs[i].ReferenceCount();
-        if (!m_structs[i].GetRefCount())
-            m_structs[i].Validate();
+        struc.ReferenceCount();
+        if (!struc.GetRefCount())
+            struc.Validate();
     }
 }
 
@@ -249,4 +276,80 @@ void CommonDDLDef::ValidateName(const DDLString& name) const
     const auto& it = DDL_KEYWORDS.find(name);
     if (it != DDL_KEYWORDS.end())
         NameError(std::format("field cannot be reserved keyword \"{}\"", it->data()));
+}
+
+void CommonDDLDef::AddStructFromInclude(CommonDDLStructDef& includeStruct)
+{
+    if (m_structs.find(includeStruct.m_name) == m_structs.end())
+    {
+        m_structs.emplace(includeStruct.m_name, includeStruct);
+        includeStruct.Resolve();
+    }
+}
+
+void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
+{
+    if (m_enums.find(includeEnum.m_name) == m_enums.end())
+    {
+        m_enums.emplace(includeEnum.m_name, includeEnum);
+    }
+}
+
+void CommonDDLDef::ResolveCustomTypes()
+{
+    std::vector<CommonDDLStructDef> includedStructs;
+    std::vector<CommonDDLEnumDef> includedEnums;
+
+    // Determine what includes are referenced
+    for (auto& [k, struc] : m_structs)
+    {
+        for (auto& [k, member] : struc.m_members)
+        {
+
+            /*
+            if (!member.data.m_link_data.m_external_index)
+            {
+                member.data.m_link_data.m_type_enum = member.data.NameToType();
+                if (member.data.m_link_data.m_type_enum == DDL_TYPE_COUNT)
+                    LogicError("<UNIMPLEMENTED>");
+            }
+            else
+            {
+                member.data.m_link_data.m_struct.emplace(m_structs[member.data.m_link_data.m_external_index].name);
+                member.type = member.data.m_link_data.m_struct.value();
+                size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_STRUCT;
+                member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
+            }
+
+            member.data.m_link_data.enumIndex = -1;
+
+            if (!member.enum_.has_value())
+                continue;
+
+            member.data.m_link_data.enumIndex = member.TypeToEnumIndex();
+            if (member.data.m_link_data.enumIndex > -1)
+            {
+                member.enum_.emplace(jDDLDef.enums[member.data.m_link_data.enumIndex].name);
+                size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_ENUM;
+                member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
+            }
+            else
+                LogicError("<UNIMPLEMENTED>");
+            */
+        }
+    }
+
+    m_structs.insert(m_structs.end(), includedStructs.begin(), includedStructs.end());
+    m_enums.insert(m_enums.end(), includedEnums.begin(), includedEnums.end());
+
+    for (auto& struc : m_structs)
+    {
+        for (auto& member : struc.m_members)
+        {
+            member.m_link_data.m_type_enum = member.NameToType();
+            if (member.IsValidType())
+            {
+            }
+        }
+    }
 }

@@ -64,13 +64,13 @@ void CommonDDLStructDef::Calculate()
     CalculateHashes();
 
     auto size = 0u;
-    for (auto i = 0u; i < m_members.size(); i++)
+    for (auto& [k, member] : m_members)
     {
         if (m_name == "root")
-            m_permission_scope = m_members[i].m_permission.value_or(0);
-        m_members[i].Calculate();
-        m_members[i].m_link_data.m_offset = size;
-        size += m_members[i].m_link_data.m_size;
+            m_permission_scope = member.m_permission.value_or(0);
+        member.Calculate();
+        member.m_link_data.m_offset = size;
+        size += member.m_link_data.m_size;
     }
 
     m_size = size;
@@ -87,7 +87,7 @@ void CommonDDLStructDef::ValidateName() const
     GetParentConst().ValidateName(m_name.GetLowerConst());
 
     size_t nameRedefinitions = 0;
-    for (const auto& struc : GetParentConst().m_structs)
+    for (const auto& [k, struc] : GetParentConst().m_structs)
     {
         if (struc.m_name.GetLowerConst() == m_name.GetLowerConst())
             nameRedefinitions++;
@@ -96,7 +96,7 @@ void CommonDDLStructDef::ValidateName() const
             LogicError("multiple redefinitions of struct");
     }
 
-    for (const auto& enum_ : GetParentConst().m_structs)
+    for (const auto& [k, enum_] : GetParentConst().m_structs)
     {
         if (enum_.m_name.GetLowerConst() == m_name.GetLowerConst())
             nameRedefinitions++;
@@ -111,7 +111,7 @@ void CommonDDLStructDef::ValidateMembers() const
     if (m_members.empty())
         LogicError("struct must have at least one member");
 
-    for (const auto& member : m_members)
+    for (const auto& [k, member] : m_members)
     {
         member.Validate();
     }
@@ -123,4 +123,12 @@ void CommonDDLStructDef::ReferenceCount() const
         std::cerr << std::format("[Def: {}|Name: {}] an unreferenced struct will not be used by the engine!", GetParentConst().m_filename, m_name)
                   << "\n";
     // LogicError("an unreferenced struct cannot be linked");
+}
+
+void CommonDDLStructDef::Resolve()
+{
+    for (auto& [k, member] : m_members)
+    {
+        member.Resolve();
+    }
 }

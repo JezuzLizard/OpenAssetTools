@@ -61,8 +61,6 @@ public:
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLEnumDef, name, members);
 
-class JsonDDLInclude;
-
 class JsonDDLDef
 {
 public:
@@ -71,22 +69,17 @@ public:
     std::vector<JsonDDLEnumDef> enums;
     std::vector<JsonDDLStructDef> structs;
     std::vector<std::string> includeFiles;
-
-private:
-    std::vector<JsonDDLInclude> includes;
 };
 
-class JsonDDLInclude : public JsonDDLDef
-{
-};
-
-NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLDef, version, enums, structs);
+NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLDef, includeFiles, version, enums, structs);
 
 class JsonDDLRoot
 {
 public:
     std::vector<std::string> defFiles;
     std::vector<JsonDDLDef> defs;
+    std::unordered_map<std::pair<std::string, std::string>, JsonDDLDef> includeDefs;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles);
+
