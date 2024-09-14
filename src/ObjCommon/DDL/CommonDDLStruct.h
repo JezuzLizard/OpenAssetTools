@@ -20,8 +20,9 @@ public:
     void ResetRefCount();
     const size_t GetRefCount() const;
     CommonDDLDef& GetParent();
-    const CommonDDLDef& GetParentConst() const;
+    const CommonDDLDef& GetParent() const;
     std::vector<DDLHashEntry>& GetHashTable();
+    const std::vector<DDLHashEntry>& GetHashTable() const;
     void Resolve();
 
     CommonDDLStructDef(CommonDDLDef& parent);

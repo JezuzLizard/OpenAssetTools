@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CommonDDL.h"
+
 class CommonDDLInclude;
 
 class CommonDDLDef
@@ -28,23 +30,21 @@ public:
     void AddStructFromInclude(CommonDDLStructDef& includeStruct);
     void AddEnumFromInclude(CommonDDLEnumDef& includeEnum);
 
-    virtual const DDLGameFeatures& GetFeatures(){};
-    virtual void Convert(const CommonDDLDef& from, void* to){};
-    virtual void Convert(const void* from, CommonDDLDef& to){};
+    virtual const DDLGameFeatures& GetFeatures() const {};
 
     CommonDDLDef(const int version, const std::string& filename);
 
     void NameError(const std::string& message) const;
     void ValidateName(const DDLString& name) const;
     void ResolveCustomTypes();
+    bool Validate() const;
+    bool Calculate();
 
 private:
     std::vector<CommonDDLInclude> m_includes;
 
-    bool Validate() const;
     void ValidateRoot() const;
     void PreCalculate();
-    bool Calculate();
 };
 
 class CommonDDLInclude : public CommonDDLDef

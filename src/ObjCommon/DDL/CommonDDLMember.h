@@ -68,7 +68,7 @@ public:
     virtual const bool IsValidPermission() const {};
     const bool HasEnum() const;
     CommonDDLStructDef& GetParent();
-    const CommonDDLStructDef& GetParentConst() const;
+    const CommonDDLStructDef& GetParent() const;
     void ReportCircularDependency(const std::string message) const;
     void Validate() const;
     void Calculate();

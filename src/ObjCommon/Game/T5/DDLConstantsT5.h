@@ -103,19 +103,9 @@ namespace T5
             {
             }
 
-            const DDLGameFeatures& GetFeatures() override
+            const DDLGameFeatures& GetFeatures() const override
             {
                 return DDL_GAME_FEATURES;
-            }
-
-            void Convert(const CommonDDLDef& from, void* to) override
-            {
-                auto* ddlDef = reinterpret_cast<ddlDef_t*>(to);
-            }
-
-            void Convert(const void* from, CommonDDLDef& to) override
-            {
-                const auto* ddlDef = reinterpret_cast<const ddlDef_t*>(from);
             }
         };
 
@@ -150,8 +140,8 @@ namespace T5
         class Member : public CommonDDLMemberDef
         {
         public:
-            DDL::Member(CommonDDLStructDef& parent)
-                : CommonDDLMemberDef(parent)
+            DDL::Member(const std::string& name, CommonDDLStructDef& parent)
+                : CommonDDLMemberDef(name, parent)
             {
             }
             const bool IsStandardSize() const override

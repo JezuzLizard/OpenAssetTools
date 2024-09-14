@@ -13,14 +13,15 @@ public:
     virtual void CalculateHashes(){};
 
     void SetCalculated();
-    const bool IsCalculated();
+    const bool IsCalculated() const;
     void ResetCalculated();
     void ResetRefCount();
     const size_t GetRefCount() const;
     CommonDDLDef& GetParent();
-    const CommonDDLDef& GetParentConst() const;
+    const CommonDDLDef& GetParent() const;
 
     std::vector<DDLHashEntry>& GetHashTable();
+    const std::vector<DDLHashEntry>& GetHashTable() const;
 
     CommonDDLEnumDef(CommonDDLDef& parent);
 

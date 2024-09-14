@@ -1,13 +1,8 @@
 #pragma once
-#include "Utils/StringUtils.h"
-
+#include <Utils/StringUtils.h>
+#include <string>
 #include <unordered_set>
-#include <unordered_map>
-#include <set>
-#include <format>
-#include <iostream>
-#include <cassert>
-#include <algorithm>
+#include <stdexcept>
 
 constexpr auto OAT_DDL_FLOAT_BITS = (sizeof(float) * CHAR_BIT);
 
@@ -154,8 +149,6 @@ namespace DDL
     };
 } // namespace DDL
 
-#include "CommonDDLDef.h"
-#include "CommonDDLEnum.h"
 #include "CommonDDLStruct.h"
+#include "CommonDDLEnum.h"
 #include "CommonDDLMember.h"
-#include "CommonDDLRoot.h"

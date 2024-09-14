@@ -76,82 +76,88 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
-        /*
-
-        inline void from_json(const JsonDDLDef& in, ddlDef_t& out) const
+        void ConvertToAsset(const T6::DDL::Def& in, ddlDef_t& out) const
         {
-            for (auto i = 0; i < out.enumCount; i++)
+            auto i = 0;
+            for (const auto& [k, enum_] : in.m_enums)
             {
-                for (auto j = 0; j < out.enumList[i].memberCount; j++)
+                for (auto j = 0u; j < enum_.m_members.size(); j++)
                 {
-                    out.enumList[i].members[j] = m_memory.Dup(in.enums[i].members[j].c_str());
+                    out.enumList[i].members[j] = m_memory.Dup(enum_.m_members[j].c_str());
                 }
-                for (auto j = 0; j < out.enumList[i].memberCount; j++)
+                for (auto j = 0u; j < enum_.GetHashTable().size(); j++)
                 {
-                    out.enumList[i].hashTable[j] = in.enums[i].sortedHashTable.at(j);
+                    auto& hashTable = enum_.GetHashTable().at(j);
+                    out.enumList[i].hashTable[j].hash = hashTable.hash;
+                    out.enumList[i].hashTable[j].index = hashTable.index;
                 }
+                i++;
             }
 
-            for (auto i = 0; i < out.structCount; i++)
+            auto i = 0;
+            for (const auto& [k, struc] : in.m_structs)
             {
-                for (auto j = 0; j < out.structList[i].memberCount; j++)
+                auto j = 0;
+                for (const auto& [k, inMember] : struc.m_members)
                 {
-                    const auto& inMember = in.structs[i].members[j];
                     auto& outMember = out.structList[i].members[j];
-                    
-                    outMember.name = m_memory.Dup(inMember.name.c_str());
-                    outMember.size = inMember.data.m_link_data.size;
-                    outMember.offset = inMember.data.m_link_data.offset;
-                    outMember.type = inMember.data.m_link_data.typeEnum;
-                    outMember.externalIndex = inMember.data.m_link_data.externalIndex;
-                    if (inMember.limits)
+
+                    outMember.name = m_memory.Dup(inMember.m_name.c_str());
+                    outMember.size = inMember.m_link_data.m_size;
+                    outMember.offset = inMember.m_link_data.m_offset;
+                    outMember.type = inMember.m_link_data.m_type_enum;
+                    outMember.externalIndex = inMember.m_link_data.m_external_index;
+                    if (inMember.m_limits.has_value())
                     {
-                        if (inMember.limits->range)
+                        if (inMember.m_limits->m_range.has_value())
                         {
-                            outMember.rangeLimit = inMember.limits->range.value();
-                            outMember.serverDelta = inMember.limits->range.value();
-                            outMember.clientDelta = inMember.limits->range.value();
+                            outMember.rangeLimit = inMember.m_limits->m_range.value();
+                            outMember.serverDelta = inMember.m_limits->m_range.value();
+                            outMember.clientDelta = inMember.m_limits->m_range.value();
                         }
                     }
-                    outMember.arraySize = inMember.arraySize.value_or(1);
-                    outMember.enumIndex = inMember.data.m_link_data.enumIndex;
-                    outMember.permission = inMember.permission.value();
+                    outMember.arraySize = inMember.m_array_size.value_or(1);
+                    outMember.enumIndex = inMember.m_link_data.m_enum_index;
+                    outMember.permission = inMember.m_permission.value();
+                    j++;
                 }
-                for (auto j = 0; j < out.structList[i].memberCount; j++)
+
+                for (auto j = 0u; j < struc.GetHashTable().size(); j++)
                 {
-                    out.structList[i].hashTable[j] = in.structs[i].sortedHashTable.at(j);
+                    out.structList[i].hashTable[j].hash = struc.GetHashTable().at(j).hash;
+                    out.structList[i].hashTable[j].index = struc.GetHashTable().at(j).index;
                 }
+                i++;
             }
         }
-        */
 
-        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Def& cDDLDef, bool inInclude) const
+        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Def& cDef, bool inInclude) const
         {
             for (const auto& enum_ : jDDLDef.enums)
             {
-                T6::DDL::Enum cDDLEnum(cDDLDef);
+                T6::DDL::Enum cDDLEnum(cDef);
                 cDDLEnum.m_name.AssignLowerCase(enum_.name);
                 for (const DDLString member : enum_.members)
                 {
-                    cDDLEnum.m_members.push_back(member);
+                    cDDLEnum.m_members.emplace_back(member);
                 }
 
-                if (cDDLDef.m_enums.find(cDDLEnum.m_name) != cDDLDef.m_enums.end())
+                if (cDef.m_enums.find(cDDLEnum.m_name) != cDef.m_enums.end())
                 {
                     std::cerr << "duplicate enum definition in def\n";
                     return false;
                 }
 
-                cDDLDef.m_enums.emplace(cDDLEnum.m_name, cDDLEnum);
+                cDef.m_enums.emplace(cDDLEnum.m_name, cDDLEnum);
             }
 
             for (const auto& struc : jDDLDef.structs)
             {
-                T6::DDL::Struct cDDLStruct(cDDLDef);
+                T6::DDL::Struct cDDLStruct(cDef);
                 cDDLStruct.m_name.AssignLowerCase(struc.name);
                 for (const auto& member : struc.members)
                 {
-                    T6::DDL::Member cDDLMember(cDDLStruct);
+                    T6::DDL::Member cDDLMember(cDDLStruct.m_name, cDDLStruct);
                     if (member.enum_.has_value())
                         cDDLMember.m_enum->AssignLowerCase(member.enum_.value());
                     cDDLMember.m_name.AssignLowerCase(member.name);
@@ -173,14 +179,17 @@ namespace
                     cDDLStruct.m_members.emplace(cDDLMember.m_name, cDDLMember);
                 }
 
-                if (cDDLDef.m_structs.find(cDDLStruct.m_name) != cDDLDef.m_structs.end())
+                if (cDef.m_structs.find(cDDLStruct.m_name) != cDef.m_structs.end())
                 {
                     std::cerr << "duplicate struct definition\n";
                     return false;
                 }
 
-                cDDLDef.m_structs.emplace(cDDLStruct.m_name, cDDLStruct);
+                cDef.m_structs.emplace(cDDLStruct.m_name, cDDLStruct);
             }
+
+            if (inInclude)
+                return true;
 
             std::vector<CommonDDLInclude> cDDLIncludes;
             for (auto& [filenames, def] : jDDLRoot.includeDefs)
@@ -188,44 +197,53 @@ namespace
                 T6::DDL::Def cDDLInclude(def.version, filenames.second);
                 ConvertJsonDDLDef(jDDLRoot, def, cDDLInclude, true);
             }
-        }
-
-        bool AllocateDefMembers(const JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
-        {
-            ddlDef.enumCount = jDDLDef.enums.size();
-            ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
-            for (auto i = 0; i < ddlDef.enumCount; i++)
-            {
-                ddlDef.enumList[i].name = m_memory.Dup(jDDLDef.enums[i].name.c_str());
-                ddlDef.enumList[i].memberCount = jDDLDef.enums[i].members.size();
-                ddlDef.enumList[i].members = m_memory.Alloc<const char*>(sizeof(char*) * ddlDef.enumList[i].memberCount);
-                ddlDef.enumList[i].hashTable = m_memory.Alloc<ddlHash_t>(sizeof(ddlHash_t) * ddlDef.enumList[i].memberCount);
-            }
-
-            ddlDef.structCount = jDDLDef.structs.size();
-            ddlDef.structList = m_memory.Alloc<ddlStructDef_t>(sizeof(ddlStructDef_t) * ddlDef.structCount);
-            for (auto i = 0; i < ddlDef.structCount; i++)
-            {
-                ddlDef.structList[i].name = m_memory.Dup(jDDLDef.structs[i].name.c_str());
-                ddlDef.structList[i].memberCount = jDDLDef.structs[i].members.size();
-                ddlDef.structList[i].members = m_memory.Alloc<ddlMemberDef_t>(sizeof(ddlMemberDef_t) * ddlDef.structList[i].memberCount);
-                ddlDef.structList[i].hashTable = m_memory.Alloc<ddlHash_t>(sizeof(ddlHash_t) * ddlDef.structList[i].memberCount);
-            }
 
             return true;
         }
 
-        bool CreateDDLDefFromJson(JsonDDLDef& jDDLDef, ddlDef_t& ddlDef) const
+        bool AllocateDefMembers(const T6::DDL::Def& cDef, ddlDef_t& ddlDef) const
         {
-            if (!jDDLDef.Calculate())
-                return false;
+            ddlDef.enumCount = cDef.m_enums.size();
+            ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
 
-            ddlDef.version = jDDLDef.version;
-            ddlDef.size = jDDLDef.size.value();
-            if (!AllocateDefMembers(jDDLDef, ddlDef))
+            auto i = 0;
+            for (const auto& [k, enum_] : cDef.m_enums)
+            {
+                ddlDef.enumList[i].name = m_memory.Dup(enum_.m_name.c_str());
+                ddlDef.enumList[i].memberCount = enum_.m_members.size();
+                ddlDef.enumList[i].members = m_memory.Alloc<const char*>(sizeof(const char*) * ddlDef.enumList[i].memberCount);
+                ddlDef.enumList[i].hashTable = m_memory.Alloc<ddlHash_t>(sizeof(ddlHash_t) * ddlDef.enumList[i].memberCount);
+                i++;
+            }
+
+            assert(i == cDef.m_enums.size());
+
+            ddlDef.structCount = cDef.m_structs.size();
+            ddlDef.structList = m_memory.Alloc<ddlStructDef_t>(sizeof(ddlStructDef_t) * ddlDef.structCount);
+
+            auto i = 0;
+            for (const auto& [k, struc] : cDef.m_structs)
+            {
+                ddlDef.structList[i].name = m_memory.Dup(struc.m_name.c_str());
+                ddlDef.structList[i].memberCount = struc.m_members.size();
+                ddlDef.structList[i].members = m_memory.Alloc<ddlMemberDef_t>(sizeof(ddlMemberDef_t) * ddlDef.structList[i].memberCount);
+                ddlDef.structList[i].hashTable = m_memory.Alloc<ddlHash_t>(sizeof(ddlHash_t) * ddlDef.structList[i].memberCount);
+                i++;
+            }
+
+            assert(i == cDef.m_structs.size());
+
+            return true;
+        }
+
+        bool CreateDDLDef(const T6::DDL::Def& cDef, ddlDef_t& ddlDef) const
+        {
+            ddlDef.version = cDef.m_version;
+            ddlDef.size = cDef.m_size;
+            if (!AllocateDefMembers(cDef, ddlDef))
                 return false;
             
-            from_json(jDDLDef, ddlDef);
+            ConvertToAsset(cDef, ddlDef);
 
             return true;
         }
@@ -330,26 +348,30 @@ namespace
                 cDDLDefs.push_back(cDDLDef);
             }
 
-            for (auto& jDef : jDDLDefs)
+            for (const auto& cDef : cDDLDefs)
             {
-                if (!jDef.Validate())
+                if (!cDef.Validate())
+                    return false;
+            }
+
+            for (auto& cDef : cDDLDefs)
+            {
+                if (!cDef.Calculate())
                     return false;
             }
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
             auto* firstDef = ddlDef;
-            for (auto i = 0u; i < jDDLDefs.size(); i++)
+            for (const auto& cDef : cDDLDefs)
             {
-                if (i > 0u)
-                {
-                    ddlDef->next = m_memory.Alloc<ddlDef_t>();
-                    ddlDef = ddlDef->next;
-                }
-                if (!CreateDDLDefFromJson(jDDLDefs[i], *ddlDef))
+                if (!CreateDDLDef(cDef, *ddlDef))
                     return false;
+
+                ddlDef->next = m_memory.Alloc<ddlDef_t>();
+                ddlDef = ddlDef->next;
             }
 
-            ddlRoot.ddlDef = firstDef;
+            ddlRoot.ddlDef = std::move(firstDef);
 
             return true;
         }

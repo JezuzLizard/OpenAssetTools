@@ -1,5 +1,5 @@
-#include "CommonDDL.h"
 
+/*
 CommonDDLEnumDef::CommonDDLEnumDef(CommonDDLDef& parent)
     : m_parent(parent)
 {
@@ -10,7 +10,7 @@ CommonDDLDef& CommonDDLEnumDef::GetParent()
     return m_parent;
 }
 
-const CommonDDLDef& CommonDDLEnumDef::GetParentConst() const
+const CommonDDLDef& CommonDDLEnumDef::GetParent() const
 {
     return m_parent;
 }
@@ -25,7 +25,7 @@ void CommonDDLEnumDef::SetCalculated()
     m_calculated = true;
 }
 
-const bool CommonDDLEnumDef::IsCalculated()
+const bool CommonDDLEnumDef::IsCalculated() const
 {
     return m_calculated;
 }
@@ -37,12 +37,23 @@ void CommonDDLEnumDef::ResetCalculated()
 
 std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 {
+    const auto& featureLevel = GetParent().GetFeatures();
+    assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
+
+    return m_hash_table;
+}
+
+const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
+{
+    const auto& featureLevel = GetParent().GetFeatures();
+    assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
+
     return m_hash_table;
 }
 
 void CommonDDLEnumDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParentConst().m_filename) + message;
+    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParent().m_filename) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
@@ -97,3 +108,4 @@ void CommonDDLEnumDef::ReferenceCount() const
                   << "\n";
     // LogicError("an unreferenced enum cannot be linked");
 }
+*/

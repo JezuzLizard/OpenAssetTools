@@ -117,19 +117,13 @@ namespace T6
 
             }
 
-            const DDLGameFeatures& GetFeatures() override
+            const DDLGameFeatures& GetFeatures() const override
             {
                 return DDL_GAME_FEATURES;
             }
 
-            void Convert(const CommonDDLDef& from, void* to) override
+            CommonDDLDef& Convert(const ddlDef_t* from) const
             {
-                auto* ddlDef = reinterpret_cast<ddlDef_t*>(to);
-            }
-
-            void Convert(const void* from, CommonDDLDef& to) override
-            {
-                const auto* ddlDef = reinterpret_cast<const ddlDef_t*>(from);
             }
         };
 
@@ -151,7 +145,7 @@ namespace T6
                     DDLHashEntry ddlHash = {};
                     ddlHash.hash = Common::Com_HashString(m_members[i].c_str());
                     ddlHash.index = i;
-                    GetHashTable().push_back(ddlHash);
+                    GetHashTable().emplace_back(ddlHash);
                 }
 
                 std::sort(GetHashTable().begin(),
@@ -175,12 +169,14 @@ namespace T6
             }
             void CalculateHashes() override
             {
-                for (auto i = 0; i < m_members.size(); i++)
+                auto i = 0;
+                for (const auto& [k, member] : m_members)
                 {
                     DDLHashEntry ddlHash = {};
-                    ddlHash.hash = Common::Com_HashString(m_members[i].m_name.c_str());
+                    ddlHash.hash = Common::Com_HashString(member.m_name.c_str());
                     ddlHash.index = i;
                     GetHashTable().push_back(ddlHash);
+                    i++;
                 }
 
                 std::sort(GetHashTable().begin(),
@@ -195,8 +191,8 @@ namespace T6
         class Member : public CommonDDLMemberDef
         {
         public:
-            DDL::Member(CommonDDLStructDef& parent)
-                : CommonDDLMemberDef(parent)
+            DDL::Member(const std::string& name, DDL::Struct& parent)
+                : CommonDDLMemberDef(name, parent)
             {
             }
             const bool IsStandardSize() const override

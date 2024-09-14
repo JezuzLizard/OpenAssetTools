@@ -1,7 +1,5 @@
-#include "CommonDDL.h"
-#include "CommonDDLEnum.h"
-#include "CommonDDLStruct.h"
 
+/*
 CommonDDLDef::CommonDDLDef(const int version, const std::string& filename)
     : m_version(version),
       m_size(0u),
@@ -129,7 +127,7 @@ const std::optional<DDLString> CommonDDLDef::StructIndexToType(const size_t inde
 const std::optional<DDLString> CommonDDLDef::EnumIndexToType(const int index) const noexcept
 {
     auto i = 0u;
-    for (const auto& [k, enum_] : m_enums)
+    for (const auto& [k, enum_] : this->m_enums)
     {
         if (i == index)
         {
@@ -306,7 +304,6 @@ void CommonDDLDef::ResolveCustomTypes()
         for (auto& [k, member] : struc.m_members)
         {
 
-            /*
             if (!member.data.m_link_data.m_external_index)
             {
                 member.data.m_link_data.m_type_enum = member.data.NameToType();
@@ -335,7 +332,6 @@ void CommonDDLDef::ResolveCustomTypes()
             }
             else
                 LogicError("<UNIMPLEMENTED>");
-            */
         }
     }
 
@@ -353,3 +349,4 @@ void CommonDDLDef::ResolveCustomTypes()
         }
     }
 }
+*/

@@ -1,5 +1,5 @@
-#include "CommonDDL.h"
 
+/*
 CommonDDLStructDef::CommonDDLStructDef(CommonDDLDef& parent)
     : m_parent(parent)
 {
@@ -15,7 +15,7 @@ void CommonDDLStructDef::ResetCalculated()
     m_calculated = false;
 }
 
-const CommonDDLDef& CommonDDLStructDef::GetParentConst() const
+const CommonDDLDef& CommonDDLStructDef::GetParent() const
 {
     return m_parent;
 }
@@ -32,12 +32,23 @@ const size_t CommonDDLStructDef::GetRefCount() const
 
 std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable()
 {
+    const auto& featureLevel = GetParent().GetFeatures();
+    assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
+
+    return m_hash_table;
+}
+
+const std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable() const
+{
+    const auto& featureLevel = GetParent().GetFeatures();
+    assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
+
     return m_hash_table;
 }
 
 void CommonDDLStructDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParentConst().m_filename) + message;
+    std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParent().m_filename) + message;
 #ifdef DDL_DEBUG
     __debugbreak();
 #endif
@@ -61,8 +72,12 @@ void CommonDDLStructDef::Calculate()
     if (m_calculated)
         return;
 
-    CalculateHashes();
-
+    const auto& featureLevel = GetParent().GetFeatures();
+    if (featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table)
+    {
+        CalculateHashes();
+    }
+    
     auto size = 0u;
     for (auto& [k, member] : m_members)
     {
@@ -84,10 +99,10 @@ void CommonDDLStructDef::ValidateName() const
     utils::MakeStringLowerCase(primary);
     std::string other;
 
-    GetParentConst().ValidateName(m_name.GetLowerConst());
+    GetParent().ValidateName(m_name.GetLowerConst());
 
     size_t nameRedefinitions = 0;
-    for (const auto& [k, struc] : GetParentConst().m_structs)
+    for (const auto& [k, struc] : GetParent().m_structs)
     {
         if (struc.m_name.GetLowerConst() == m_name.GetLowerConst())
             nameRedefinitions++;
@@ -96,7 +111,7 @@ void CommonDDLStructDef::ValidateName() const
             LogicError("multiple redefinitions of struct");
     }
 
-    for (const auto& [k, enum_] : GetParentConst().m_structs)
+    for (const auto& [k, enum_] : GetParent().m_structs)
     {
         if (enum_.m_name.GetLowerConst() == m_name.GetLowerConst())
             nameRedefinitions++;
@@ -120,7 +135,7 @@ void CommonDDLStructDef::ValidateMembers() const
 void CommonDDLStructDef::ReferenceCount() const
 {
     if (!m_reference_count)
-        std::cerr << std::format("[Def: {}|Name: {}] an unreferenced struct will not be used by the engine!", GetParentConst().m_filename, m_name)
+        std::cerr << std::format("[Def: {}|Name: {}] an unreferenced struct will not be used by the engine!", GetParent().m_filename, m_name)
                   << "\n";
     // LogicError("an unreferenced struct cannot be linked");
 }
@@ -132,3 +147,4 @@ void CommonDDLStructDef::Resolve()
         member.Resolve();
     }
 }
+*/

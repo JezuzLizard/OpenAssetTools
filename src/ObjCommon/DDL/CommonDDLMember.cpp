@@ -1,5 +1,5 @@
-#include "CommonDDL.h"
 
+/*
 CommonDDLMemberDef::CommonDDLMemberDef(const std::string& name, CommonDDLStructDef& parent)
     : m_name(std::move(name)),
     m_parent(parent)
@@ -23,7 +23,7 @@ CommonDDLStructDef& CommonDDLMemberDef::GetParent()
     return m_parent;
 }
 
-const CommonDDLStructDef& CommonDDLMemberDef::GetParentConst() const
+const CommonDDLStructDef& CommonDDLMemberDef::GetParent() const
 {
     return m_parent;
 }
@@ -48,7 +48,7 @@ void CommonDDLMemberDef::LogicError(const std::string& message) const
     std::string prefaceAndMessage = std::format("DDL Member: {} Type: {} Parent: {}",
                                                 m_name,
                                                 m_link_data.m_struct.has_value() ? m_link_data.m_struct.value().get().m_name
-                                                    : TypeToName(), GetParentConst().m_name) + message;
+                                                    : TypeToName(), GetParent().m_name) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
@@ -58,14 +58,14 @@ void CommonDDLMemberDef::LogicError(const std::string& message) const
 
 void CommonDDLMemberDef::ReportCircularDependency(std::string message) const
 {
-    const auto& parentDef = GetParentConst().GetParentConst();
+    const auto& parentDef = GetParent().GetParent();
     std::string traceback("\nTraceback:\n");
     for (const auto& member : parentDef.m_member_stack)
     {
         traceback += std::format("\t[Name:{} | Type:{} | Parent:{}]\n",
                                  member.get().m_name,
                                  member.get().m_link_data.m_struct.has_value() ? member.get().m_link_data.m_struct->get().m_name : member.get().TypeToName(),
-                                 member.get().GetParentConst());
+                                 member.get().GetParent());
     }
     std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
 #ifdef DDL_DEBUG
@@ -98,8 +98,8 @@ void CommonDDLMemberDef::Validate() const
 
     ValidateMaxCharacters();
 
-    const auto& parentStruct = GetParentConst();
-    const auto& parentDef = parentStruct.GetParentConst();
+    const auto& parentStruct = GetParent();
+    const auto& parentDef = parentStruct.GetParent();
     if (HasEnum())
     {
         auto& enumDef = parentDef.m_enums.at(m_name);
@@ -181,9 +181,9 @@ void CommonDDLMemberDef::Calculate()
 
 void CommonDDLMemberDef::ValidateName() const
 {
-    GetParentConst().GetParentConst().ValidateName(m_name);
+    GetParent().GetParent().ValidateName(m_name);
 
-    const auto& parentDef = GetParentConst().GetParentConst();
+    const auto& parentDef = GetParent().GetParent();
     auto nameRedefinitions = 0u;
     for (const auto& [k, struc] : parentDef.m_structs)
     {
@@ -212,7 +212,7 @@ void CommonDDLMemberDef::ValidateType() const
     if ((m_link_data.m_user_type_flags & (DDL_USER_TYPE_ENUM|DDL_USER_TYPE_STRUCT)) == 0)
         return;
 
-    const auto& parentDef = GetParentConst().GetParentConst();
+    const auto& parentDef = GetParent().GetParent();
 
     parentDef.ValidateName(m_type);
 
@@ -230,7 +230,7 @@ void CommonDDLMemberDef::ValidateType() const
 
 void CommonDDLMemberDef::ValidatePermission() const
 {
-    if (GetParentConst().m_name != "root")
+    if (GetParent().m_name != "root")
         LogicError("permission cannot be defined outside of root");
     if (!IsValidPermission())
         LogicError("permission must be client, server, both, or unspecified(defaults to both)");
@@ -268,7 +268,7 @@ void CommonDDLMemberDef::ValidateEnum_() const
     if (m_array_size.has_value())
         LogicError("arraySize field cannot be combined with enum_ field");
 
-    const auto& parentDef = GetParentConst().GetParentConst();
+    const auto& parentDef = GetParent().GetParent();
 
     if (parentDef.m_enums.find(m_enum.value()) != parentDef.m_enums.end())
         return;
@@ -351,3 +351,4 @@ void CommonDDLMemberDef::Resolve()
         parentDef.AddEnumFromInclude(typeEnum.value());
     }
 }
+*/
