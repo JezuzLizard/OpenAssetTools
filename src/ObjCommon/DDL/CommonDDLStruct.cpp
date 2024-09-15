@@ -1,7 +1,22 @@
+#include "CommonDDL.h"
+#include "CommonDDLDef.h"
+#include "CommonDDLStruct.h"
+#include "CommonDDLEnum.h"
+#include "CommonDDLMember.h"
 
-/*
-CommonDDLStructDef::CommonDDLStructDef(CommonDDLDef& parent)
-    : m_parent(parent)
+#include <cassert>
+#include <format>
+#include <iostream>
+
+CommonDDLStructDef::CommonDDLStructDef()
+    : m_name({0}),
+      m_parent(0)
+{
+}
+
+CommonDDLStructDef::CommonDDLStructDef(std::string& name, CommonDDLDef* parent)
+    : m_name(std::move(name)),
+    m_parent(parent)
 {
 }
 
@@ -17,12 +32,12 @@ void CommonDDLStructDef::ResetCalculated()
 
 const CommonDDLDef& CommonDDLStructDef::GetParent() const
 {
-    return m_parent;
+    return *m_parent;
 }
 
 CommonDDLDef& CommonDDLStructDef::GetParent()
 {
-    return m_parent;
+    return *m_parent;
 }
 
 const size_t CommonDDLStructDef::GetRefCount() const
@@ -95,16 +110,12 @@ void CommonDDLStructDef::Calculate()
 
 void CommonDDLStructDef::ValidateName() const
 {
-    std::string primary = m_name;
-    utils::MakeStringLowerCase(primary);
-    std::string other;
-
-    GetParent().ValidateName(m_name.GetLowerConst());
+    GetParent().ValidateName(m_name);
 
     size_t nameRedefinitions = 0;
     for (const auto& [k, struc] : GetParent().m_structs)
     {
-        if (struc.m_name.GetLowerConst() == m_name.GetLowerConst())
+        if (struc.m_name == m_name)
             nameRedefinitions++;
 
         if (nameRedefinitions > 1)
@@ -113,7 +124,7 @@ void CommonDDLStructDef::ValidateName() const
 
     for (const auto& [k, enum_] : GetParent().m_structs)
     {
-        if (enum_.m_name.GetLowerConst() == m_name.GetLowerConst())
+        if (enum_.m_name == m_name)
             nameRedefinitions++;
 
         if (nameRedefinitions > 1)
@@ -147,4 +158,3 @@ void CommonDDLStructDef::Resolve()
         member.Resolve();
     }
 }
-*/

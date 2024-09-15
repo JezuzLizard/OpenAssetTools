@@ -1,5 +1,12 @@
 
-/*
+#include "CommonDDL.h"
+#include "CommonDDLDef.h"
+#include "CommonDDLEnum.h"
+#include <set>
+#include <format>
+#include <iostream>
+#include <cassert>
+
 CommonDDLEnumDef::CommonDDLEnumDef(CommonDDLDef& parent)
     : m_parent(parent)
 {
@@ -72,10 +79,6 @@ void CommonDDLEnumDef::Validate() const
     m_calculated = true;
 }
 
-void CommonDDLEnumDef::CalculateHashes()
-{
-}
-
 void CommonDDLEnumDef::ValidateName() const
 {
     std::set<std::string> occurrences;
@@ -108,4 +111,3 @@ void CommonDDLEnumDef::ReferenceCount() const
                   << "\n";
     // LogicError("an unreferenced enum cannot be linked");
 }
-*/

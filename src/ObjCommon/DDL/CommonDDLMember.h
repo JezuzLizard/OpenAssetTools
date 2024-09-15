@@ -1,5 +1,9 @@
 #pragma once
 
+#include "CommonDDL.h"
+
+class CommonDDLStructDef;
+
 class CommonDDLMemberLimits
 {
 public:
@@ -38,34 +42,107 @@ public:
 class CommonDDLMemberDef
 {
 public:
-    DDLString m_name;
-    DDLString m_type;
+    std::string m_name;
+    std::string m_type;
     std::optional<CommonDDLMemberLimits> m_limits;
     std::optional<int> m_array_size;
     std::optional<int> m_permission;
-    std::optional<DDLString> m_enum;
+    std::optional<std::string> m_enum;
     std::optional<int> m_max_characters;
     CommonDDLMemberDefLinkData m_link_data;
 
     void LogicError(const std::string& message) const;
-    virtual const bool IsStandardSize() const {};
-    virtual const bool IsStandardType() const {};
-    virtual const size_t GetStandardSize() const {};
-    virtual const size_t GetStandardMaxValue() const {};
-    virtual const size_t GetStandardMinValue() const {};
-    virtual const std::string& PermissionTypeToName() const {};
-    virtual const std::string& TypeToName() const {};
-    virtual size_t NameToType() const {};
-    virtual int NameToPermissionType(const DDLString& typeName) const {};
-    const bool IsUserDefinedType() const;
-    virtual const bool TypeCanUseBitfields() const {};
-    virtual const bool TypeCanUseLimits() const {};
-    virtual const bool TypeCanUseFixedFloatingPoint() const {};
-    virtual const bool IsStringType() const {};
-    virtual constexpr size_t GetGameStructType() const {};
-    virtual constexpr size_t GetGameEnumType() const {};
-    virtual const bool IsValidType() const {};
-    virtual const bool IsValidPermission() const {};
+
+    virtual const bool IsStandardSize() const
+    {
+        return 0;
+    };
+
+    virtual const bool IsStandardType() const
+    {
+        return 0;
+    };
+
+    virtual const size_t GetStandardSize() const
+    {
+        return 0;
+    };
+
+    virtual const uint64_t GetStandardMaxValue() const
+    {
+        return 0;
+    };
+
+    virtual const int64_t GetStandardMinValue() const
+    {
+        return 0;
+    };
+
+    virtual const std::string PermissionTypeToName() const
+    {
+        return "none";
+    };
+
+    virtual const std::string TypeToName() const
+    {
+        return "none";
+    };
+
+    virtual const size_t NameToType() const
+    {
+        return 0;
+    };
+
+    virtual const int NameToPermissionType(const std::string& typeName) const
+    {
+        return 0;
+    };
+
+    const bool IsUserDefinedType() const
+    {
+        return 0;
+    };
+
+    virtual const bool TypeCanUseBitfields() const
+    {
+        return 0;
+    };
+
+    virtual const bool TypeCanUseLimits() const
+    {
+        return 0;
+    };
+
+    virtual const bool TypeCanUseFixedFloatingPoint() const
+    {
+        return 0;
+    };
+
+    virtual const bool IsStringType() const
+    {
+        return 0;
+    };
+
+    virtual const size_t GetGameStructType() const
+    {
+        return 0;
+    };
+
+    virtual const size_t GetGameEnumType() const
+    {
+        return 0;
+    };
+
+    virtual const bool IsValidType() const
+    {
+        return 0;
+    };
+
+    virtual const bool IsValidPermission() const
+    {
+        return 0;
+    };
+
     const bool HasEnum() const;
     CommonDDLStructDef& GetParent();
     const CommonDDLStructDef& GetParent() const;
@@ -75,7 +152,7 @@ public:
     void ResetCalculated();
     void Resolve();
 
-    CommonDDLMemberDef(const std::string& name, CommonDDLStructDef& parent);
+    CommonDDLMemberDef(std::string name, CommonDDLStructDef& parent);
 
 private:
     mutable size_t m_reference_count = 0;

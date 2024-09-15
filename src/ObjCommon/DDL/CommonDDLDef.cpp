@@ -1,19 +1,23 @@
 
-/*
-CommonDDLDef::CommonDDLDef(const int version, const std::string& filename)
+#include "CommonDDL.h"
+#include "CommonDDLDef.h"
+#include "CommonDDLStruct.h"
+#include "CommonDDLEnum.h"
+#include "CommonDDLMember.h"
+
+#include <cassert>
+#include <format>
+#include <iostream>
+
+CommonDDLDef::CommonDDLDef(const int version, std::string filename)
     : m_version(version),
       m_size(0u),
       m_filename(std::move(filename))
 {
 }
 
-CommonDDLInclude::CommonDDLInclude(const int version, const std::string& filename)
-    : CommonDDLDef::CommonDDLDef(version, filename)
-{
-
-}
-
-std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByName(const DDLString& name, bool checkIncludes)
+/*
+std::optional<CommonDDLStructDef> CommonDDLDef::GetStructByName(const std::string& name, bool checkIncludes)
 {
     if (m_structs.find(name) != m_structs.end())
         return m_structs[name];
@@ -29,7 +33,7 @@ std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByName(const DDLString
     return std::nullopt;
 }
 
-std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByName(const DDLString& name, bool checkIncludes)
+std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByName(const std::string& name, bool checkIncludes)
 {
     if (m_enums.find(name) != m_enums.end())
         return m_enums[name];
@@ -45,7 +49,7 @@ std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByName(const DDLString& na
     return std::nullopt;
 }
 
-std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByIndex(const size_t index)
+std::optional<CommonDDLStructDef> CommonDDLDef::GetStructByIndex(const size_t index)
 {
     if (index < m_structs.size())
     {
@@ -54,7 +58,7 @@ std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByIndex(const size_t i
     return std::nullopt;
 }
 
-std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByIndex(const int index)
+std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByIndex(const int index)
 {
     if (index >= 0 && index < m_enums.size())
     {
@@ -62,16 +66,7 @@ std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByIndex(const int index)
 
     return std::nullopt;
 }
-
-std::vector<CommonDDLInclude>& CommonDDLDef::GetIncludes()
-{
-    return m_includes;
-}
-
-void CommonDDLDef::SetIncludes(std::vector<CommonDDLInclude>& includes)
-{
-    m_includes = includes;
-}
+*/
 
 void CommonDDLDef::LogicError(const std::string& message) const
 {
@@ -85,7 +80,7 @@ void CommonDDLDef::LogicError(const std::string& message) const
     throw DDL::Exception(prefaceAndMessage);
 }
 
-const size_t CommonDDLDef::TypeToStructIndex(const DDLString& typeName) const noexcept
+const size_t CommonDDLDef::TypeToStructIndex(const std::string& typeName) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, struc] : m_structs)
@@ -98,7 +93,7 @@ const size_t CommonDDLDef::TypeToStructIndex(const DDLString& typeName) const no
     return 0u;
 }
 
-const int CommonDDLDef::TypeToEnumIndex(const DDLString& typeName) const noexcept
+const int CommonDDLDef::TypeToEnumIndex(const std::string& typeName) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, enum_] : m_enums)
@@ -111,7 +106,7 @@ const int CommonDDLDef::TypeToEnumIndex(const DDLString& typeName) const noexcep
     return -1;
 }
 
-const std::optional<DDLString> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
+const std::optional<std::string> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, struc] : m_structs)
@@ -124,7 +119,7 @@ const std::optional<DDLString> CommonDDLDef::StructIndexToType(const size_t inde
     return std::nullopt;
 }
 
-const std::optional<DDLString> CommonDDLDef::EnumIndexToType(const int index) const noexcept
+const std::optional<std::string> CommonDDLDef::EnumIndexToType(const int index) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, enum_] : this->m_enums)
@@ -257,7 +252,7 @@ void CommonDDLDef::NameError(const std::string& message) const
     throw DDL::Exception(prefaceAndMessage);
 }
 
-void CommonDDLDef::ValidateName(const DDLString& name) const
+void CommonDDLDef::ValidateName(const std::string& name) const
 {
     if (name.empty())
         NameError("field cannot be empty");
@@ -295,6 +290,7 @@ void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
 
 void CommonDDLDef::ResolveCustomTypes()
 {
+    /*
     std::vector<CommonDDLStructDef> includedStructs;
     std::vector<CommonDDLEnumDef> includedEnums;
 
@@ -348,5 +344,6 @@ void CommonDDLDef::ResolveCustomTypes()
             }
         }
     }
+
+    */
 }
-*/

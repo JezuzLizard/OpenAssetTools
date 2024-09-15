@@ -1,7 +1,14 @@
+#include "CommonDDL.h"
+#include "CommonDDLDef.h"
+#include "CommonDDLStruct.h"
+#include "CommonDDLEnum.h"
+#include "CommonDDLMember.h"
 
-/*
-CommonDDLMemberDef::CommonDDLMemberDef(const std::string& name, CommonDDLStructDef& parent)
-    : m_name(std::move(name)),
+#include <format>
+#include <cassert>
+
+CommonDDLMemberDef::CommonDDLMemberDef(std::string name, CommonDDLStructDef& parent)
+    : m_name(name),
     m_parent(parent)
 {
 }
@@ -33,11 +40,6 @@ void CommonDDLMemberDef::ResetCalculated()
     m_calculated = false;
 }
 
-const bool CommonDDLMemberDef::IsUserDefinedType() const
-{
-    return m_link_data.m_struct.has_value();
-}
-
 const bool CommonDDLMemberDef::HasEnum() const
 {
     return m_enum.has_value();
@@ -65,7 +67,7 @@ void CommonDDLMemberDef::ReportCircularDependency(std::string message) const
         traceback += std::format("\t[Name:{} | Type:{} | Parent:{}]\n",
                                  member.get().m_name,
                                  member.get().m_link_data.m_struct.has_value() ? member.get().m_link_data.m_struct->get().m_name : member.get().TypeToName(),
-                                 member.get().GetParent());
+                                 member.get().GetParent().m_name);
     }
     std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
 #ifdef DDL_DEBUG
@@ -318,6 +320,7 @@ void CommonDDLMemberDef::ValidateFixedPoint() const
 
 void CommonDDLMemberDef::Resolve()
 {
+    /*
     if (m_resolved)
         return;
 
@@ -334,7 +337,7 @@ void CommonDDLMemberDef::Resolve()
         LogicError("could not resolve custom type for member");
 
     m_resolved = true;
-    if (typeStruct->m_include_file.has_value())
+    if (typeStruct.value().m_include_file.has_value())
     {
         parentDef.AddStructFromInclude(typeStruct.value());
     }
@@ -346,9 +349,9 @@ void CommonDDLMemberDef::Resolve()
     if (!typeEnum.has_value())
         LogicError("could not resolve enum type for member");
 
-    if (typeEnum->m_include_file.has_value())
+    if (typeEnum.value().m_include_file.has_value())
     {
         parentDef.AddEnumFromInclude(typeEnum.value());
     }
+    */
 }
-*/

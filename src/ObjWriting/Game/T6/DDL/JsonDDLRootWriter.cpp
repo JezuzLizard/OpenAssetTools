@@ -18,6 +18,7 @@ namespace
         {
         }
 
+        /*
         void Dump(const ddlRoot_t& ddlRoot, AssetDumpingContext& context)
         {
             if (!ddlRoot.ddlDef)
@@ -181,7 +182,7 @@ namespace
 
             jDDLMemberDef.permission.emplace(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
         }
-
+        */
         void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)
         {
             jDDLStructDef.name = ddlStructDef.name;
@@ -190,7 +191,7 @@ namespace
             for (auto i = 0; i < ddlStructDef.memberCount; i++)
             {
                 jDDLStructDef.sortedHashTable.push_back(*reinterpret_cast<DDLHashEntry*>(&ddlStructDef.hashTable[i]));
-                CreateJsonDDlMemberDef(jDDLStructDef.members[i], ddlStructDef.members[i]);
+                //CreateJsonDDlMemberDef(jDDLStructDef.members[i], ddlStructDef.members[i]);
             }
         }
 
@@ -256,6 +257,6 @@ namespace T6
     void DumpDDLRootAsJson(std::ostream& primaryStream, AssetDumpingContext& context, const ddlRoot_t* ddlRoot)
     {
         JsonDumper dumper(primaryStream);
-        dumper.Dump(*ddlRoot, context);
+        //dumper.Dump(*ddlRoot, context);
     }
 } // namespace T6

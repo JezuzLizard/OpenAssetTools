@@ -1,8 +1,9 @@
 #pragma once
-#include <Utils/StringUtils.h>
-#include <string>
+
 #include <unordered_set>
+#include <unordered_map>
 #include <stdexcept>
+#include <optional>
 
 constexpr auto OAT_DDL_FLOAT_BITS = (sizeof(float) * CHAR_BIT);
 
@@ -52,61 +53,6 @@ public:
     const bool m_bool_type;
 };
 
-class DDLString : public std::string
-{
-public:
-    DDLString() : std::string()
-    {
-    }
-
-    DDLString(const basic_string& _Right)
-        : std::string(_Right)
-    {
-    }
-
-    DDLString GetLower()
-    {
-        DDLString copy = *this;
-        utils::MakeStringLowerCase(copy);
-        return copy;
-    }
-
-    DDLString GetUpper()
-    {
-        DDLString copy = *this;
-        utils::MakeStringUpperCase(copy);
-        return copy;
-    }
-
-    const DDLString GetLowerConst() const
-    {
-        DDLString copy = *this;
-        utils::MakeStringLowerCase(copy);
-        return copy;
-    }
-
-    const DDLString GetUpperConst() const
-    {
-        DDLString copy = *this;
-        utils::MakeStringUpperCase(copy);
-        return copy;
-    }
-
-    void Assign(std::string right)
-    {
-        this->assign(right);
-    }
-
-    void AssignLowerCase(std::string right)
-    {
-        DDLString copy = right;
-        utils::MakeStringLowerCase(copy);
-        this->assign(copy);
-    }
-
-private:
-};
-
 // This isn't strictly necessary, but I'm doing this anyway just in case someone wanted to transpile to the official formats.
 // By maintaining the same standards the canonical DDL linking that the T7 mod tools linker has, avoids potential future issues if someone wanted to link a
 // dumped DDL dumped using the json code here.
@@ -148,7 +94,3 @@ namespace DDL
         }
     };
 } // namespace DDL
-
-#include "CommonDDLStruct.h"
-#include "CommonDDLEnum.h"
-#include "CommonDDLMember.h"

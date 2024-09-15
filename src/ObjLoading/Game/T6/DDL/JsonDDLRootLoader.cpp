@@ -94,7 +94,7 @@ namespace
                 i++;
             }
 
-            auto i = 0;
+            i = 0;
             for (const auto& [k, struc] : in.m_structs)
             {
                 auto j = 0;
@@ -133,11 +133,12 @@ namespace
 
         bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Def& cDef, bool inInclude) const
         {
+            /*
             for (const auto& enum_ : jDDLDef.enums)
             {
                 T6::DDL::Enum cDDLEnum(cDef);
                 cDDLEnum.m_name.AssignLowerCase(enum_.name);
-                for (const DDLString member : enum_.members)
+                for (const std::string member : enum_.members)
                 {
                     cDDLEnum.m_members.emplace_back(member);
                 }
@@ -197,7 +198,7 @@ namespace
                 T6::DDL::Def cDDLInclude(def.version, filenames.second);
                 ConvertJsonDDLDef(jDDLRoot, def, cDDLInclude, true);
             }
-
+            */
             return true;
         }
 
@@ -221,7 +222,7 @@ namespace
             ddlDef.structCount = cDef.m_structs.size();
             ddlDef.structList = m_memory.Alloc<ddlStructDef_t>(sizeof(ddlStructDef_t) * ddlDef.structCount);
 
-            auto i = 0;
+            i = 0;
             for (const auto& [k, struc] : cDef.m_structs)
             {
                 ddlDef.structList[i].name = m_memory.Dup(struc.m_name.c_str());
@@ -258,10 +259,10 @@ namespace
             }
 
             const auto jRoot = json::parse(*secondaryAssetFile.m_stream);
-            std::string tool;
-            std::string type;
-            unsigned int version;
-            std::string game;
+            //std::string tool;
+            //std::string type;
+            //unsigned int version;
+            //std::string game;
 
             /*
             jRoot.at("_tool").get_to(tool);
@@ -339,7 +340,7 @@ namespace
                     JsonDDLDef jDDLInclude;
                     if (!LoadDDLDefJson(jDDLIncludeFile, searchPath, jDDLInclude))
                         return false;
-                    jDDLRoot.includeDefs.insert_or_assign({jDDLRoot.defFiles[i], jDDLIncludeFile}, jDDLInclude);
+                    //jDDLRoot.includeDefs.insert_or_assign({jDDLRoot.defFiles[i], jDDLIncludeFile}, jDDLInclude);
                 }
                 T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i]);
                 if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLDef, false))

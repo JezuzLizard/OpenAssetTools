@@ -1,13 +1,18 @@
 #pragma once
 
+#include "CommonDDL.h"
+
+class CommonDDLDef;
+class CommonDDLMemberDef;
+
 class CommonDDLStructDef
 {
 public:
-    DDLString m_name;
+    std::string m_name;
     int m_size = -1;
-    std::unordered_map<DDLString, CommonDDLMemberDef> m_members;
+    std::unordered_map<std::string, CommonDDLMemberDef> m_members;
     int m_permission_scope;
-    std::optional<DDLString> m_include_file;
+    std::optional<std::string> m_include_file;
 
     void LogicError(const std::string& message) const;
     void Validate() const;
@@ -25,10 +30,11 @@ public:
     const std::vector<DDLHashEntry>& GetHashTable() const;
     void Resolve();
 
-    CommonDDLStructDef(CommonDDLDef& parent);
+    CommonDDLStructDef();
+    CommonDDLStructDef(std::string& name, CommonDDLDef* parent);
 
 private:
-    CommonDDLDef& m_parent;
+    CommonDDLDef* m_parent;
     mutable size_t m_reference_count = 0;
     mutable bool m_calculated = false;
     std::vector<DDLHashEntry> m_hash_table;

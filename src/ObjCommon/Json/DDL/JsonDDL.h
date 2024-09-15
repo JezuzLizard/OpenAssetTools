@@ -5,6 +5,8 @@
 #include "Json/JsonCommon.h"
 #include <nlohmann/json.hpp>
 
+class CommonDDLMemberDefLinkData;
+
 class JsonDDLMemberLimits
 {
 public:
@@ -34,7 +36,7 @@ public:
     std::optional<std::string> permission;
     std::optional<std::string> enum_;
     std::optional<int> maxCharacters;
-    CommonDDLMemberDefLinkData link;
+    //CommonDDLMemberDefLinkData link;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberDef, name, type, limits, arraySize, permission, enum_, maxCharacters);
@@ -78,7 +80,7 @@ class JsonDDLRoot
 public:
     std::vector<std::string> defFiles;
     std::vector<JsonDDLDef> defs;
-    std::unordered_map<std::pair<std::string, std::string>, JsonDDLDef> includeDefs;
+    //std::unordered_map<std::string, JsonDDLDef> includeDefs;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles);

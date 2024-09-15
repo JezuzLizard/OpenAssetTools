@@ -1,7 +1,14 @@
 #pragma once
 
 #include "Game/T6/CommonT6.h"
-#include "DDL/CommonDDL.h"
+
+#include "DDL/CommonDDLDef.h"
+#include "DDL/CommonDDLEnum.h"
+#include "DDL/CommonDDLMember.h"
+#include "DDL/CommonDDLStruct.h"
+
+#include <algorithm>
+#include <string>
 
 namespace T6
 {
@@ -53,7 +60,7 @@ namespace T6
         {"",            DDL_PERMISSIONS_COUNT      }
     };
 
-    inline const DDLTypeFeature DDL_TYPE_FEATURES[] = {
+    inline const DDLTypeFeature DDL_TYPE_FEATURES[6] = {
         {
          .size = sizeof(char) * CHAR_BIT,
          .flags = 0,
@@ -117,7 +124,7 @@ namespace T6
 
             }
 
-            const DDLGameFeatures& GetFeatures() const override
+            constexpr DDLGameFeatures GetFeatures() const override
             {
                 return DDL_GAME_FEATURES;
             }
@@ -140,7 +147,7 @@ namespace T6
                 if (IsCalculated())
                     return;
 
-                for (auto i = 0; i < m_members.size(); i++)
+                for (auto i = 0u; i < m_members.size(); i++)
                 {
                     DDLHashEntry ddlHash = {};
                     ddlHash.hash = Common::Com_HashString(m_members[i].c_str());
@@ -162,8 +169,8 @@ namespace T6
         class Struct : public CommonDDLStructDef
         {
         public:
-            DDL::Struct(CommonDDLDef& parent)
-                : CommonDDLStructDef(parent)
+            DDL::Struct(std::string& name, CommonDDLDef* parent)
+                : CommonDDLStructDef(name, parent)
             {
 
             }
@@ -216,12 +223,12 @@ namespace T6
                 DDL_TYPE_FEATURES[m_link_data.m_type_enum].size;
             }
 
-            const size_t GetStandardMaxValue() const override
+            const uint64_t GetStandardMaxValue() const override
             {
                 return DDL_TYPE_FEATURES[m_link_data.m_type_enum].max;
             }
 
-            const size_t GetStandardMinValue() const override
+            const int64_t GetStandardMinValue() const override
             {
                 return DDL_TYPE_FEATURES[m_link_data.m_type_enum].min;
             }
@@ -250,12 +257,12 @@ namespace T6
                 return m_link_data.m_type_enum == DDL_STRING_TYPE;
             }
  
-            constexpr size_t GetGameStructType() const override
+            const size_t GetGameStructType() const override
             {
                 return DDL_STRUCT_TYPE;
             };
 
-            constexpr size_t GetGameEnumType() const override
+            const size_t GetGameEnumType() const override
             {
                 return DDL_ENUM_TYPE;
             };
@@ -270,12 +277,10 @@ namespace T6
                 return m_permission.value_or(DDL_PERMISSIONS_COUNT) < DDL_PERMISSIONS_COUNT;
             }
 
-            const std::string& PermissionTypeToName() const override
+            const std::string PermissionTypeToName() const override
             {
-                static const std::string unknownPerm = "count";
-
                 if (!m_permission.has_value())
-                    return unknownPerm;
+                    return "unknown";
 
                 for (auto& [k, v] : DDL_PERM_NAMES)
                 {
@@ -283,15 +288,13 @@ namespace T6
                         return k;
                 }
 
-                return unknownPerm;
+                return "unknown";
             }
 
-            const std::string& TypeToName() const override
+            const std::string TypeToName() const override
             {
-                static const std::string unknownType = "unknown";
-
                 if (m_link_data.m_type_enum < 0 || m_link_data.m_type_enum > DDL_TYPE_NAMES.size())
-                    return unknownType;
+                    return "unknown";
 
                 for (const auto& [k, v] : DDL_TYPE_NAMES)
                 {
@@ -299,21 +302,21 @@ namespace T6
                         return k;
                 }
 
-                return unknownType;
+                return "unknown";
             }
 
-            size_t NameToType() const override
+            const size_t NameToType() const override
             {
-                auto it = DDL_TYPE_NAMES.find(m_type.GetLowerConst());
+                auto it = DDL_TYPE_NAMES.find(m_type);
                 if (it != DDL_TYPE_NAMES.end())
                     return static_cast<ddlPrimitiveTypes_e>(it->second);
 
                 return DDL_TYPE_COUNT;
             }
 
-            int NameToPermissionType(const DDLString& typeName) const override
+            const int NameToPermissionType(const std::string& typeName) const override
             {
-                auto it = DDL_TYPE_NAMES.find(typeName.GetLowerConst());
+                auto it = DDL_TYPE_NAMES.find(typeName);
                 if (it != DDL_TYPE_NAMES.end())
                     return static_cast<ddlPermissionTypes_e>(it->second);
 

@@ -260,7 +260,7 @@ namespace T5
                 return DDL_TYPE_COUNT;
             }
 
-            int NameToPermissionType(const DDLString& typeName) const override
+            int NameToPermissionType(const std::string& typeName) const override
             {
                 auto it = DDL_TYPE_NAMES.find(typeName.GetLowerConst());
                 if (it != DDL_TYPE_NAMES.end())
