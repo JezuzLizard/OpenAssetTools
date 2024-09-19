@@ -61,7 +61,7 @@ const std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable() const
     return m_hash_table;
 }
 
-void CommonDDLStructDef::LogicError(const std::string& message) const
+[[noreturn]] void CommonDDLStructDef::LogicError(const std::string& message) const
 {
     std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParent().m_filename) + message;
 #ifdef DDL_DEBUG
@@ -72,7 +72,6 @@ void CommonDDLStructDef::LogicError(const std::string& message) const
 
 void CommonDDLStructDef::Validate() const
 {
-    m_reference_count++;
     if (m_calculated)
         return;
 

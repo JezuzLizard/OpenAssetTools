@@ -8,13 +8,14 @@ class CommonDDLMemberDef;
 class CommonDDLStructDef
 {
 public:
+    friend class CommonDDLDef;
     std::string m_name;
     int m_size = -1;
     std::unordered_map<std::string, CommonDDLMemberDef> m_members;
     int m_permission_scope;
     std::optional<std::string> m_include_file;
 
-    void LogicError(const std::string& message) const;
+    [[noreturn]] void LogicError(const std::string& message) const;
     void Validate() const;
     void ReferenceCount() const;
     virtual void CalculateHashes() {};
@@ -35,7 +36,8 @@ public:
 
 private:
     CommonDDLDef* m_parent;
-    mutable size_t m_reference_count = 0;
+    size_t m_reference_count = 0;
+    bool m_resolved = false;
     mutable bool m_calculated = false;
     std::vector<DDLHashEntry> m_hash_table;
 

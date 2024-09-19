@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <string>
+#include <cassert>
 
 namespace T6
 {
@@ -85,7 +86,6 @@ namespace T6
          .max = INT_MAX,
          .min = INT_MIN,
          },
-
         {
          .size = sizeof(uint64_t) * CHAR_BIT,
          .flags = 0,
@@ -210,6 +210,14 @@ namespace T6
                 return DDL_TYPE_FEATURES[m_link_data.m_type_enum].size == m_link_data.m_size / m_array_size.value_or(1);
             }
 
+            static const bool IsStandardSize(const ddlPrimitiveTypes_e typeEnum, const int size, const int arraySize)
+            {
+                if (typeEnum > DDL_FLOAT_TYPE)
+                    return false;
+
+                return DDL_TYPE_FEATURES[typeEnum].size == size / arraySize;
+            }
+
             const bool IsStandardType() const override
             {
                 return m_link_data.m_type_enum <= DDL_FLOAT_TYPE;
@@ -291,14 +299,45 @@ namespace T6
                 return "unknown";
             }
 
+            static const std::string PermissionTypeToName(ddlPermissionTypes_e permission)
+            {
+                if (permission >= DDL_PERMISSIONS_COUNT)
+                    return "unknown";
+
+                for (auto& [k, v] : DDL_PERM_NAMES)
+                {
+                    if (v == permission)
+                        return k;
+                }
+
+                return "unknown";
+            }
+
             const std::string TypeToName() const override
             {
-                if (m_link_data.m_type_enum < 0 || m_link_data.m_type_enum > DDL_TYPE_NAMES.size())
+                if (!m_type.empty())
+                    return m_type;
+
+                if (m_link_data.m_type_enum > DDL_TYPE_NAMES.size())
                     return "unknown";
 
                 for (const auto& [k, v] : DDL_TYPE_NAMES)
                 {
                     if (v == m_link_data.m_type_enum)
+                        return k;
+                }
+
+                return "unknown";
+            }
+
+            static const std::string TypeToName(ddlPrimitiveTypes_e typeEnum)
+            {
+                if (typeEnum > DDL_TYPE_NAMES.size())
+                    return "unknown";
+
+                for (const auto& [k, v] : DDL_TYPE_NAMES)
+                {
+                    if (v == typeEnum)
                         return k;
                 }
 

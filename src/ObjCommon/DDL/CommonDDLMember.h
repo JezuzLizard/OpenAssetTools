@@ -33,17 +33,18 @@ public:
     int m_size = 0;
     int m_offset = 0;
     size_t m_type_enum = -1;
-    ddlUserDefinedTypeFlags_e m_user_type_flags = DDL_USER_TYPE_NONE;
+    ddlCategoryFlags_e m_category_flags = DDL_CATEGORY_FLAG_NONE;
     int m_external_index = 0;
     int m_enum_index = -1;
-    std::optional<std::reference_wrapper<const CommonDDLStructDef>> m_struct;
+    std::string m_parent_struct = "";
 };
 
 class CommonDDLMemberDef
 {
 public:
-    std::string m_name;
-    std::string m_type;
+    friend class CommonDDLDef;
+    const std::string m_name;
+    std::string m_type = "";
     std::optional<CommonDDLMemberLimits> m_limits;
     std::optional<int> m_array_size;
     std::optional<int> m_permission;
@@ -51,7 +52,7 @@ public:
     std::optional<int> m_max_characters;
     CommonDDLMemberDefLinkData m_link_data;
 
-    void LogicError(const std::string& message) const;
+    [[noreturn]] void LogicError(const std::string& message) const;
 
     virtual const bool IsStandardSize() const
     {
@@ -143,6 +144,9 @@ public:
         return 0;
     };
 
+    const std::string GetCategoryTypeNames() const;
+    void SetCategoryTypeFlags(const ddlCategoryFlags_e flags);
+    void SetTypeInfo();
     const bool HasEnum() const;
     CommonDDLStructDef& GetParent();
     const CommonDDLStructDef& GetParent() const;
@@ -155,9 +159,9 @@ public:
     CommonDDLMemberDef(std::string name, CommonDDLStructDef& parent);
 
 private:
-    mutable size_t m_reference_count = 0;
+    size_t m_reference_count = 0;
     mutable bool m_calculated = false;
-    mutable bool m_resolved = false;
+    bool m_resolved = false;
     CommonDDLStructDef& m_parent;
 
     void ValidateName() const;

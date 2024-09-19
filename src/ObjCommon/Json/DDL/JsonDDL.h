@@ -36,7 +36,9 @@ public:
     std::optional<std::string> permission;
     std::optional<std::string> enum_;
     std::optional<int> maxCharacters;
-    //CommonDDLMemberDefLinkData link;
+    CommonDDLMemberDefLinkData link;
+    mutable size_t refCount = 0;
+    mutable std::vector<size_t> inCalculation;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLMemberDef, name, type, limits, arraySize, permission, enum_, maxCharacters);
@@ -48,7 +50,6 @@ public:
     std::optional<int> size;
     std::vector<JsonDDLMemberDef> members;
     std::vector<DDLHashEntry> sortedHashTable;
-    std::optional<std::string> permissionScope;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLStructDef, name, members);
@@ -80,7 +81,7 @@ class JsonDDLRoot
 public:
     std::vector<std::string> defFiles;
     std::vector<JsonDDLDef> defs;
-    //std::unordered_map<std::string, JsonDDLDef> includeDefs;
+    std::unordered_map<std::string, JsonDDLDef> includeDefs;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLRoot, defFiles);

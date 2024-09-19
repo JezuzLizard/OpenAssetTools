@@ -3,6 +3,8 @@
 #include "Game/T6/DDLConstantsT6.h"
 #include "Json/DDL/JsonDDL.h"
 
+#include "Utils/StringUtils.h"
+
 #include <format>
 #include <iostream>
 
@@ -259,20 +261,19 @@ namespace
             }
 
             const auto jRoot = json::parse(*secondaryAssetFile.m_stream);
-            //std::string tool;
-            //std::string type;
-            //unsigned int version;
-            //std::string game;
+            std::string tool;
+            std::string type;
+            unsigned int version;
+            std::string game;
 
-            /*
             jRoot.at("_tool").get_to(tool);
             jRoot.at("_type").get_to(type);
             jRoot.at("_version").get_to(version);
             jRoot.at("_game").get_to(game);
 
-            utils::MakeStringLowerCase(tool);
-            utils::MakeStringLowerCase(type);
-            utils::MakeStringLowerCase(game);
+            //utils::MakeStringLowerCase(tool);
+            //utils::MakeStringLowerCase(type);
+            //utils::MakeStringLowerCase(game);
 
             if (tool != "oat")
             {
@@ -286,7 +287,6 @@ namespace
                           << " for game t6\n";
                 return false;
             }
-            */
 
             try
             {

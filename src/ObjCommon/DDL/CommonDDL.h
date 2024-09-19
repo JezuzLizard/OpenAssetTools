@@ -14,12 +14,12 @@ enum ddlTypeFlags_e : size_t
     DDL_FLAG_BITFIELDS = 0x4,
 };
 
-enum ddlUserDefinedTypeFlags_e : size_t
+enum ddlCategoryFlags_e : size_t
 {
-    DDL_USER_TYPE_NONE = 0x0,
-    DDL_USER_TYPE_ENUM = 0x1,
-    DDL_USER_TYPE_STRUCT = 0x2,
-    DDL_USER_TYPE_BOTH = 0x3,
+    DDL_CATEGORY_FLAG_NONE = 0x0,
+    DDL_CATEGORY_FLAG_ENUM = 0x1,
+    DDL_CATEGORY_FLAG_STRUCT = 0x2,
+    DDL_CATEGORY_FLAG_BOTH = 0x3,
 };
 
 typedef int ddlHash;

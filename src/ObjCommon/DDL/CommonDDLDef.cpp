@@ -9,31 +9,31 @@
 #include <format>
 #include <iostream>
 
-CommonDDLDef::CommonDDLDef(const int version, std::string filename)
+CommonDDLDef::CommonDDLDef(const int version, std::string& filename)
     : m_version(version),
       m_size(0u),
       m_filename(std::move(filename))
 {
 }
 
-/*
-std::optional<CommonDDLStructDef> CommonDDLDef::GetStructByName(const std::string& name, bool checkIncludes)
+std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByName(const std::string& name, bool checkIncludes)
 {
     if (m_structs.find(name) != m_structs.end())
         return m_structs[name];
 
     if (checkIncludes)
     {
-        for (auto& include : GetIncludes())
+        for (auto& [filename, include] : m_include_pool)
         {
-            if (include.m_structs.find(name) != include.m_structs.end())
-                return include.m_structs[name];
+            auto& def = include.get()->m_def;
+            if (def.m_structs.find(name) != def.m_structs.end())
+                return def.m_structs[name];
         }
     }
     return std::nullopt;
 }
 
-std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByName(const std::string& name, bool checkIncludes)
+std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByName(const std::string& name, bool checkIncludes)
 {
     if (m_enums.find(name) != m_enums.end())
         return m_enums[name];
@@ -46,10 +46,11 @@ std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByName(const std::string& n
                 return include.m_enums[name];
         }
     }
+
     return std::nullopt;
 }
 
-std::optional<CommonDDLStructDef> CommonDDLDef::GetStructByIndex(const size_t index)
+std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByIndex(const size_t index)
 {
     if (index < m_structs.size())
     {
@@ -58,7 +59,7 @@ std::optional<CommonDDLStructDef> CommonDDLDef::GetStructByIndex(const size_t in
     return std::nullopt;
 }
 
-std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByIndex(const int index)
+std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByIndex(const int index)
 {
     if (index >= 0 && index < m_enums.size())
     {
@@ -66,9 +67,9 @@ std::optional<CommonDDLEnumDef> CommonDDLDef::GetEnumByIndex(const int index)
 
     return std::nullopt;
 }
-*/
 
-void CommonDDLDef::LogicError(const std::string& message) const
+
+[[noreturn]] void CommonDDLDef::LogicError(const std::string& message) const
 {
     assert(!m_filename.empty());
 
@@ -106,20 +107,20 @@ const int CommonDDLDef::TypeToEnumIndex(const std::string& typeName) const noexc
     return -1;
 }
 
-const std::optional<std::string> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
+const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, struc] : m_structs)
     {
         if (i == index)
-            return struc.m_name;
+            return std::optional<std::reference_wrapper<const std::string>>(struc.m_name);
         i++;
     }
 
     return std::nullopt;
 }
 
-const std::optional<std::string> CommonDDLDef::EnumIndexToType(const int index) const noexcept
+const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::EnumIndexToType(const int index) const noexcept
 {
     auto i = 0u;
     for (const auto& [k, enum_] : this->m_enums)
@@ -275,6 +276,11 @@ void CommonDDLDef::AddStructFromInclude(CommonDDLStructDef& includeStruct)
 {
     if (m_structs.find(includeStruct.m_name) == m_structs.end())
     {
+        includeStruct.m_reference_count++;
+        if (includeStruct.m_resolved)
+            return;
+
+        includeStruct.m_resolved = true;
         m_structs.emplace(includeStruct.m_name, includeStruct);
         includeStruct.Resolve();
     }
@@ -284,6 +290,11 @@ void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
 {
     if (m_enums.find(includeEnum.m_name) == m_enums.end())
     {
+        includeEnum.m_reference_count++;
+        if (includeEnum.m_resolved)
+            return;
+
+        includeEnum.m_resolved = true;
         m_enums.emplace(includeEnum.m_name, includeEnum);
     }
 }
@@ -310,8 +321,8 @@ void CommonDDLDef::ResolveCustomTypes()
             {
                 member.data.m_link_data.m_struct.emplace(m_structs[member.data.m_link_data.m_external_index].name);
                 member.type = member.data.m_link_data.m_struct.value();
-                size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_STRUCT;
-                member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
+                size_t flags = member.data.m_link_data.m_category_flags | DDL_CATEGORY_FLAG_STRUCT;
+                member.data.m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(flags);
             }
 
             member.data.m_link_data.enumIndex = -1;
@@ -323,8 +334,8 @@ void CommonDDLDef::ResolveCustomTypes()
             if (member.data.m_link_data.enumIndex > -1)
             {
                 member.enum_.emplace(jDDLDef.enums[member.data.m_link_data.enumIndex].name);
-                size_t flags = member.data.m_link_data.m_user_type_flags | DDL_USER_TYPE_ENUM;
-                member.data.m_link_data.m_user_type_flags = static_cast<ddlUserDefinedTypeFlags_e>(flags);
+                size_t flags = member.data.m_link_data.m_category_flags | DDL_CATEGORY_FLAG_ENUM;
+                member.data.m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(flags);
             }
             else
                 LogicError("<UNIMPLEMENTED>");

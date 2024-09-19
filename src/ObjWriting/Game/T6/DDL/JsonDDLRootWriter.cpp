@@ -18,7 +18,47 @@ namespace
         {
         }
 
-        /*
+        void TraverseMember(const JsonDDLMemberDef& jDDLMember, std::string permissionScope)
+        {
+            assert(jDDLMember.permission.value() == permissionScope);
+            const auto& parentStruct = jDDLMember.link.;
+            const auto& parentDef = parentStruct.GetParent();
+            if (HasEnum())
+            {
+                auto& enumDef = parentDef.m_enums.at(m_name);
+                enumDef.Validate();
+            }
+
+            auto index = parentDef.TypeToStructIndex(m_type);
+            if (index)
+            {
+                if (parentDef.m_in_calculation.at(index))
+                    ReportCircularDependency("circular dependency detected");
+
+                const auto& structDef = parentDef.m_structs.at(m_name);
+                parentDef.m_in_calculation[index] = true;
+                parentDef.m_member_stack.push_back(*this);
+                structDef.Validate();
+                parentDef.m_member_stack.pop_back();
+            }
+
+            m_calculated = true;
+            parentDef.m_in_calculation.clear();
+            parentDef.m_in_calculation.resize(parentDef.m_structs.size(), false);
+        }
+
+        void RecursivelyTraverseStruct(const JsonDDLStructDef& jDDLStruct, std::optional<std::string> permissionScope)
+        {
+            for (const auto& member : jDDLStruct.members)
+            {
+                member.refCount++;
+                if (member.refCount > 0)
+                    continue;
+
+                TraverseMember(member, jDDLStruct.name == "root" ? member.permission.value() : "unspecified");
+            }
+        }
+
         void Dump(const ddlRoot_t& ddlRoot, AssetDumpingContext& context)
         {
             if (!ddlRoot.ddlDef)
@@ -40,7 +80,16 @@ namespace
                 jDef["_game"] = "t6";
                 jDef["_version"] = T6::OAT_DDL_VERSION;
                 jDef["_codeversion"] = 1;
-#ifndef DDL_DEBUG //Only dump unneeded data when debugging
+#ifdef DDL_DEBUG //Only dump unneeded data when debugging
+                for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
+                {
+                    if (jsonDDLRoot.defs[i].structs[j].name == "root")
+                    {
+                        RecursivelyTraverseStruct(jsonDDLRoot.defs[i].structs[j]);
+                        break;
+                    }
+                }
+                
                 for (auto j = 0u; j < jsonDDLRoot.defs[i].structs.size(); j++)
                 {
                     for (auto k = 0u; k < jsonDDLRoot.defs[i].structs[j].members.size(); k++)
@@ -51,8 +100,10 @@ namespace
                         if (member.arraySize.value_or(1) == 1)
                             member.arraySize.reset();
 
-                        if (member.data.GetParent().m_name != "root")
+                        if (jsonDDLRoot.defs[i].structs[j].name != "root")
+                        {
                             member.permission.reset();
+                        }
                     }
                 }
                 jDef["def"] = jsonDDLRoot.defs[i];
@@ -113,23 +164,30 @@ namespace
             {
                 for (auto& struc : def.structs)
                 {
-                    const auto& members = struc.members;
+                    auto& members = struc.members;
                     
-                    for (auto& member : struc.members)
+                    for (auto& member : members)
                     {
                         if (member.link.m_external_index > 0)
                         {
                             assert(member.link.m_external_index < def.structs.size());
 
-                            member.link.m_struct.emplace(def.structs[member.link.m_external_index].name);
-                            member.type = member.link.m_struct.value();
+                            member.type = def.structs[member.link.m_external_index].name;
+                            member.link.m_parent_struct = member.type;
                         }
+                        else
+                            member.link.m_parent_struct = "root";
 
-                        if (member.link.m_enum_index > -1)
+                        if (member.link.m_enum_index > 0)
                         {
                             assert(member.link.m_enum_index < def.enums.size());
 
                             member.enum_.emplace(def.enums[member.link.m_enum_index].name);
+                        }
+                        else
+                        {
+                            //-1 enumindex indicates no enum
+                            //0 enumindex is a reserved value, but is not the same as -1
                         }
                     }
 
@@ -155,12 +213,13 @@ namespace
             assert((ddlMemberDef.rangeLimit == ddlMemberDef.serverDelta) && (ddlMemberDef.rangeLimit == ddlMemberDef.clientDelta));
         }
 
-        void CreateJsonDDlMemberDef(JsonDDLMemberDef& jDDLMemberDef, const ddlMemberDef_t& ddlMemberDef)
+        void CreateJsonDDlMemberDef(JsonDDLMemberDef& jDDLMemberDef, const ddlMemberDef_t& ddlMemberDef, JsonDDLStructDef& jDDLStructDef)
         {
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
-            jDDLMemberDef.link.m_type_enum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
-            jDDLMemberDef.type = jDDLMemberDef.data.TypeToName();
+            auto typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+            jDDLMemberDef.link.m_type_enum = typeEnum;
+            jDDLMemberDef.type = T6::DDL::Member::TypeToName(typeEnum);
 
             jDDLMemberDef.link.m_size = ddlMemberDef.size;
 
@@ -173,16 +232,19 @@ namespace
             //enum is based on the type, and also modifies arraySize to the count of its members
             if (ddlMemberDef.type == DDL_STRING_TYPE)
                 jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size / CHAR_BIT);
-            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !jDDLMemberDef.data.IsStandardSize())
+            else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !T6::DDL::Member::IsStandardSize(typeEnum, ddlMemberDef.size, ddlMemberDef.arraySize))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
             jDDLMemberDef.link.m_offset = ddlMemberDef.offset;
             
             jDDLMemberDef.link.m_external_index = ddlMemberDef.externalIndex;
 
-            jDDLMemberDef.permission.emplace(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission));
+            jDDLMemberDef.permission.emplace(T6::DDL::Member::PermissionTypeToName(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission)));
+
+            if (jDDLStructDef.name == "root")
+                jDDLStructDef.permissionScope.push_back(jDDLMemberDef.permission.value());
         }
-        */
+
         void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)
         {
             jDDLStructDef.name = ddlStructDef.name;
@@ -191,7 +253,7 @@ namespace
             for (auto i = 0; i < ddlStructDef.memberCount; i++)
             {
                 jDDLStructDef.sortedHashTable.push_back(*reinterpret_cast<DDLHashEntry*>(&ddlStructDef.hashTable[i]));
-                //CreateJsonDDlMemberDef(jDDLStructDef.members[i], ddlStructDef.members[i]);
+                CreateJsonDDlMemberDef(jDDLStructDef.members[i], ddlStructDef.members[i], jDDLStructDef);
             }
         }
 
@@ -257,6 +319,6 @@ namespace T6
     void DumpDDLRootAsJson(std::ostream& primaryStream, AssetDumpingContext& context, const ddlRoot_t* ddlRoot)
     {
         JsonDumper dumper(primaryStream);
-        //dumper.Dump(*ddlRoot, context);
+        dumper.Dump(*ddlRoot, context);
     }
 } // namespace T6

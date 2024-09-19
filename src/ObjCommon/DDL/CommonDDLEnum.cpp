@@ -58,7 +58,7 @@ const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
     return m_hash_table;
 }
 
-void CommonDDLEnumDef::LogicError(const std::string& message) const
+[[noreturn]] void CommonDDLEnumDef::LogicError(const std::string& message) const
 {
     std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParent().m_filename) + message;
 #ifdef DDL_DEBUG
@@ -70,7 +70,6 @@ void CommonDDLEnumDef::LogicError(const std::string& message) const
 
 void CommonDDLEnumDef::Validate() const
 {
-    m_reference_count++;
     if (m_calculated)
         return;
     ValidateMembers();

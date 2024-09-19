@@ -7,11 +7,12 @@ class CommonDDLDef;
 class CommonDDLEnumDef
 {
 public:
+    friend class CommonDDLDef;
     std::string m_name;
     std::vector<std::string> m_members;
     std::optional<std::string> m_include_file;
 
-    void LogicError(const std::string& message) const;
+    [[noreturn]] void LogicError(const std::string& message) const;
     void Validate() const;
     void ReferenceCount() const;
     virtual void CalculateHashes(){};
@@ -31,7 +32,8 @@ public:
 
 private:
     CommonDDLDef& m_parent;
-    mutable size_t m_reference_count = 0;
+    size_t m_reference_count = 0;
+    bool m_resolved = false;
     mutable bool m_calculated = false;
     std::vector<DDLHashEntry> m_hash_table;
 
