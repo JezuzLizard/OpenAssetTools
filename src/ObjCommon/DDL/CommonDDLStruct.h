@@ -9,11 +9,12 @@ class CommonDDLStructDef
 {
 public:
     friend class CommonDDLDef;
-    std::string m_name;
+    const std::string m_name;
     int m_size = -1;
     std::unordered_map<std::string, CommonDDLMemberDef> m_members;
-    int m_permission_scope;
     std::optional<std::string> m_include_file;
+    bool m_from_include;
+    const size_t m_index;
 
     [[noreturn]] void LogicError(const std::string& message) const;
     void Validate() const;
@@ -23,19 +24,19 @@ public:
 
     void SetCalculated();
     void ResetCalculated();
-    void ResetRefCount();
     const size_t GetRefCount() const;
-    CommonDDLDef& GetParent();
-    const CommonDDLDef& GetParent() const;
+    CommonDDLDef& GetParentDef();
+    const CommonDDLDef& GetParentDef() const;
     std::vector<DDLHashEntry>& GetHashTable();
     const std::vector<DDLHashEntry>& GetHashTable() const;
     void Resolve();
 
     CommonDDLStructDef();
-    CommonDDLStructDef(std::string& name, CommonDDLDef* parent);
+    CommonDDLStructDef(std::string& name, CommonDDLDef* parent, const size_t index);
+    CommonDDLStructDef(std::string& name, CommonDDLDef* parent, const size_t index, std::string& includeFile);
 
 private:
-    CommonDDLDef* m_parent;
+    CommonDDLDef* m_parent_def;
     size_t m_reference_count = 0;
     bool m_resolved = false;
     mutable bool m_calculated = false;

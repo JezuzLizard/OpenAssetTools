@@ -6,6 +6,7 @@
 #include "DDL/CommonDDLEnum.h"
 #include "DDL/CommonDDLMember.h"
 #include "DDL/CommonDDLStruct.h"
+#include "DDL/CommonDDLRoot.h"
 
 #include <algorithm>
 #include <string>
@@ -110,6 +111,7 @@ namespace T6
 
     class DDL
     {
+
     public:
         DDL()
         {
@@ -118,8 +120,8 @@ namespace T6
         class Def : public CommonDDLDef
         {
         public:
-            Def(const int version, const std::string filename)
-                : CommonDDLDef(version, filename)
+            Def(const int version, const std::string& filename, CommonDDLRoot& root, const bool isInclude)
+                : CommonDDLDef(version, filename, root, isInclude)
             {
 
             }
@@ -137,10 +139,15 @@ namespace T6
         class Enum : public CommonDDLEnumDef
         {
         public:
-            DDL::Enum(CommonDDLDef& parent)
-                : CommonDDLEnumDef(parent)
+            DDL::Enum(const std::string& name, CommonDDLDef* parent, const size_t index)
+                : CommonDDLEnumDef(name, parent, index)
             {
 
+            }
+
+            DDL::Enum(const std::string& name, CommonDDLDef* parent, const size_t index, std::string& includeFile)
+                : CommonDDLEnumDef(name, parent, index, includeFile)
+            {
             }
             void CalculateHashes() override
             {
@@ -169,10 +176,14 @@ namespace T6
         class Struct : public CommonDDLStructDef
         {
         public:
-            DDL::Struct(std::string& name, CommonDDLDef* parent)
-                : CommonDDLStructDef(name, parent)
+            DDL::Struct(std::string& name, CommonDDLDef* parent, const size_t index)
+                : CommonDDLStructDef(name, parent, index)
             {
+            }
 
+            DDL::Struct(std::string& name, CommonDDLDef* parent, const size_t index, std::string& includeFile)
+                : CommonDDLStructDef(name, parent, index, includeFile)
+            {
             }
             void CalculateHashes() override
             {
@@ -198,16 +209,17 @@ namespace T6
         class Member : public CommonDDLMemberDef
         {
         public:
-            DDL::Member(const std::string& name, DDL::Struct& parent)
+            DDL::Member(const std::string& name,
+                        DDL::Struct& parent)
                 : CommonDDLMemberDef(name, parent)
             {
             }
             const bool IsStandardSize() const override
             {
-                if (m_link_data.m_type_enum > DDL_FLOAT_TYPE)
+                if (m_link_data.m_type_category > DDL_FLOAT_TYPE)
                     return false;
 
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].size == m_link_data.m_size / m_array_size.value_or(1);
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].size == m_link_data.m_size / m_array_size.value_or(1);
             }
 
             static const bool IsStandardSize(const ddlPrimitiveTypes_e typeEnum, const int size, const int arraySize)
@@ -220,7 +232,7 @@ namespace T6
 
             const bool IsStandardType() const override
             {
-                return m_link_data.m_type_enum <= DDL_FLOAT_TYPE;
+                return m_link_data.m_type_category <= DDL_FLOAT_TYPE;
             }
 
             const size_t GetStandardSize() const override
@@ -228,41 +240,41 @@ namespace T6
                 if (!IsStandardSize())
                     return 0;
 
-                DDL_TYPE_FEATURES[m_link_data.m_type_enum].size;
+                DDL_TYPE_FEATURES[m_link_data.m_type_category].size;
             }
 
             const uint64_t GetStandardMaxValue() const override
             {
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].max;
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].max;
             }
 
             const int64_t GetStandardMinValue() const override
             {
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].min;
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].min;
             }
 
             const bool TypeCanUseBitfields() const override
             {
-                if (m_link_data.m_type_enum >= DDL_STRING_TYPE)
+                if (m_link_data.m_type_category >= DDL_STRING_TYPE)
                     return false;
-                return (DDL_TYPE_FEATURES[m_link_data.m_type_enum].flags & DDL_FLAG_BITFIELDS) != 0;
+                return (DDL_TYPE_FEATURES[m_link_data.m_type_category].flags & DDL_FLAG_BITFIELDS) != 0;
             }
 
             const bool TypeCanUseLimits() const override
             {
-                if (m_link_data.m_type_enum >= DDL_STRING_TYPE)
+                if (m_link_data.m_type_category >= DDL_STRING_TYPE)
                     return false;
-                return (DDL_TYPE_FEATURES[m_link_data.m_type_enum].flags & DDL_FLAG_LIMITS) != 0;
+                return (DDL_TYPE_FEATURES[m_link_data.m_type_category].flags & DDL_FLAG_LIMITS) != 0;
             }
 
             const bool TypeCanUseFixedFloatingPoint() const override
             {
-                return m_link_data.m_type_enum == DDL_FIXEDPOINT_TYPE;
+                return m_link_data.m_type_category == DDL_FIXEDPOINT_TYPE;
             }
 
             const bool IsStringType() const override
             {
-                return m_link_data.m_type_enum == DDL_STRING_TYPE;
+                return m_link_data.m_type_category == DDL_STRING_TYPE;
             }
  
             const size_t GetGameStructType() const override
@@ -277,7 +289,7 @@ namespace T6
 
             const bool IsValidType() const override
             {
-                return m_link_data.m_type_enum < DDL_TYPE_COUNT;
+                return m_link_data.m_type_category < DDL_TYPE_COUNT;
             }
 
             const bool IsValidPermission() const override
@@ -318,12 +330,12 @@ namespace T6
                 if (!m_type.empty())
                     return m_type;
 
-                if (m_link_data.m_type_enum > DDL_TYPE_NAMES.size())
+                if (m_link_data.m_type_category > DDL_TYPE_NAMES.size())
                     return "unknown";
 
                 for (const auto& [k, v] : DDL_TYPE_NAMES)
                 {
-                    if (v == m_link_data.m_type_enum)
+                    if (v == m_link_data.m_type_category)
                         return k;
                 }
 
@@ -361,6 +373,18 @@ namespace T6
 
                 return DDL_PERMISSIONS_COUNT;
             }
+        };
+
+        class Root : public CommonDDLRoot
+        {
+        public:
+            DDL::Root(std::string& name)
+                : CommonDDLRoot(name)
+            {
+            }
+
+            //std::unordered_map<std::string /*m_def_file*/, std::vector<DDL::Def>> m_defs;
+            //std::unordered_map<std::string /*m_def_file*/, std::vector<DDL::Def>> m_include_pool;
         };
     };
 } // namespace T6

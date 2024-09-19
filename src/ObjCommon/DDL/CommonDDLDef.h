@@ -39,30 +39,20 @@ struct File
 class CommonDDLStructDef;
 class CommonDDLEnumDef;
 class CommonDDLMemberDef;
-class CommonDDLDef;
-
-class CommonDDLInclude
-{
-public:
-    std::string m_include_name;
-    const CommonDDLDef& m_def;
-
-    CommonDDLInclude(const std::string& name, const CommonDDLDef& def)
-        : m_include_name(name),
-          m_def(def)
-    {
-    }
-};
+class CommonDDLRoot;
 
 class CommonDDLDef
 {
 public:
     const int m_version;
     const std::string m_filename;
-    int m_size;
+    const bool m_is_include;
+    CommonDDLRoot& m_root;
+    int m_size = 0;
+    mutable size_t m_reference_count = 0;
+    int m_permission_scope = 0;
     std::unordered_map<std::string, CommonDDLStructDef> m_structs;
     std::unordered_map<std::string, CommonDDLEnumDef> m_enums;
-    std::unordered_map<std::string, std::shared_ptr<CommonDDLInclude>> m_include_pool;
     mutable std::vector<std::reference_wrapper<const CommonDDLMemberDef>> m_member_stack;
     mutable std::vector<int> m_in_calculation;
 
@@ -72,13 +62,15 @@ public:
     const std::optional<std::reference_wrapper<const std::string>> StructIndexToType(const size_t index) const noexcept;
     const std::optional<std::reference_wrapper<const std::string>> EnumIndexToType(const int index) const noexcept;
 
-    std::optional<CommonDDLStructDef&> GetStructByName(const std::string& name, bool checkIncludes = false);
-    std::optional<CommonDDLEnumDef&> GetEnumByName(const std::string& name, bool checkIncludes = false);
-    std::optional<CommonDDLStructDef&> GetStructByIndex(const size_t index);
-    std::optional<CommonDDLEnumDef&> GetEnumByIndex(const int index);
+    CommonDDLStructDef* GetStructByName(const std::string& name, bool checkIncludes = false);
+    CommonDDLEnumDef* GetEnumByName(const std::string& name, bool checkIncludes = false);
+    CommonDDLStructDef* GetStructByIndex(const size_t index);
+    CommonDDLEnumDef* GetEnumByIndex(const int index);
 
     void AddStructFromInclude(CommonDDLStructDef& includeStruct);
     void AddEnumFromInclude(CommonDDLEnumDef& includeEnum);
+    CommonDDLRoot& GetRoot();
+    const CommonDDLRoot& GetRoot() const;
 
     virtual constexpr DDLGameFeatures GetFeatures() const
     {
@@ -93,20 +85,11 @@ public:
         return DDL_GAME_FEATURES_DEFAULTS;
     };
 
-    CommonDDLDef(const int version, std::string& filename);
+    CommonDDLDef(const int version, const std::string& filename, CommonDDLRoot& root, const bool isInclude = false);
 
     void NameError(const std::string& message) const;
     void ValidateName(const std::string& name) const;
-    void ResolveCustomTypes();
-
-    void CreateInclude(const std::string& filename, const CommonDDLDef& def)
-    {
-        assert(m_version == def.m_version);
-        if (m_include_pool.find(filename) == m_include_pool.end())
-        {
-            m_include_pool[filename] = std::make_shared<CommonDDLInclude>(filename, def);
-        }
-    };
+    bool Resolve();
 
     bool Validate() const;
     bool Calculate();

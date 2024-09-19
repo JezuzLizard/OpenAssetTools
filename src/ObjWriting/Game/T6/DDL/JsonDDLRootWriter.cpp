@@ -18,44 +18,38 @@ namespace
         {
         }
 
-        void TraverseMember(const JsonDDLMemberDef& jDDLMember, std::string permissionScope)
+        void TraverseMember(const JsonDDLDef& jDDLDef, const JsonDDLMemberDef& jDDLMember)
         {
-            assert(jDDLMember.permission.value() == permissionScope);
-            const auto& parentStruct = jDDLMember.link.;
-            const auto& parentDef = parentStruct.GetParent();
-            if (HasEnum())
+            assert(jDDLMember.permission.value() == jDDLDef.permissionScope);
+
+            auto structIndex = jDDLMember.link.m_external_index;
+            if (structIndex > 0)
             {
-                auto& enumDef = parentDef.m_enums.at(m_name);
-                enumDef.Validate();
+                if (jDDLDef.inCalculation.at(structIndex))
+                    assert(false);
+
+                jDDLDef.inCalculation[structIndex] = true;
+                //parentDef.m_member_stack.push_back(*this);
+                RecursivelyTraverseStruct(jDDLDef, jDDLDef.structs[structIndex]);
+                //parentDef.m_member_stack.pop_back();
             }
 
-            auto index = parentDef.TypeToStructIndex(m_type);
-            if (index)
-            {
-                if (parentDef.m_in_calculation.at(index))
-                    ReportCircularDependency("circular dependency detected");
-
-                const auto& structDef = parentDef.m_structs.at(m_name);
-                parentDef.m_in_calculation[index] = true;
-                parentDef.m_member_stack.push_back(*this);
-                structDef.Validate();
-                parentDef.m_member_stack.pop_back();
-            }
-
-            m_calculated = true;
-            parentDef.m_in_calculation.clear();
-            parentDef.m_in_calculation.resize(parentDef.m_structs.size(), false);
+            jDDLDef.inCalculation.clear();
+            jDDLDef.inCalculation.resize(jDDLDef.structs.size(), false);
         }
 
-        void RecursivelyTraverseStruct(const JsonDDLStructDef& jDDLStruct, std::optional<std::string> permissionScope)
+        void RecursivelyTraverseStruct(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& jDDLStruct)
         {
             for (const auto& member : jDDLStruct.members)
             {
                 member.refCount++;
-                if (member.refCount > 0)
+                if (member.refCount > 1)
                     continue;
 
-                TraverseMember(member, jDDLStruct.name == "root" ? member.permission.value() : "unspecified");
+                if (jDDLStruct.name == "root")
+                    jDDLDef.permissionScope = member.permission.value();
+
+                TraverseMember(jDDLDef, member);
             }
         }
 
@@ -85,7 +79,8 @@ namespace
                 {
                     if (jsonDDLRoot.defs[i].structs[j].name == "root")
                     {
-                        RecursivelyTraverseStruct(jsonDDLRoot.defs[i].structs[j]);
+                        jsonDDLRoot.defs[i].inCalculation.resize(jsonDDLRoot.defs[i].structs.size(), false);
+                        RecursivelyTraverseStruct(jsonDDLRoot.defs[i], jsonDDLRoot.defs[i].structs[j]);
                         break;
                     }
                 }
@@ -100,7 +95,7 @@ namespace
                         if (member.arraySize.value_or(1) == 1)
                             member.arraySize.reset();
 
-                        if (jsonDDLRoot.defs[i].structs[j].name != "root")
+                        if (member.permission == "unspecified")
                         {
                             member.permission.reset();
                         }
@@ -218,7 +213,7 @@ namespace
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
             auto typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
-            jDDLMemberDef.link.m_type_enum = typeEnum;
+            jDDLMemberDef.link.m_type_category = typeEnum;
             jDDLMemberDef.type = T6::DDL::Member::TypeToName(typeEnum);
 
             jDDLMemberDef.link.m_size = ddlMemberDef.size;
@@ -240,9 +235,6 @@ namespace
             jDDLMemberDef.link.m_external_index = ddlMemberDef.externalIndex;
 
             jDDLMemberDef.permission.emplace(T6::DDL::Member::PermissionTypeToName(static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission)));
-
-            if (jDDLStructDef.name == "root")
-                jDDLStructDef.permissionScope.push_back(jDDLMemberDef.permission.value());
         }
 
         void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)

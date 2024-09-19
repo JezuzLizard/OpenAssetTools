@@ -32,7 +32,7 @@ class CommonDDLMemberDefLinkData
 public:
     int m_size = 0;
     int m_offset = 0;
-    size_t m_type_enum = -1;
+    size_t m_type_category = -1;
     ddlCategoryFlags_e m_category_flags = DDL_CATEGORY_FLAG_NONE;
     int m_external_index = 0;
     int m_enum_index = -1;
@@ -46,8 +46,8 @@ public:
     const std::string m_name;
     std::string m_type = "";
     std::optional<CommonDDLMemberLimits> m_limits;
-    std::optional<int> m_array_size;
-    std::optional<int> m_permission;
+    std::optional<int> m_array_size; // default 1
+    std::optional<int> m_permission; // default both
     std::optional<std::string> m_enum;
     std::optional<int> m_max_characters;
     CommonDDLMemberDefLinkData m_link_data;
@@ -148,21 +148,21 @@ public:
     void SetCategoryTypeFlags(const ddlCategoryFlags_e flags);
     void SetTypeInfo();
     const bool HasEnum() const;
-    CommonDDLStructDef& GetParent();
-    const CommonDDLStructDef& GetParent() const;
+    CommonDDLStructDef& GetParentStruct();
+    const CommonDDLStructDef& GetParentStruct() const;
     void ReportCircularDependency(const std::string message) const;
     void Validate() const;
     void Calculate();
     void ResetCalculated();
     void Resolve();
 
-    CommonDDLMemberDef(std::string name, CommonDDLStructDef& parent);
+    CommonDDLMemberDef(const std::string name, CommonDDLStructDef& parent);
 
 private:
     size_t m_reference_count = 0;
     mutable bool m_calculated = false;
     bool m_resolved = false;
-    CommonDDLStructDef& m_parent;
+    CommonDDLStructDef& m_parent_struct;
 
     void ValidateName() const;
     void ValidateType() const;

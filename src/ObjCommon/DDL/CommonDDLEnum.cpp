@@ -7,19 +7,41 @@
 #include <iostream>
 #include <cassert>
 
-CommonDDLEnumDef::CommonDDLEnumDef(CommonDDLDef& parent)
-    : m_parent(parent)
+CommonDDLEnumDef::CommonDDLEnumDef()
+    : m_parent(0),
+      m_name({0}),
+      m_from_include(false),
+      m_include_file(std::nullopt),
+      m_index(0)
 {
 }
 
-CommonDDLDef& CommonDDLEnumDef::GetParent()
+CommonDDLEnumDef::CommonDDLEnumDef(const std::string& name, CommonDDLDef* parent, const size_t index)
+    : m_parent(parent),
+      m_name(name),
+      m_from_include(false),
+      m_include_file(std::nullopt),
+      m_index(index)
 {
-    return m_parent;
 }
 
-const CommonDDLDef& CommonDDLEnumDef::GetParent() const
+CommonDDLEnumDef::CommonDDLEnumDef(const std::string& name, CommonDDLDef* parent, const size_t index, std::string& includeFile)
+    : m_parent(parent),
+      m_name(name),
+      m_from_include(true),
+      m_include_file(includeFile),
+      m_index(index)
 {
-    return m_parent;
+}
+
+CommonDDLDef& CommonDDLEnumDef::GetParentDef()
+{
+    return *m_parent;
+}
+
+const CommonDDLDef& CommonDDLEnumDef::GetParentDef() const
+{
+    return *m_parent;
 }
 
 const size_t CommonDDLEnumDef::GetRefCount() const
@@ -44,7 +66,7 @@ void CommonDDLEnumDef::ResetCalculated()
 
 std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 {
-    const auto& featureLevel = GetParent().GetFeatures();
+    const auto& featureLevel = GetParentDef().GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -52,7 +74,7 @@ std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 
 const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
 {
-    const auto& featureLevel = GetParent().GetFeatures();
+    const auto& featureLevel = GetParentDef().GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -60,7 +82,7 @@ const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
 
 [[noreturn]] void CommonDDLEnumDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParent().m_filename) + message;
+    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParentDef().m_filename) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();

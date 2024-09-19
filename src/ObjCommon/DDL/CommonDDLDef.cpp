@@ -4,70 +4,95 @@
 #include "CommonDDLStruct.h"
 #include "CommonDDLEnum.h"
 #include "CommonDDLMember.h"
+#include "CommonDDLRoot.h"
 
 #include <cassert>
 #include <format>
 #include <iostream>
 
-CommonDDLDef::CommonDDLDef(const int version, std::string& filename)
+CommonDDLDef::CommonDDLDef(const int version, const std::string& filename, CommonDDLRoot& root, const bool isInclude)
     : m_version(version),
-      m_size(0u),
-      m_filename(std::move(filename))
+      m_filename(std::move(filename)),
+      m_root(root),
+      m_is_include(isInclude)
 {
 }
 
-std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByName(const std::string& name, bool checkIncludes)
+CommonDDLRoot& CommonDDLDef::GetRoot()
 {
-    if (m_structs.find(name) != m_structs.end())
-        return m_structs[name];
+    return m_root;
+}
+
+const CommonDDLRoot& CommonDDLDef::GetRoot() const
+{
+    return m_root;
+}
+
+CommonDDLStructDef* CommonDDLDef::GetStructByName(const std::string& structName, bool checkIncludes)
+{
+    if (m_structs.find(structName) != m_structs.end())
+        return &m_structs[structName];
 
     if (checkIncludes)
     {
-        for (auto& [filename, include] : m_include_pool)
+        assert(GetRoot().m_include_pool.contains(m_filename));
+
+        for (auto& include : GetRoot().m_include_pool[m_filename])
         {
-            auto& def = include.get()->m_def;
-            if (def.m_structs.find(name) != def.m_structs.end())
-                return def.m_structs[name];
+            assert(include.m_is_include);
+
+            if (include.m_structs.find(structName) != include.m_structs.end())
+                return &include.m_structs[structName];
         }
     }
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByName(const std::string& name, bool checkIncludes)
+CommonDDLEnumDef* CommonDDLDef::GetEnumByName(const std::string& enumName, bool checkIncludes)
 {
-    if (m_enums.find(name) != m_enums.end())
-        return m_enums[name];
+    if (m_enums.find(enumName) != m_enums.end())
+        return &m_enums[enumName];
 
     if (checkIncludes)
     {
-        for (auto& include : GetIncludes())
+        assert(GetRoot().m_include_pool.contains(m_filename));
+
+        for (auto& include : GetRoot().m_include_pool[m_filename])
         {
-            if (include.m_enums.find(name) != include.m_enums.end())
-                return include.m_enums[name];
+            assert(include.m_is_include);
+
+            if (include.m_enums.find(enumName) != include.m_enums.end())
+                return &include.m_enums[enumName];
         }
     }
 
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<CommonDDLStructDef&> CommonDDLDef::GetStructByIndex(const size_t index)
+CommonDDLStructDef* CommonDDLDef::GetStructByIndex(const size_t index)
 {
     if (index < m_structs.size())
     {
+        /*
+        auto* struc = std::ranges::find_if(m_structs,
+                     [index](const CommonDDLStructDef& struc)
+                     {
+                           return struc.m_index == index;
+                     });
+        */
     }
 
-    return std::nullopt;
+    return nullptr;
 }
 
-std::optional<CommonDDLEnumDef&> CommonDDLDef::GetEnumByIndex(const int index)
+CommonDDLEnumDef* CommonDDLDef::GetEnumByIndex(const int index)
 {
     if (index >= 0 && index < m_enums.size())
     {
     }
 
-    return std::nullopt;
+    return nullptr;
 }
-
 
 [[noreturn]] void CommonDDLDef::LogicError(const std::string& message) const
 {
@@ -284,6 +309,8 @@ void CommonDDLDef::AddStructFromInclude(CommonDDLStructDef& includeStruct)
         m_structs.emplace(includeStruct.m_name, includeStruct);
         includeStruct.Resolve();
     }
+    else
+        assert(false);
 }
 
 void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
@@ -297,64 +324,32 @@ void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
         includeEnum.m_resolved = true;
         m_enums.emplace(includeEnum.m_name, includeEnum);
     }
+    else
+        assert(false);
 }
 
-void CommonDDLDef::ResolveCustomTypes()
+bool CommonDDLDef::Resolve()
 {
-    /*
-    std::vector<CommonDDLStructDef> includedStructs;
-    std::vector<CommonDDLEnumDef> includedEnums;
-
-    // Determine what includes are referenced
-    for (auto& [k, struc] : m_structs)
+    try
     {
-        for (auto& [k, member] : struc.m_members)
+        // Determine what structs from what includes are referenced
+        for (auto& [k, struc] : m_structs)
         {
-
-            if (!member.data.m_link_data.m_external_index)
-            {
-                member.data.m_link_data.m_type_enum = member.data.NameToType();
-                if (member.data.m_link_data.m_type_enum == DDL_TYPE_COUNT)
-                    LogicError("<UNIMPLEMENTED>");
-            }
-            else
-            {
-                member.data.m_link_data.m_struct.emplace(m_structs[member.data.m_link_data.m_external_index].name);
-                member.type = member.data.m_link_data.m_struct.value();
-                size_t flags = member.data.m_link_data.m_category_flags | DDL_CATEGORY_FLAG_STRUCT;
-                member.data.m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(flags);
-            }
-
-            member.data.m_link_data.enumIndex = -1;
-
-            if (!member.enum_.has_value())
+            if (struc.m_name != "root")
                 continue;
 
-            member.data.m_link_data.enumIndex = member.TypeToEnumIndex();
-            if (member.data.m_link_data.enumIndex > -1)
+            for (auto& [k, member] : struc.m_members)
             {
-                member.enum_.emplace(jDDLDef.enums[member.data.m_link_data.enumIndex].name);
-                size_t flags = member.data.m_link_data.m_category_flags | DDL_CATEGORY_FLAG_ENUM;
-                member.data.m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(flags);
+                m_permission_scope = member.m_permission.value();
+                member.Resolve();
             }
-            else
-                LogicError("<UNIMPLEMENTED>");
+            return true;
         }
     }
-
-    m_structs.insert(m_structs.end(), includedStructs.begin(), includedStructs.end());
-    m_enums.insert(m_enums.end(), includedEnums.begin(), includedEnums.end());
-
-    for (auto& struc : m_structs)
+    catch (DDL::Exception& e)
     {
-        for (auto& member : struc.m_members)
-        {
-            member.m_link_data.m_type_enum = member.NameToType();
-            if (member.IsValidType())
-            {
-            }
-        }
+        std::cerr << e.what() << "\n";
     }
 
-    */
+    return false;
 }

@@ -107,7 +107,7 @@ namespace
                     outMember.name = m_memory.Dup(inMember.m_name.c_str());
                     outMember.size = inMember.m_link_data.m_size;
                     outMember.offset = inMember.m_link_data.m_offset;
-                    outMember.type = inMember.m_link_data.m_type_enum;
+                    outMember.type = inMember.m_link_data.m_type_category;
                     outMember.externalIndex = inMember.m_link_data.m_external_index;
                     if (inMember.m_limits.has_value())
                     {
@@ -133,13 +133,15 @@ namespace
             }
         }
 
-        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Def& cDef, bool inInclude) const
+        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Root& cRoot, T6::DDL::Def& cDef, bool inInclude) const
         {
-            /*
+            auto i = 0u;
             for (const auto& enum_ : jDDLDef.enums)
             {
-                T6::DDL::Enum cDDLEnum(cDef);
-                cDDLEnum.m_name.AssignLowerCase(enum_.name);
+                std::string lowerCopy;
+                lowerCopy = enum_.name;
+                utils::MakeStringLowerCase(lowerCopy);
+                T6::DDL::Enum cDDLEnum(lowerCopy, &cDef, i);
                 for (const std::string member : enum_.members)
                 {
                     cDDLEnum.m_members.emplace_back(member);
@@ -152,19 +154,32 @@ namespace
                 }
 
                 cDef.m_enums.emplace(cDDLEnum.m_name, cDDLEnum);
+                i++;
             }
 
+            i = 0u;
             for (const auto& struc : jDDLDef.structs)
             {
-                T6::DDL::Struct cDDLStruct(cDef);
-                cDDLStruct.m_name.AssignLowerCase(struc.name);
+                std::string lowerCopy;
+                lowerCopy = struc.name;
+                utils::MakeStringLowerCase(lowerCopy);
+                T6::DDL::Struct cDDLStruct(lowerCopy, &cDef, i);
+
                 for (const auto& member : struc.members)
                 {
-                    T6::DDL::Member cDDLMember(cDDLStruct.m_name, cDDLStruct);
+                    std::string lowerCopyName = member.name;
+                    utils::MakeStringLowerCase(lowerCopyName);
+                    T6::DDL::Member cDDLMember(lowerCopyName, cDDLStruct);
                     if (member.enum_.has_value())
-                        cDDLMember.m_enum->AssignLowerCase(member.enum_.value());
-                    cDDLMember.m_name.AssignLowerCase(member.name);
-                    cDDLMember.m_type.AssignLowerCase(member.type);
+                    {
+                        lowerCopy = member.enum_.value();
+                        utils::MakeStringLowerCase(lowerCopy);
+                        cDDLMember.m_enum.emplace(lowerCopy);
+                    }
+
+                    std::string lowerCopyType = member.type;
+                    utils::MakeStringLowerCase(lowerCopyType);
+                    cDDLMember.m_type = lowerCopyType;
                     if (member.permission.has_value())
                         cDDLMember.m_permission = cDDLMember.NameToPermissionType(member.permission.value());
                     cDDLMember.m_array_size = member.arraySize;
@@ -189,18 +204,21 @@ namespace
                 }
 
                 cDef.m_structs.emplace(cDDLStruct.m_name, cDDLStruct);
+                i++;
             }
 
             if (inInclude)
                 return true;
 
-            std::vector<CommonDDLInclude> cDDLIncludes;
-            for (auto& [filenames, def] : jDDLRoot.includeDefs)
+            // this should be detected before this
+            assert(jDDLRoot.includeDefs.contains(jDDLDef.filename));
+
+            for (auto& includeDef : jDDLRoot.includeDefs.at(jDDLDef.filename))
             {
-                T6::DDL::Def cDDLInclude(def.version, filenames.second);
-                ConvertJsonDDLDef(jDDLRoot, def, cDDLInclude, true);
+                T6::DDL::Def cDDLDefInclude(includeDef.version, includeDef.filename, cRoot, true);
+                ConvertJsonDDLDef(jDDLRoot, includeDef, cRoot, cDDLDefInclude, true);
             }
-            */
+
             return true;
         }
 
@@ -253,6 +271,7 @@ namespace
 
         bool LoadDDLDefJson(const std::string defFilename, ISearchPath& searchPath, JsonDDLDef& jDDLDef) const
         {
+            jDDLDef.filename = defFilename;
             const auto secondaryAssetFile = searchPath.Open(defFilename);
             if (!secondaryAssetFile.IsOpen())
             {
@@ -271,9 +290,9 @@ namespace
             jRoot.at("_version").get_to(version);
             jRoot.at("_game").get_to(game);
 
-            //utils::MakeStringLowerCase(tool);
-            //utils::MakeStringLowerCase(type);
-            //utils::MakeStringLowerCase(game);
+            utils::MakeStringLowerCase(tool);
+            utils::MakeStringLowerCase(type);
+            utils::MakeStringLowerCase(game);
 
             if (tool != "oat")
             {
@@ -308,13 +327,17 @@ namespace
             constexpr size_t MAX_ENUMS = 32;
             constexpr size_t MAX_MEMBERS = 1023;
 
-            std::vector<T6::DDL::Def> cDDLDefs;
+            std::string rootName(ddlRoot.name);
+            T6::DDL::Root cDDLRoot(rootName);
+            jDDLRoot.filename = rootName;
+
             if (!jDDLRoot.defFiles.size())
             {
                 std::cerr << "ddl \"" << m_assetname << "\" has no def file entries\n";
                 return false;
             }
 
+            // commonddldef structure supports multiple defs in the same file, but jsonddl does not
             for (auto i = 0u; i < jDDLRoot.defFiles.size(); i++)
             {
                 JsonDDLDef jDDLDef;
@@ -340,32 +363,39 @@ namespace
                     JsonDDLDef jDDLInclude;
                     if (!LoadDDLDefJson(jDDLIncludeFile, searchPath, jDDLInclude))
                         return false;
-                    //jDDLRoot.includeDefs.insert_or_assign({jDDLRoot.defFiles[i], jDDLIncludeFile}, jDDLInclude);
+
+                    //jDDLRoot.includeDefs.insert_or_assign(jDDLIncludeFile, jDDLInclude);
                 }
-                T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i]);
-                if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLDef, false))
+                T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i], cDDLRoot, false);
+                if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLRoot, cDDLDef, false))
                     return false;
 
-                cDDLDefs.push_back(cDDLDef);
+                cDDLRoot.m_defs[jDDLRoot.defFiles[i]].emplace_back(cDDLDef);
             }
 
-            for (const auto& cDef : cDDLDefs)
+            for (auto& [filename, cDefs] : cDDLRoot.m_defs)
             {
-                if (!cDef.Validate())
+                if (!cDefs[0].Resolve())
                     return false;
             }
 
-            for (auto& cDef : cDDLDefs)
+            for (const auto& [filename, cDefs] : cDDLRoot.m_defs)
             {
-                if (!cDef.Calculate())
+                if (!cDefs[0].Validate())
+                    return false;
+            }
+
+            for (auto& [filename, cDefs] : cDDLRoot.m_defs)
+            {
+                if (!cDefs[0].Calculate())
                     return false;
             }
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
             auto* firstDef = ddlDef;
-            for (const auto& cDef : cDDLDefs)
+            for (const auto& [filename, cDefs] : cDDLRoot.m_defs)
             {
-                if (!CreateDDLDef(cDef, *ddlDef))
+                if (!CreateDDLDef(reinterpret_cast<const T6::DDL::Def&>(cDefs[0]), *ddlDef))
                     return false;
 
                 ddlDef->next = m_memory.Alloc<ddlDef_t>();

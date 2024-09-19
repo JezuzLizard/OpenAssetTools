@@ -7,9 +7,10 @@
 #include <format>
 #include <cassert>
 
-CommonDDLMemberDef::CommonDDLMemberDef(std::string name, CommonDDLStructDef& parent)
-    : m_name(name),
-    m_parent(parent)
+CommonDDLMemberDef::CommonDDLMemberDef(const std::string name,
+                                       CommonDDLStructDef& parent)
+    : m_name(std::move(name)),
+      m_parent_struct(parent)
 {
 }
 
@@ -40,14 +41,14 @@ void SetTypeInfo()
 
 }
 
-CommonDDLStructDef& CommonDDLMemberDef::GetParent()
+CommonDDLStructDef& CommonDDLMemberDef::GetParentStruct()
 {
-    return m_parent;
+    return m_parent_struct;
 }
 
-const CommonDDLStructDef& CommonDDLMemberDef::GetParent() const
+const CommonDDLStructDef& CommonDDLMemberDef::GetParentStruct() const
 {
-    return m_parent;
+    return m_parent_struct;
 }
 
 void CommonDDLMemberDef::ResetCalculated()
@@ -65,7 +66,7 @@ const bool CommonDDLMemberDef::HasEnum() const
     std::string prefaceAndMessage = std::format("DDL Member: {} Type: {} Parent: {}",
                                                 m_name,
                                                 TypeToName(), 
-                                                GetParent().m_name) + message;
+                                                GetParentStruct().m_name) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
@@ -75,14 +76,14 @@ const bool CommonDDLMemberDef::HasEnum() const
 
 void CommonDDLMemberDef::ReportCircularDependency(std::string message) const
 {
-    const auto& parentDef = GetParent().GetParent();
+    const auto& parentDef = GetParentStruct().GetParentDef();
     std::string traceback("\nTraceback:\n");
     for (const auto& member : parentDef.m_member_stack)
     {
         traceback += std::format("\t[Name:{} | Type:{} | Parent:{}]\n",
                                  member.get().m_name,
                                  member.get().TypeToName(),
-                                 member.get().GetParent().m_name);
+                                 member.get().GetParentStruct().m_name);
     }
     std::string prefaceAndMessage = std::format("{}\n{}", message, traceback);
 #ifdef DDL_DEBUG
@@ -114,8 +115,8 @@ void CommonDDLMemberDef::Validate() const
 
     ValidateMaxCharacters();
 
-    const auto& parentStruct = GetParent();
-    const auto& parentDef = parentStruct.GetParent();
+    const auto& parentStruct = GetParentStruct();
+    const auto& parentDef = parentStruct.GetParentDef();
     if (HasEnum())
     {
         auto& enumDef = parentDef.m_enums.at(m_name);
@@ -145,9 +146,7 @@ void CommonDDLMemberDef::Calculate()
     if (m_calculated)
         return;
 
-    m_permission.emplace(GetParent().m_permission_scope);
-
-    auto& parentDef = GetParent().GetParent();
+    auto& parentDef = GetParentStruct().GetParentDef();
 
     auto calculatedSize = 0;
     if (IsStandardType())
@@ -197,9 +196,9 @@ void CommonDDLMemberDef::Calculate()
 
 void CommonDDLMemberDef::ValidateName() const
 {
-    GetParent().GetParent().ValidateName(m_name);
+    GetParentStruct().GetParentDef().ValidateName(m_name);
 
-    const auto& parentDef = GetParent().GetParent();
+    const auto& parentDef = GetParentStruct().GetParentDef();
     auto nameRedefinitions = 0u;
     for (const auto& [k, struc] : parentDef.m_structs)
     {
@@ -228,7 +227,7 @@ void CommonDDLMemberDef::ValidateType() const
     if ((m_link_data.m_category_flags & (DDL_CATEGORY_FLAG_ENUM|DDL_CATEGORY_FLAG_STRUCT)) == 0)
         return;
 
-    const auto& parentDef = GetParent().GetParent();
+    const auto& parentDef = GetParentStruct().GetParentDef();
 
     parentDef.ValidateName(m_type);
 
@@ -246,7 +245,7 @@ void CommonDDLMemberDef::ValidateType() const
 
 void CommonDDLMemberDef::ValidatePermission() const
 {
-    if (GetParent().m_name != "root")
+    if (GetParentStruct().m_name != "root")
         LogicError("permission cannot be defined outside of root");
     if (!IsValidPermission())
         LogicError("permission must be client, server, both, or unspecified(defaults to both)");
@@ -284,7 +283,7 @@ void CommonDDLMemberDef::ValidateEnum_() const
     if (m_array_size.has_value())
         LogicError("arraySize field cannot be combined with enum_ field");
 
-    const auto& parentDef = GetParent().GetParent();
+    const auto& parentDef = GetParentStruct().GetParentDef();
 
     if (parentDef.m_enums.find(m_enum.value()) != parentDef.m_enums.end())
         return;
@@ -338,34 +337,53 @@ void CommonDDLMemberDef::Resolve()
     if (m_resolved)
         return;
 
-    auto& parentDef = GetParent().GetParent();
-    m_link_data.m_type_enum = NameToType();
-    if (IsValidType() && !HasEnum())
-    {
-        if (m_link_data.m_type_enum == GetGameEnumType() || m_link_data.m_type_enum == GetGameStructType())
-            LogicError("type cannot be directly defined as struct or enum");
+    auto& parentDef = GetParentStruct().GetParentDef();
+    m_link_data.m_type_category = NameToType();
 
+    if (m_link_data.m_type_category == GetGameEnumType() || m_link_data.m_type_category == GetGameStructType())
+        LogicError("type cannot be directly defined as struct");
+
+    assert(!m_permission.has_value());
+    m_permission.emplace(parentDef.m_permission_scope);
+
+    if (HasEnum())
+    {
+        auto* enum_ = parentDef.GetEnumByName(m_enum.value(), true);
+        if (!enum_)
+            LogicError("could not resolve enum for member");
+
+        enum_->GetParentDef().m_reference_count++;
+        if (enum_->GetParentDef().m_reference_count <= 1 && enum_->m_from_include)
+        {
+            parentDef.AddEnumFromInclude(*enum_);
+        }
+
+        m_link_data.m_type_category = GetGameEnumType();
+        m_link_data.m_enum_index = enum_->m_index;
+        m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(m_link_data.m_category_flags | DDL_CATEGORY_FLAG_ENUM);
+    }
+
+    if (IsValidType())
+    {
         // not a user defined type
         m_resolved = true;
         return;
     }
 
-    auto typeEnum = parentDef.GetEnumByName(m_enum.value(), true);
-    if (!typeEnum.has_value())
-        LogicError("could not resolve enum type for member");
-
-    if (typeEnum->m_include_file.has_value())
-    {
-        parentDef.AddEnumFromInclude(*typeEnum);
-    }
-
-    auto typeStruct = parentDef.GetStructByName(m_type, true);
-    if (!typeStruct.has_value())
-        LogicError("could not resolve custom type for member");
+    auto* struc = parentDef.GetStructByName(m_type, true);
+    if (!struc)
+        LogicError("could not resolve custom struct type for member");
 
     m_resolved = true;
-    if (typeStruct->m_include_file.has_value())
+    struc->GetParentDef().m_reference_count++;
+    if (struc->GetParentDef().m_reference_count <= 1 && struc->m_from_include)
     {
-        parentDef.AddStructFromInclude(*typeStruct);
+        parentDef.AddStructFromInclude(*struc);
     }
+
+    // the int type on the canonical ddlDef_t struct can only be one value, however enum, and struct are separate values
+    // which one has priority?
+    m_link_data.m_type_category = GetGameStructType(); 
+    m_link_data.m_external_index = struc->m_index;
+    m_link_data.m_category_flags = static_cast<ddlCategoryFlags_e>(m_link_data.m_category_flags | DDL_CATEGORY_FLAG_STRUCT);
 }

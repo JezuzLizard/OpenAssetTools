@@ -146,15 +146,15 @@ namespace T5
             }
             const bool IsStandardSize() const override
             {
-                if (m_link_data.m_type_enum > DDL_FLOAT_TYPE)
+                if (m_link_data.m_type_category > DDL_FLOAT_TYPE)
                     return false;
 
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].size == m_link_data.m_size / m_array_size.value_or(1);
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].size == m_link_data.m_size / m_array_size.value_or(1);
             }
 
             const bool IsStandardType() const override
             {
-                return m_link_data.m_type_enum <= DDL_FLOAT_TYPE;
+                return m_link_data.m_type_category <= DDL_FLOAT_TYPE;
             }
 
             const size_t GetStandardSize() const override
@@ -162,31 +162,31 @@ namespace T5
                 if (!IsStandardSize())
                     return 0;
 
-                DDL_TYPE_FEATURES[m_link_data.m_type_enum].size;
+                DDL_TYPE_FEATURES[m_link_data.m_type_category].size;
             }
 
             const size_t GetStandardMaxValue() const override
             {
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].max;
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].max;
             }
 
             const size_t GetStandardMinValue() const override
             {
-                return DDL_TYPE_FEATURES[m_link_data.m_type_enum].min;
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].min;
             }
 
             const bool TypeCanUseBitfields() const override
             {
-                if (m_link_data.m_type_enum >= DDL_STRING_TYPE)
+                if (m_link_data.m_type_category >= DDL_STRING_TYPE)
                     return false;
-                return (DDL_TYPE_FEATURES[m_link_data.m_type_enum].flags & DDL_FLAG_BITFIELDS) != 0;
+                return (DDL_TYPE_FEATURES[m_link_data.m_type_category].flags & DDL_FLAG_BITFIELDS) != 0;
             }
 
             const bool TypeCanUseLimits() const override
             {
-                if (m_link_data.m_type_enum >= DDL_STRING_TYPE)
+                if (m_link_data.m_type_category >= DDL_STRING_TYPE)
                     return false;
-                return (DDL_TYPE_FEATURES[m_link_data.m_type_enum].flags & DDL_FLAG_LIMITS) != 0;
+                return (DDL_TYPE_FEATURES[m_link_data.m_type_category].flags & DDL_FLAG_LIMITS) != 0;
             }
 
             const bool TypeCanUseFixedFloatingPoint() const override
@@ -196,7 +196,7 @@ namespace T5
 
             const bool IsStringType() const override
             {
-                return m_link_data.m_type_enum == DDL_STRING_TYPE;
+                return m_link_data.m_type_category == DDL_STRING_TYPE;
             }
 
             constexpr size_t GetGameStructType() const override
@@ -211,7 +211,7 @@ namespace T5
 
             const bool IsValidType() const override
             {
-                return m_link_data.m_type_enum < DDL_TYPE_COUNT;
+                return m_link_data.m_type_category < DDL_TYPE_COUNT;
             }
 
             const bool IsValidPermission() const override
@@ -239,12 +239,12 @@ namespace T5
             {
                 static const std::string unknownType = "unknown";
 
-                if (m_link_data.m_type_enum < 0 || m_link_data.m_type_enum > DDL_TYPE_NAMES.size())
+                if (m_link_data.m_type_category < 0 || m_link_data.m_type_category > DDL_TYPE_NAMES.size())
                     return unknownType;
 
                 for (const auto& [k, v] : DDL_TYPE_NAMES)
                 {
-                    if (v == m_link_data.m_type_enum)
+                    if (v == m_link_data.m_type_category)
                         return k;
                 }
 
