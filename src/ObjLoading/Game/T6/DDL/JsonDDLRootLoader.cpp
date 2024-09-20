@@ -322,11 +322,6 @@ namespace
 
         bool CreateDDLRootFromJson(JsonDDLRoot& jDDLRoot, ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
-            // Canonical limits in T7 linker
-            constexpr size_t MAX_STRUCTS = 48;
-            constexpr size_t MAX_ENUMS = 32;
-            constexpr size_t MAX_MEMBERS = 1023;
-
             std::string rootName(ddlRoot.name);
             T6::DDL::Root cDDLRoot(rootName);
             jDDLRoot.filename = rootName;
@@ -344,18 +339,18 @@ namespace
                 if (!LoadDDLDefJson(jDDLRoot.defFiles[i], searchPath, jDDLDef))
                     return false;
 
-                if (jDDLDef.enums.size() > MAX_ENUMS)
+                if (jDDLDef.enums.size() > T6::DDL::MAX_ENUMS)
                     return false;
 
                 for (const auto& enum_ : jDDLDef.enums)
-                    if (enum_.members.size() > MAX_MEMBERS)
+                    if (enum_.members.size() > T6::DDL::MAX_MEMBERS)
                         return false;
 
-                if (jDDLDef.structs.size() > MAX_STRUCTS)
+                if (jDDLDef.structs.size() > T6::DDL::MAX_STRUCTS)
                     return false;
 
                 for (const auto& struc : jDDLDef.structs)
-                    if (struc.members.size() > MAX_MEMBERS)
+                    if (struc.members.size() > T6::DDL::MAX_MEMBERS)
                         return false;
 
                 for (auto& jDDLIncludeFile : jDDLRoot.defs[i].includeFiles)

@@ -51,6 +51,7 @@ public:
     const bool m_uint_type;
     const bool m_fixed_point_type;
     const bool m_bool_type;
+    const bool m_version_keyword_allowed_as_name;
 };
 
 // This isn't strictly necessary, but I'm doing this anyway just in case someone wanted to transpile to the official formats.
@@ -58,7 +59,7 @@ public:
 // dumped DDL dumped using the json code here.
 inline const std::unordered_set<std::string> DDL_KEYWORDS = {
     "struct",
-    /*"root",*/
+    "root",
     "enum",
     /*"version",*/ // Canonically used in a member name.
     "bool",
@@ -79,6 +80,7 @@ inline const std::unordered_set<std::string> DDL_KEYWORDS = {
     "server",
     "client",
     "both",
+    "include",
     "",
 };
 

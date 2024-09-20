@@ -292,6 +292,12 @@ void CommonDDLDef::ValidateName(const std::string& name) const
             NameError(std::format("field cannot contain \"{}\"", name[i]));
     }
 
+    if (name == "root")
+        return;
+
+    if (GetFeatures().m_version_keyword_allowed_as_name && name == "version")
+        return;
+
     const auto& it = DDL_KEYWORDS.find(name);
     if (it != DDL_KEYWORDS.end())
         NameError(std::format("field cannot be reserved keyword \"{}\"", it->data()));

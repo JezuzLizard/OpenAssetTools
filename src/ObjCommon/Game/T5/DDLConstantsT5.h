@@ -89,11 +89,17 @@ namespace T5
                                                       .m_padding = false,
                                                       .m_uint_type = false,
                                                       .m_fixed_point_type = false,
-                                                      .m_bool_type = false};
+                                                      .m_bool_type = false,
+                                                      .m_version_keyword_allowed_as_name = false};
 
     class DDL
     {
     public:
+        // Canonical limits in T7 linker
+        static constexpr auto MAX_STRUCTS = 48;
+        static constexpr auto MAX_ENUMS = 32;
+        static constexpr auto MAX_MEMBERS = 1023;
+
         DDL() {}
         class Def : public CommonDDLDef
         {

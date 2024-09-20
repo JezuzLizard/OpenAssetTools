@@ -49,6 +49,7 @@ public:
     std::optional<int> size;
     std::vector<JsonDDLMemberDef> members;
     std::vector<DDLHashEntry> sortedHashTable;
+    mutable size_t refCount = 0;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLStructDef, name, members);
@@ -59,6 +60,7 @@ public:
     std::string name;
     std::vector<std::string> members;
     std::vector<DDLHashEntry> sortedHashTable;
+    mutable size_t refCount = 0;
 };
 
 NLOHMANN_DEFINE_TYPE_EXTENSION_ORDERED(JsonDDLEnumDef, name, members);
