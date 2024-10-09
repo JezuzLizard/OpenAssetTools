@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <sstream>
-
 /*
 DDLDumper::DDLDumper(std::ostream& stream)
     : AbstractTextDumper(stream),

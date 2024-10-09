@@ -2,6 +2,7 @@
 
 #include "Game/T6/DDLConstantsT6.h"
 #include "Json/DDL/JsonDDL.h"
+#include "Dumping/AbstractTextDumper.h"
 
 #include <iomanip>
 
@@ -60,6 +61,9 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                     {
                         DDLAssert(member.refCount, false);
 
+                        DDLAssert(member.link.m_type_category != DDL_STRUCT_TYPE
+                                  || member.link.m_size / member.arraySize.value_or(1) == jsonDDLRoot.defs[i].structs[member.link.m_external_index].size);
+
                         // Only required for actual arrays
                         if (member.arraySize.value_or(1) == 1)
                             member.arraySize.reset();
@@ -76,7 +80,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
 
                 jDef["def"] = jsonDDLRoot.defs[i];
 
-#ifndef DDL_DEBUG //Only dump unneeded data when debugging
+#ifdef DDL_DEBUG //Only dump unneeded data when debugging
                 jDef["defSize"] = ddlRoot.ddlDef[i].size;
                 for (const auto& struc : jsonDDLRoot.defs[i].structs)
                 {
@@ -125,6 +129,17 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                 *secondaryAssetFile << std::setw(4) << jDef << "\n";
             }
 
+            for (auto i = 0; i < jsonDDLRoot.defFiles.size(); i++)
+            {
+                std::filesystem::path baseFilename = jsonDDLRoot.defFiles[i];
+                auto filename = baseFilename.stem().string();
+                auto parentFolder = baseFilename.parent_path().string();
+                auto filenameFinal = std::format("canon/{}/{}", parentFolder, filename);
+                auto canonicalFile = context.OpenAssetFile(filenameFinal);
+                DDLDumper dumper(*canonicalFile);
+                dumper.DumpDef(jsonDDLRoot.defs[i]);
+            }
+
 #ifdef DDL_DEBUG
             for (const auto& def : jsonDDLRoot.defs)
             {
@@ -148,6 +163,215 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
 
             m_primaryStream << std::setw(4) << jRoot << "\n";
         }
+
+        class DDLDumper : AbstractTextDumper
+        {
+        public:
+            DDLDumper(std::ostream& stream)
+                : AbstractTextDumper(stream)
+            {
+            }
+            void WriteLineComment(const std::string& comment) const
+            {
+                Indent();
+                m_stream << "// " << comment << "\n";
+            }
+
+            void DumpEnum(const JsonDDLEnumDef& _enum)
+            {
+                Indent();
+
+                m_stream << "enum ";
+
+                m_stream << _enum.name << "\n";
+
+                Indent();
+                m_stream << "{\n";
+
+                IncIndent();
+
+                const auto entryCount = _enum.members.size();
+                for (auto i = 0u; i < entryCount; i++)
+                {
+                    Indent();
+                    m_stream << _enum.members[i];
+                    m_stream << "\n";
+                }
+
+                DecIndent();
+                Indent();
+                m_stream << "};\n"; // end enum
+            }
+
+            void DumpMemberArray(const JsonDDLMemberDef& member)
+            {
+                if (member.arraySize.value_or(1) > 1)
+                {
+                    if (member.enum_.has_value())
+                        m_stream << "[" << member.enum_.value() << "]";
+                    else
+                        m_stream << "[" << member.arraySize.value() << "]";
+                }
+            }
+
+            void DumpMember(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& _struct, const JsonDDLMemberDef& member)
+            {
+                Indent();
+                if (member.link.m_type_category == DDL_STRING_TYPE)
+                {
+                    m_stream << "string(" << member.maxCharacters.value() << ") " << member.name;
+                    DumpMemberArray(member);
+                }
+                else if (member.link.m_type_category == DDL_STRUCT_TYPE)
+                {
+                    m_stream << member.type << " " << member.name;
+                    DumpMemberArray(member);
+                }
+                else if (T6::DDL::Member::IsStandardSize(static_cast<ddlPrimitiveTypes_e>(member.link.m_type_category), member.link.m_size, member.arraySize.value_or(1)))
+                {
+                    switch (member.link.m_type_category)
+                    {
+                    case DDL_BYTE_TYPE:
+                        m_stream << "byte ";
+                        break;
+                    case DDL_SHORT_TYPE:
+                        m_stream << "short ";
+                        break;
+                    case DDL_UINT_TYPE:
+                        m_stream << "uint ";
+                        break;
+                    case DDL_INT_TYPE:
+                        m_stream << "int ";
+                        break;
+                    case DDL_UINT64_TYPE:
+                        m_stream << "uint64 ";
+                        break;
+                    case DDL_FLOAT_TYPE:
+                        m_stream << "float ";
+                        break;
+                    default:
+                        assert(false);
+                    }
+
+                    m_stream << member.name;
+                    DumpMemberArray(member);
+                }
+                else
+                {
+                    if (member.link.m_type_category == DDL_FIXEDPOINT_TYPE)
+                    {
+                        m_stream << "fixed<" << member.limits->fixedMagnitudeBits.value() << "," << member.limits->fixedPrecisionBits.value() << "> ";
+                        m_stream << member.name;
+                        DumpMemberArray(member);
+                    }
+                    else if (member.limits->range.has_value())
+                    {
+                        //m_stream << member.type << "(" << member.limits->range.value() << ",client,server) " << member.name;
+                        m_stream << member.type << "(" << member.limits->range.value() << ") " << member.name;
+                        DumpMemberArray(member);
+                    }
+                    else
+                    {
+                        m_stream << member.type << ":" << member.limits->bits.value() << " " << member.name;
+                        DumpMemberArray(member);
+                    }
+                }
+
+                m_stream << ";\n";
+            }
+
+            void DumpStruct(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& _struct, const size_t structIndex)
+            {
+#ifdef DDL_DEBUG
+                Indent();
+                m_stream << "// BitOffset: " << _struct.size.value() << "\n";
+#endif
+                if (!_struct.refCount)
+                {
+                    Indent();
+                    m_stream << "// Unused\n";
+                }
+                Indent();
+
+                m_stream << "struct " << _struct.name << "\n";
+
+                Indent();
+                m_stream << "{\n";
+
+                IncIndent();
+
+                for (const auto& member : _struct.members)
+                {
+                    DumpMember(jDDLDef, _struct, member);
+                }
+                
+                DecIndent();
+                Indent();
+                m_stream << "};\n"; // end struct
+            }
+
+            void DumpRoot(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& _struct, const size_t structIndex)
+            {
+                Indent();
+                m_stream << "\n";
+
+                std::string permissionScope = "unspecified";
+                for (const auto& member : _struct.members)
+                {
+                    if (permissionScope == "unspecified" && member.permission.value() != "both" && permissionScope != member.permission.value())
+                    {
+                        permissionScope = member.permission.value();
+                        std::string permissionScopeFriendly = permissionScope;
+                        permissionScopeFriendly[0] = std::toupper(permissionScope.front());
+                        Indent();
+                        m_stream << permissionScopeFriendly + ":\n";
+                    }
+
+                    DumpMember(jDDLDef, _struct, member);
+                }
+            }
+
+            void DumpDef(const JsonDDLDef& jDDLDef)
+            {
+                m_stream << "// ====================\n";
+                m_stream << "// Version " << jDDLDef.version << "\n";
+                m_stream << "// ====================\n";
+
+#ifdef DDL_DEBUG
+                m_stream << "// Size (Bits): " << jDDLDef.size.value() << "\n";
+#endif
+
+                m_stream << "version " << jDDLDef.version << "\n{\n";
+                IncIndent();
+
+                auto insertEmptyLine = false;
+
+                for (const auto& _enum : jDDLDef.enums)
+                {
+                    if (insertEmptyLine)
+                        m_stream << "\n";
+                    else
+                        insertEmptyLine = true;
+
+                    DumpEnum(_enum);
+                }
+
+                for (auto i = 1; i < jDDLDef.structs.size(); i++)
+                {
+                    if (insertEmptyLine)
+                        m_stream << "\n";
+                    else
+                        insertEmptyLine = true;
+
+                    DumpStruct(jDDLDef, jDDLDef.structs[i], i);
+                }
+
+                DumpRoot(jDDLDef, jDDLDef.structs[0], 0);
+
+                DecIndent();
+                m_stream << "}\n"; // end version
+            }
+        };
 
         void DDLAssertInternal(const bool expression,
                                const std::string& expressionString,
@@ -271,16 +495,23 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                         else
                             member.link.m_parent_struct = "root";
 
-                        DDLAssert(member.link.m_enum_index == 0 || member.link.m_enum_index < static_cast<int>(def.enums.size()));
+                        DDLAssert(member.link.m_enum_index == -1 || def.enums.size() == 0 || member.link.m_external_index > 0 || member.link.m_enum_index < def.enums.size() || member.arraySize.value_or(1) == 1);
 
-                        if (member.link.m_enum_index > 0 && member.link.m_enum_index < def.enums.size())
+                        if (member.link.m_enum_index >= 0 && member.arraySize.value_or(1) > 1)
                         {
+                            DDLAssert(member.link.m_enum_index < def.enums.size());
+
                             member.enum_.emplace(def.enums[member.link.m_enum_index].name);
+
+                            DDLAssert(member.arraySize == def.enums[member.link.m_enum_index].members.size());
                         }
                         else
                         {
                             //-1 enumindex indicates no enum
                             //0 enumindex is a reserved value, but is not the same as -1
+                            //DDLAssert(member.link.m_enum_index == -1 || def.enums.size() == 0
+                            //|| member.link.m_enum_index < def.enums.size() && member.arraySize.value_or(1) != 1);
+                            //the above triggering implies a special extra usage of enums
                         }
                     }
 
@@ -291,7 +522,6 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
 
         void CreateJsonDDlMemberLimits(JsonDDLMemberLimits& jDDLMemberLimits, const ddlMemberDef_t& ddlMemberDef)
         {
-            DDLAssert(ddlMemberDef.arraySize != 1 || (ddlMemberDef.size % ddlMemberDef.arraySize) == 0);
             // If this happens it means the assertion that serverDelta, and clientDelta are not assigned separately is false
             DDLAssert((ddlMemberDef.rangeLimit == ddlMemberDef.serverDelta) && (ddlMemberDef.rangeLimit == ddlMemberDef.clientDelta));
 
@@ -308,6 +538,8 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             else if (ddlMemberDef.rangeLimit != 0)
             {
                 DDLAssert(ddlMemberDef.type == DDL_UINT_TYPE || ddlMemberDef.type == DDL_INT_TYPE);
+
+                // Int type has the signed bit so the size is calculated differently
                 DDLAssert((ddlMemberDef.type == DDL_UINT_TYPE || memberUnitSize == (std::bit_width(ddlMemberDef.rangeLimit) + 1)));
                 DDLAssert((ddlMemberDef.type == DDL_INT_TYPE || memberUnitSize == std::bit_width(ddlMemberDef.rangeLimit)));
                 jDDLMemberLimits.range.emplace(ddlMemberDef.rangeLimit);
@@ -326,6 +558,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             DDLAssert(ddlMemberDef.externalIndex >= 0 && ddlMemberDef.externalIndex < T6::DDL::MAX_STRUCTS);
             DDLAssert(ddlMemberDef.enumIndex >= -1 && ddlMemberDef.enumIndex < T6::DDL::MAX_ENUMS);
             DDLAssert(ddlMemberDef.type != DDL_STRING_TYPE || (ddlMemberDef.size % CHAR_BIT) == 0);
+            DDLAssert(ddlMemberDef.type != DDL_INT_TYPE || ddlMemberDef.size > 1, false);
 
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
@@ -349,6 +582,10 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !T6::DDL::Member::IsStandardSize(typeEnum, ddlMemberDef.size, ddlMemberDef.arraySize))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
+            DDLAssert(ddlMemberDef.type != DDL_STRUCT_TYPE || ddlMemberDef.rangeLimit == 0);
+
+            DDLAssert(ddlMemberDef.type != DDL_ENUM_TYPE);
+
             jDDLMemberDef.link.m_offset = ddlMemberDef.offset;
             
             jDDLMemberDef.link.m_external_index = ddlMemberDef.externalIndex;
@@ -360,6 +597,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             jDDLMemberDef.permission.emplace(T6::DDL::Member::PermissionTypeToName(permissionCategory));
 
             DDLAssert(jDDLMemberDef.permission.has_value() && jDDLMemberDef.permission.value() != "unknown");
+            DDLAssert(ddlMemberDef.arraySize != 1 || (ddlMemberDef.size % ddlMemberDef.arraySize) == 0);
         }
 
         void CreateJsonDDlStructList(JsonDDLStructDef& jDDLStructDef, const ddlStructDef_t& ddlStructDef)
@@ -413,7 +651,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
         void CreateJsonDDlEnumList(JsonDDLEnumDef& jDDLEnumDef, const ddlEnumDef_t& ddlEnumDef)
         {
             DDLAssert(CheckName(ddlEnumDef.name));
-            DDLAssert(ddlEnumDef.memberCount > 0 && ddlEnumDef.memberCount < T6::DDL::MAX_MEMBERS);
+            DDLAssert(ddlEnumDef.memberCount > 1 && ddlEnumDef.memberCount < T6::DDL::MAX_MEMBERS);
             DDLAssert(ddlEnumDef.members && ddlEnumDef.members[0]);
             DDLAssert(ddlEnumDef.hashTable);
 
@@ -489,7 +727,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             auto filename = baseFilename.stem().string();
             auto extension = ".ddldef.json";
             auto parentFolder = baseFilename.parent_path().string();
-            auto filenameFinal = std::format("{}/{}.version_{}{}", parentFolder, filename, jsonDDLDef.version, extension);
+            auto filenameFinal = std::format("json/{}/{}.version_{}{}", parentFolder, filename, jsonDDLDef.version, extension);
             jsonDDLDef.filename = filenameFinal;
             jDDLRoot.defFiles.push_back(filenameFinal);
             jDDLRoot.defs.push_back(jsonDDLDef);
