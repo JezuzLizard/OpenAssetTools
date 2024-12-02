@@ -341,7 +341,7 @@ void CommonDDLMemberDef::Resolve()
     m_link_data.m_type_category = NameToType();
 
     if (m_link_data.m_type_category == GetGameEnumType() || m_link_data.m_type_category == GetGameStructType())
-        LogicError("type cannot be directly defined as struct");
+        LogicError("type cannot be directly defined as struct or enum");
 
     assert(!m_permission.has_value());
     m_permission.emplace(parentDef.m_permission_scope);

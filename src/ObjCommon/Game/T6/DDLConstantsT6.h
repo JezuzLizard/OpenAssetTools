@@ -245,7 +245,7 @@ namespace T6
                 if (!IsStandardSize())
                     return 0;
 
-                DDL_TYPE_FEATURES[m_link_data.m_type_category].size;
+                return DDL_TYPE_FEATURES[m_link_data.m_type_category].size;
             }
 
             const uint64_t GetStandardMaxValue() const override

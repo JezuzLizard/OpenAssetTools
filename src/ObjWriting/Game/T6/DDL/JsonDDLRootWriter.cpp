@@ -558,7 +558,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             DDLAssert(ddlMemberDef.externalIndex >= 0 && ddlMemberDef.externalIndex < T6::DDL::MAX_STRUCTS);
             DDLAssert(ddlMemberDef.enumIndex >= -1 && ddlMemberDef.enumIndex < T6::DDL::MAX_ENUMS);
             DDLAssert(ddlMemberDef.type != DDL_STRING_TYPE || (ddlMemberDef.size % CHAR_BIT) == 0);
-            DDLAssert(ddlMemberDef.type != DDL_INT_TYPE || ddlMemberDef.size > 1, false);
+            DDLAssert(ddlMemberDef.type != DDL_INT_TYPE || ddlMemberDef.size >= 1, false);
 
             JsonDDLMemberLimits jLimits;
             jDDLMemberDef.name = ddlMemberDef.name;
@@ -727,7 +727,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             auto filename = baseFilename.stem().string();
             auto extension = ".ddldef.json";
             auto parentFolder = baseFilename.parent_path().string();
-            auto filenameFinal = std::format("json/{}/{}.version_{}{}", parentFolder, filename, jsonDDLDef.version, extension);
+            auto filenameFinal = std::format("{}/{}.version_{}{}", parentFolder, filename, jsonDDLDef.version, extension);
             jsonDDLDef.filename = filenameFinal;
             jDDLRoot.defFiles.push_back(filenameFinal);
             jDDLRoot.defs.push_back(jsonDDLDef);

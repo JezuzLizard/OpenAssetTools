@@ -24,7 +24,7 @@ CommonDDLStructDef::CommonDDLStructDef(std::string& name, CommonDDLDef* parent, 
       m_include_file(std::nullopt),
       m_index(index)
 {
-    assert(m_index != 0 || m_name != "root");
+    assert(m_index == 0 || m_name != "root");
 }
 
 CommonDDLStructDef::CommonDDLStructDef(std::string& name, CommonDDLDef* parent, const size_t index, std::string& includeFile)
@@ -34,7 +34,7 @@ CommonDDLStructDef::CommonDDLStructDef(std::string& name, CommonDDLDef* parent, 
       m_include_file(includeFile),
       m_index(index)
 {
-    assert(m_index != 0 || m_name != "root");
+    assert(m_index == 0 || m_name != "root");
 }
 
 void CommonDDLStructDef::SetCalculated()

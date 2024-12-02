@@ -12,7 +12,7 @@
 
 CommonDDLDef::CommonDDLDef(const int version, const std::string& filename, CommonDDLRoot& root, const bool isInclude)
     : m_version(version),
-      m_filename(std::move(filename)),
+      m_filename(filename),
       m_root(root),
       m_is_include(isInclude)
 {
@@ -206,7 +206,7 @@ bool CommonDDLDef::Calculate()
         }
 
         for (auto& [k, struc] : m_structs)
-            // Structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
+            // Unreferenced structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
             // Treyarch likely had an include system that would paste structs from an external file into the the defs that include.
             // Or they had an export/import system.
             if (struc.GetRefCount())

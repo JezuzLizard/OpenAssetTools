@@ -47,6 +47,7 @@ public:
     const int m_version;
     const std::string m_filename;
     const bool m_is_include;
+    //const bool m_from_json;
     CommonDDLRoot& m_root;
     int m_size = 0;
     mutable size_t m_reference_count = 0;

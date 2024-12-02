@@ -30,42 +30,39 @@ namespace
         bool Load(ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
             const auto jRoot = json::parse(m_stream);
-            std::optional<std::string> tool;
-            std::optional<std::string> type;
-            std::optional<size_t> version;
-            std::optional<std::string> game;
+            std::string tool = "";
+            std::string type = "";
+            size_t version = 0;
+            std::string game = "";
 
             JsonDDLRoot jDDLRoot;
 
-            /*
-            if (jRoot.at("_tool"))
+            //if (jRoot.at("_tool"))
             {
                 jRoot.at("_tool").get_to(tool);
-                utils::MakeStringLowerCase(*tool);
+                utils::MakeStringLowerCase(tool);
             }
 
-            if (jRoot.at("_type"))
+            //if (jRoot.at("_type"))
             {
-                jRoot.at("_type").get_to(type.value());
-                utils::MakeStringLowerCase(*type);
+                jRoot.at("_type").get_to(type);
+                utils::MakeStringLowerCase(type);
             }
 
-            if (jRoot.at("_version"))
-                jRoot.at("_version").get_to(version.value());
+            //if (jRoot.at("_version"))
+                jRoot.at("_version").get_to(version);
 
-            if (jRoot.at("_game"))
+            //if (jRoot.at("_game"))
             {
-                jRoot.at("_game").get_to(game.value());
-                utils::MakeStringLowerCase(*game);
+                jRoot.at("_game").get_to(game);
+                utils::MakeStringLowerCase(game);
             }
 
-            if (!type.has_value() || type.value() != "ddlroot" || version.value_or(0) != OAT_DDL_VERSION || !game.has_value() || game.value() != "t6"
-                || !tool.has_value() || tool.value() != "oat")
+            if (type == "" || type != "ddlroot" || version != OAT_DDL_VERSION || game == "" || game != "t6" || tool == "" || tool != "oat")
             {
                 std::cerr << "Tried to load ddl \"" << ddlRoot.name << "\" but did not find expected type ddlRoot of version " << OAT_DDL_VERSION << " for game t6\n";
                 return false;
             }
-            */
 
             try
             {
@@ -211,6 +208,7 @@ namespace
                 return true;
 
             // this should be detected before this
+            /*
             assert(jDDLRoot.includeDefs.contains(jDDLDef.filename));
 
             for (auto& includeDef : jDDLRoot.includeDefs.at(jDDLDef.filename))
@@ -218,6 +216,7 @@ namespace
                 T6::DDL::Def cDDLDefInclude(includeDef.version, includeDef.filename, cRoot, true);
                 ConvertJsonDDLDef(jDDLRoot, includeDef, cRoot, cDDLDefInclude, true);
             }
+            */
 
             return true;
         }
@@ -324,6 +323,7 @@ namespace
         {
             std::string rootName(ddlRoot.name);
             T6::DDL::Root cDDLRoot(rootName);
+            std::vector<T6::DDL::Def> cDDLT6Defs;
             jDDLRoot.filename = rootName;
 
             if (!jDDLRoot.defFiles.size())
@@ -353,6 +353,7 @@ namespace
                     if (struc.members.size() > T6::DDL::MAX_MEMBERS)
                         return false;
 
+                /*
                 for (auto& jDDLIncludeFile : jDDLRoot.defs[i].includeFiles)
                 {
                     JsonDDLDef jDDLInclude;
@@ -361,36 +362,38 @@ namespace
 
                     //jDDLRoot.includeDefs.insert_or_assign(jDDLIncludeFile, jDDLInclude);
                 }
+                */
                 T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i], cDDLRoot, false);
                 if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLRoot, cDDLDef, false))
                     return false;
 
-                cDDLRoot.m_defs[jDDLRoot.defFiles[i]].emplace_back(cDDLDef);
+                cDDLRoot.m_defs[jDDLRoot.defFiles[i]].push_back(cDDLDef);
+                cDDLT6Defs.push_back(cDDLDef);
             }
 
-            for (auto& [filename, cDefs] : cDDLRoot.m_defs)
+            for (auto& cDef : cDDLT6Defs)
             {
-                if (!cDefs[0].Resolve())
+                if (!cDef.Resolve())
                     return false;
             }
 
-            for (const auto& [filename, cDefs] : cDDLRoot.m_defs)
+            for (auto& cDef : cDDLT6Defs)
             {
-                if (!cDefs[0].Validate())
+                if (!cDef.Validate())
                     return false;
             }
 
-            for (auto& [filename, cDefs] : cDDLRoot.m_defs)
+            for (auto& cDef : cDDLT6Defs)
             {
-                if (!cDefs[0].Calculate())
+                if (!cDef.Calculate())
                     return false;
             }
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
             auto* firstDef = ddlDef;
-            for (const auto& [filename, cDefs] : cDDLRoot.m_defs)
+            for (auto& cDef : cDDLT6Defs)
             {
-                if (!CreateDDLDef(reinterpret_cast<const T6::DDL::Def&>(cDefs[0]), *ddlDef))
+                if (!CreateDDLDef(cDef, *ddlDef))
                     return false;
 
                 ddlDef->next = m_memory.Alloc<ddlDef_t>();
