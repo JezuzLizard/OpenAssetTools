@@ -52,9 +52,9 @@ public:
     int m_size = 0;
     mutable size_t m_reference_count = 0;
     int m_permission_scope = 0;
-    std::unordered_map<std::string, CommonDDLStructDef> m_structs;
-    std::unordered_map<std::string, CommonDDLEnumDef> m_enums;
-    mutable std::vector<std::reference_wrapper<const CommonDDLMemberDef>> m_member_stack;
+    std::vector<CommonDDLStructDef> m_structs;
+    std::vector<CommonDDLEnumDef> m_enums;
+    mutable std::vector<CommonDDLMemberDef> m_member_stack;
     mutable std::vector<int> m_in_calculation;
 
     [[noreturn]] void LogicError(const std::string& message) const;
@@ -73,29 +73,21 @@ public:
     CommonDDLRoot& GetRoot();
     const CommonDDLRoot& GetRoot() const;
 
-    virtual constexpr DDLGameFeatures GetFeatures() const
+    constexpr DDLGameFeatures GetFeatures() const
     {
-        constexpr DDLGameFeatures DDL_GAME_FEATURES_DEFAULTS = {.m_simple_hash_table = false,
-                                                                   .m_split_hash_table = false,
-                                                                   .m_header = false,
-                                                                   .m_padding = false,
-                                                                   .m_uint_type = false,
-                                                                   .m_fixed_point_type = false,
-                                                                   .m_bool_type = false};
-
-        return DDL_GAME_FEATURES_DEFAULTS;
+        return DDL_GAME_FEATURES;
     };
 
     CommonDDLDef(const int version, const std::string& filename, CommonDDLRoot& root, const bool isInclude = false);
 
     void NameError(const std::string& message) const;
-    void ValidateName(const std::string& name) const;
+    const void ValidateName(bool isType, const std::string& name) const;
     bool Resolve();
 
-    bool Validate() const;
+    const bool Validate() const;
     bool Calculate();
 
 private:
-    void ValidateRoot() const;
+    const void ValidateRoot() const;
     void PreCalculate();
 };

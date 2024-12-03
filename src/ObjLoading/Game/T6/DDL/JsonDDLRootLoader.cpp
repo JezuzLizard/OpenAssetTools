@@ -75,10 +75,10 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
-        void ConvertToAsset(const T6::DDL::Def& in, ddlDef_t& out) const
+        void ConvertToAsset(const CommonDDLDef& in, ddlDef_t& out) const
         {
             auto i = 0;
-            for (const auto& [k, enum_] : in.m_enums)
+            for (const auto& enum_ : in.m_enums)
             {
                 for (auto j = 0u; j < enum_.m_members.size(); j++)
                 {
@@ -94,18 +94,18 @@ namespace
             }
 
             i = 0;
-            for (const auto& [k, struc] : in.m_structs)
+            for (const auto& struc : in.m_structs)
             {
                 auto j = 0;
-                for (const auto& [k, inMember] : struc.m_members)
+                for (const auto& inMember : struc.m_members)
                 {
                     auto& outMember = out.structList[i].members[j];
 
                     outMember.name = m_memory.Dup(inMember.m_name.c_str());
-                    outMember.size = inMember.m_link_data.m_size;
-                    outMember.offset = inMember.m_link_data.m_offset;
-                    outMember.type = inMember.m_link_data.m_type_category;
-                    outMember.externalIndex = inMember.m_link_data.m_external_index;
+                    outMember.size = inMember.m_size;
+                    outMember.offset = inMember.m_offset;
+                    outMember.type = inMember.m_type_category;
+                    outMember.externalIndex = inMember.m_external_index;
                     if (inMember.m_limits.has_value())
                     {
                         if (inMember.m_limits->m_range.has_value())
@@ -116,7 +116,7 @@ namespace
                         }
                     }
                     outMember.arraySize = inMember.m_array_size.value_or(1);
-                    outMember.enumIndex = inMember.m_link_data.m_enum_index;
+                    outMember.enumIndex = inMember.m_enum_index;
                     outMember.permission = inMember.m_permission.value();
                     j++;
                 }
@@ -130,7 +130,7 @@ namespace
             }
         }
 
-        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, T6::DDL::Root& cRoot, T6::DDL::Def& cDef, bool inInclude) const
+        bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, CommonDDLRoot& cRoot, CommonDDLDef& cDef, bool inInclude) const
         {
             auto i = 0u;
             for (const auto& enum_ : jDDLDef.enums)
@@ -138,19 +138,26 @@ namespace
                 std::string lowerCopy;
                 lowerCopy = enum_.name;
                 utils::MakeStringLowerCase(lowerCopy);
-                T6::DDL::Enum cDDLEnum(lowerCopy, &cDef, i);
+                CommonDDLEnumDef cDDLEnum(lowerCopy, &cDef, i);
                 for (const std::string member : enum_.members)
                 {
                     cDDLEnum.m_members.emplace_back(member);
                 }
 
-                if (cDef.m_enums.find(cDDLEnum.m_name) != cDef.m_enums.end())
+                auto it = std::find_if(cDef.m_enums.begin(),
+                                       cDef.m_enums.end(),
+                                       [cDDLEnum](const CommonDDLEnumDef& _enum)
+                                       {
+                                           return cDDLEnum.m_name == _enum.m_name;
+                                       });
+
+                if (it != cDef.m_enums.end())
                 {
                     std::cerr << "duplicate enum definition in def\n";
                     return false;
                 }
 
-                cDef.m_enums.emplace(cDDLEnum.m_name, cDDLEnum);
+                cDef.m_enums.push_back(cDDLEnum);
                 i++;
             }
 
@@ -160,13 +167,13 @@ namespace
                 std::string lowerCopy;
                 lowerCopy = struc.name;
                 utils::MakeStringLowerCase(lowerCopy);
-                T6::DDL::Struct cDDLStruct(lowerCopy, &cDef, i);
+                CommonDDLStructDef cDDLStruct(lowerCopy, &cDef, i);
 
                 for (const auto& member : struc.members)
                 {
                     std::string lowerCopyName = member.name;
                     utils::MakeStringLowerCase(lowerCopyName);
-                    T6::DDL::Member cDDLMember(lowerCopyName, cDDLStruct);
+                    CommonDDLMemberDef cDDLMember(lowerCopyName, &cDDLStruct);
                     if (member.enum_.has_value())
                     {
                         lowerCopy = member.enum_.value();
@@ -185,22 +192,38 @@ namespace
                     
                     cDDLMember.m_max_characters = member.maxCharacters;
 
-                    if (cDDLStruct.m_members.find(cDDLMember.m_name) != cDDLStruct.m_members.end())
+                    /*
+                    auto it = std::find_if(cDDLStruct.m_members.begin(),
+                                           cDDLStruct.m_members.end(),
+                            [cDDLMember](const CommonDDLMemberDef& member)
+                            {
+                                 return cDDLMember.m_name == member.m_name;
+                            });
+
+                    if (it != cDDLStruct.m_members.end())
                     {
                         std::cerr << "duplicate member definition in struct\n";
                         return false;
                     }
+                    */
 
-                    cDDLStruct.m_members.emplace(cDDLMember.m_name, cDDLMember);
+                    cDDLStruct.m_members.push_back(cDDLMember);
                 }
 
-                if (cDef.m_structs.find(cDDLStruct.m_name) != cDef.m_structs.end())
+                auto it = std::find_if(cDef.m_structs.begin(),
+                                       cDef.m_structs.end(),
+                                       [cDDLStruct](const CommonDDLStructDef& struc)
+                    {
+                                           return cDDLStruct.m_name == struc.m_name;
+                    });
+
+                if (it != cDef.m_structs.end())
                 {
                     std::cerr << "duplicate struct definition\n";
                     return false;
                 }
 
-                cDef.m_structs.emplace(cDDLStruct.m_name, cDDLStruct);
+                cDef.m_structs.push_back(cDDLStruct);
                 i++;
             }
 
@@ -213,7 +236,7 @@ namespace
 
             for (auto& includeDef : jDDLRoot.includeDefs.at(jDDLDef.filename))
             {
-                T6::DDL::Def cDDLDefInclude(includeDef.version, includeDef.filename, cRoot, true);
+                CommonDDLDef cDDLDefInclude(includeDef.version, includeDef.filename, cRoot, true);
                 ConvertJsonDDLDef(jDDLRoot, includeDef, cRoot, cDDLDefInclude, true);
             }
             */
@@ -221,13 +244,13 @@ namespace
             return true;
         }
 
-        bool AllocateDefMembers(const T6::DDL::Def& cDef, ddlDef_t& ddlDef) const
+        bool AllocateDefMembers(const CommonDDLDef& cDef, ddlDef_t& ddlDef) const
         {
             ddlDef.enumCount = cDef.m_enums.size();
             ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
 
             auto i = 0;
-            for (const auto& [k, enum_] : cDef.m_enums)
+            for (const auto& enum_ : cDef.m_enums)
             {
                 ddlDef.enumList[i].name = m_memory.Dup(enum_.m_name.c_str());
                 ddlDef.enumList[i].memberCount = enum_.m_members.size();
@@ -242,7 +265,7 @@ namespace
             ddlDef.structList = m_memory.Alloc<ddlStructDef_t>(sizeof(ddlStructDef_t) * ddlDef.structCount);
 
             i = 0;
-            for (const auto& [k, struc] : cDef.m_structs)
+            for (const auto& struc : cDef.m_structs)
             {
                 ddlDef.structList[i].name = m_memory.Dup(struc.m_name.c_str());
                 ddlDef.structList[i].memberCount = struc.m_members.size();
@@ -256,7 +279,7 @@ namespace
             return true;
         }
 
-        bool CreateDDLDef(const T6::DDL::Def& cDef, ddlDef_t& ddlDef) const
+        bool CreateDDLDef(const CommonDDLDef& cDef, ddlDef_t& ddlDef) const
         {
             ddlDef.version = cDef.m_version;
             ddlDef.size = cDef.m_size;
@@ -322,8 +345,8 @@ namespace
         bool CreateDDLRootFromJson(JsonDDLRoot& jDDLRoot, ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
             std::string rootName(ddlRoot.name);
-            T6::DDL::Root cDDLRoot(rootName);
-            std::vector<T6::DDL::Def> cDDLT6Defs;
+            CommonDDLRoot cDDLRoot(rootName);
+            std::vector<CommonDDLDef> cDDLT6Defs;
             jDDLRoot.filename = rootName;
 
             if (!jDDLRoot.defFiles.size())
@@ -363,12 +386,28 @@ namespace
                     //jDDLRoot.includeDefs.insert_or_assign(jDDLIncludeFile, jDDLInclude);
                 }
                 */
-                T6::DDL::Def cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i], cDDLRoot, false);
+                CommonDDLDef cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i], cDDLRoot, false);
                 if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLRoot, cDDLDef, false))
                     return false;
 
                 cDDLRoot.m_defs[jDDLRoot.defFiles[i]].push_back(cDDLDef);
                 cDDLT6Defs.push_back(cDDLDef);
+            }
+
+            for (auto& cDef : cDDLT6Defs)
+            {
+                for (auto& cEnum : cDef.m_enums)
+                {
+                    cEnum.SetParentDef(&cDef);
+                }
+                for (auto& cStruct : cDef.m_structs)
+                {
+                    cStruct.SetParentDef(&cDef);
+                    for (auto& cMember : cStruct.m_members)
+                    {
+                        cMember.SetParentStruct(&cStruct);
+                    }
+                }
             }
 
             for (auto& cDef : cDDLT6Defs)
@@ -379,6 +418,7 @@ namespace
 
             for (auto& cDef : cDDLT6Defs)
             {
+                cDef.m_in_calculation.resize(cDef.m_structs.size(), false);
                 if (!cDef.Validate())
                     return false;
             }

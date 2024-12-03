@@ -37,6 +37,10 @@ CommonDDLStructDef::CommonDDLStructDef(std::string& name, CommonDDLDef* parent, 
     assert(m_index == 0 || m_name != "root");
 }
 
+CommonDDLStructDef::~CommonDDLStructDef()
+{
+}
+
 void CommonDDLStructDef::SetCalculated()
 {
     m_calculated = true;
@@ -47,14 +51,19 @@ void CommonDDLStructDef::ResetCalculated()
     m_calculated = false;
 }
 
-const CommonDDLDef& CommonDDLStructDef::GetParentDef() const
+const CommonDDLDef* CommonDDLStructDef::GetParentDef() const
 {
-    return *m_parent_def;
+    return m_parent_def;
 }
 
-CommonDDLDef& CommonDDLStructDef::GetParentDef()
+CommonDDLDef* CommonDDLStructDef::GetParentDef()
 {
-    return *m_parent_def;
+    return m_parent_def;
+}
+
+void CommonDDLStructDef::SetParentDef(CommonDDLDef* parent)
+{
+    m_parent_def = parent;
 }
 
 const size_t CommonDDLStructDef::GetRefCount() const
@@ -62,9 +71,44 @@ const size_t CommonDDLStructDef::GetRefCount() const
     return m_reference_count;
 }
 
+void CommonDDLStructDef::CalculateHashes()
+{
+    auto i = 0;
+    for (const auto& member : m_members)
+    {
+        DDLHashEntry ddlHash = {};
+        auto func = [](const char* str)
+        {
+            if (!str)
+                return 0;
+
+            auto result = 0x1505;
+            auto offset = 0;
+            while (str[offset])
+            {
+                const auto c = tolower(str[offset++]);
+                result = c + 33 * result;
+            }
+
+            return result;
+        };
+        ddlHash.hash = func(member.m_name.c_str());
+        ddlHash.index = i;
+        GetHashTable().push_back(ddlHash);
+        i++;
+    }
+
+    std::sort(GetHashTable().begin(),
+              GetHashTable().end(),
+              [](const DDLHashEntry& a, const DDLHashEntry& b)
+              {
+                  return a.hash < b.hash;
+              });
+}
+
 std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable()
 {
-    const auto& featureLevel = GetParentDef().GetFeatures();
+    const auto& featureLevel = GetParentDef()->GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -72,7 +116,7 @@ std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable()
 
 const std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable() const
 {
-    const auto& featureLevel = GetParentDef().GetFeatures();
+    const auto& featureLevel = GetParentDef()->GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -80,14 +124,14 @@ const std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable() const
 
 [[noreturn]] void CommonDDLStructDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParentDef().m_filename) + message;
+    std::string prefaceAndMessage = std::format("DDL Struct Logic Error: [Struct: {} | File: {}]", m_name, GetParentDef()->m_filename) + message;
 #ifdef DDL_DEBUG
     __debugbreak();
 #endif
     throw DDL::Exception(prefaceAndMessage);
 }
 
-void CommonDDLStructDef::Validate() const
+const void CommonDDLStructDef::Validate() const
 {
     if (m_calculated)
         return;
@@ -103,18 +147,18 @@ void CommonDDLStructDef::Calculate()
     if (m_calculated)
         return;
 
-    const auto& featureLevel = GetParentDef().GetFeatures();
+    const auto& featureLevel = GetParentDef()->GetFeatures();
     if (featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table)
     {
         CalculateHashes();
     }
     
     auto size = 0u;
-    for (auto& [k, member] : m_members)
+    for (auto& member : m_members)
     {
         member.Calculate();
-        member.m_link_data.m_offset = size;
-        size += member.m_link_data.m_size;
+        member.m_offset = size;
+        size += member.m_size;
     }
 
     m_size = size;
@@ -122,12 +166,12 @@ void CommonDDLStructDef::Calculate()
     m_calculated = true;
 }
 
-void CommonDDLStructDef::ValidateName() const
+const void CommonDDLStructDef::ValidateName() const
 {
-    GetParentDef().ValidateName(m_name);
+    GetParentDef()->ValidateName(false, m_name);
 
     size_t nameRedefinitions = 0;
-    for (const auto& [k, struc] : GetParentDef().m_structs)
+    for (const auto& struc : GetParentDef()->m_structs)
     {
         if (struc.m_name == m_name)
             nameRedefinitions++;
@@ -136,7 +180,7 @@ void CommonDDLStructDef::ValidateName() const
             LogicError("multiple redefinitions of struct");
     }
 
-    for (const auto& [k, enum_] : GetParentDef().m_structs)
+    for (const auto& enum_ : GetParentDef()->m_enums)
     {
         if (enum_.m_name == m_name)
             nameRedefinitions++;
@@ -146,29 +190,30 @@ void CommonDDLStructDef::ValidateName() const
     }
 }
 
-void CommonDDLStructDef::ValidateMembers() const
+const void CommonDDLStructDef::ValidateMembers() const
 {
     if (m_members.empty())
         LogicError("struct must have at least one member");
 
-    for (const auto& [k, member] : m_members)
+    for (const auto& member : m_members)
     {
+        assert(member.m_type_category != (size_t)-1);
         member.Validate();
     }
 }
 
-void CommonDDLStructDef::ReferenceCount() const
+const void CommonDDLStructDef::ReferenceCount() const
 {
     if (!m_reference_count)
-        std::cerr << std::format("[Def: {}|Name: {}] an unreferenced struct will not be used by the engine!", GetParentDef().m_filename, m_name)
+        std::cerr << std::format("DDL STRUCT WARNING: [Def: {}|Name: {}] an unreferenced struct will not be used by the engine!", GetParentDef()->m_filename, m_name)
                   << "\n";
     // LogicError("an unreferenced struct cannot be linked");
 }
 
-void CommonDDLStructDef::Resolve()
+void CommonDDLStructDef::Resolve(bool referencedByRoot)
 {
-    for (auto& [k, member] : m_members)
+    for (auto& member : m_members)
     {
-        member.Resolve();
+        member.Resolve(referencedByRoot);
     }
 }

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <optional>
+#include <algorithm>
 
 constexpr auto OAT_DDL_FLOAT_BITS = (sizeof(float) * CHAR_BIT);
 
@@ -83,6 +84,102 @@ inline const std::unordered_set<std::string> DDL_KEYWORDS = {
     "include",
     "",
 };
+
+constexpr auto OAT_DDL_VERSION = 1u;
+
+enum ddlPrimitiveTypes_e : size_t
+{
+    DDL_BYTE_TYPE,
+    DDL_SHORT_TYPE,
+    DDL_UINT_TYPE,
+    DDL_INT_TYPE,
+    DDL_UINT64_TYPE,
+    DDL_FLOAT_TYPE,
+    DDL_FIXEDPOINT_TYPE,
+    DDL_STRING_TYPE,
+    DDL_STRUCT_TYPE,
+    DDL_ENUM_TYPE,
+    DDL_TYPE_COUNT,
+};
+
+enum ddlPermissionTypes_e : size_t
+{
+    DDL_PERMISSIONS_UNSPECIFIED,
+    DDL_PERMISSIONS_CLIENTONLY,
+    DDL_PERMISSIONS_SERVERONLY,
+    DDL_PERMISSIONS_BOTH,
+    DDL_PERMISSIONS_COUNT,
+};
+
+inline const std::unordered_map<std::string, int> DDL_TYPE_NAMES = {
+    {"byte",        DDL_BYTE_TYPE      },
+    {"short",       DDL_SHORT_TYPE     },
+    {"uint",        DDL_UINT_TYPE      },
+    {"int",         DDL_INT_TYPE       },
+    {"uint64",      DDL_UINT64_TYPE    },
+    {"float",       DDL_FLOAT_TYPE     },
+    {"fixed_float", DDL_FIXEDPOINT_TYPE},
+    {"string",      DDL_STRING_TYPE    },
+    {"struct",      DDL_STRUCT_TYPE    },
+    {"enum",        DDL_ENUM_TYPE      },
+    {"",            DDL_TYPE_COUNT     }
+};
+
+inline const std::unordered_map<std::string, int> DDL_PERM_NAMES = {
+    {"unspecified", DDL_PERMISSIONS_UNSPECIFIED},
+    {"client",      DDL_PERMISSIONS_CLIENTONLY },
+    {"server",      DDL_PERMISSIONS_SERVERONLY },
+    {"both",        DDL_PERMISSIONS_BOTH       },
+    {"",            DDL_PERMISSIONS_COUNT      }
+};
+
+inline const DDLTypeFeature DDL_TYPE_FEATURES[6] = {
+    {
+     .size = sizeof(char) * CHAR_BIT,
+     .flags = 0,
+     .max = UCHAR_MAX,
+     .min = 0,
+     },
+    {
+     .size = sizeof(short) * CHAR_BIT,
+     .flags = 0,
+     .max = USHRT_MAX,
+     .min = 0,
+     },
+    {
+     .size = sizeof(size_t) * CHAR_BIT,
+     .flags = DDL_FLAG_LIMITS | DDL_FLAG_BITFIELDS,
+     .max = UINT_MAX,
+     .min = 0,
+     },
+    {
+     .size = sizeof(int) * CHAR_BIT,
+     .flags = DDL_FLAG_SIGNED | DDL_FLAG_LIMITS | DDL_FLAG_BITFIELDS,
+     .max = INT_MAX,
+     .min = INT_MIN,
+     },
+    {
+     .size = sizeof(uint64_t) * CHAR_BIT,
+     .flags = 0,
+     .max = UINT64_MAX,
+     .min = 0,
+     },
+    {
+     .size = sizeof(float) * CHAR_BIT,
+     .flags = 0,
+     .max = 0,
+     .min = 0,
+     }
+};
+
+inline const DDLGameFeatures DDL_GAME_FEATURES = {.m_simple_hash_table = true,
+                                                  .m_split_hash_table = false,
+                                                  .m_header = false,
+                                                  .m_padding = false,
+                                                  .m_uint_type = true,
+                                                  .m_fixed_point_type = true,
+                                                  .m_bool_type = false,
+                                                  .m_version_keyword_allowed_as_name = true};
 
 namespace DDL
 {

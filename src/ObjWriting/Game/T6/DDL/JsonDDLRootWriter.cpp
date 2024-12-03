@@ -44,7 +44,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                 jDef["_tool"] = "oat";
                 jDef["_type"] = "ddlDef";
                 jDef["_game"] = "t6";
-                jDef["_version"] = T6::OAT_DDL_VERSION;
+                jDef["_version"] = OAT_DDL_VERSION;
                 jDef["_codeversion"] = 1;
  
                 for (auto& struc : jsonDDLRoot.defs[i].structs)
@@ -64,8 +64,8 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                         DDLAssert(member.link.m_type_category != DDL_STRUCT_TYPE
                                   || member.link.m_size / member.arraySize.value_or(1) == jsonDDLRoot.defs[i].structs[member.link.m_external_index].size);
 
-                        // Only required for actual arrays
-                        if (member.arraySize.value_or(1) == 1)
+                        // Only required for actual arrays, enums arraysize is always derived by the number of members in the enum
+                        if (member.arraySize.value_or(1) == 1 || member.enum_.has_value())
                             member.arraySize.reset();
 
                         if (struc.name != "root")
@@ -158,7 +158,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             jRoot["_tool"] = "oat";
             jRoot["_type"] = "ddlRoot";
             jRoot["_game"] = "t6";
-            jRoot["_version"] = T6::OAT_DDL_VERSION;
+            jRoot["_version"] = OAT_DDL_VERSION;
             jRoot["defFiles"] = jsonDDLRoot.defFiles;
 
             m_primaryStream << std::setw(4) << jRoot << "\n";
@@ -227,7 +227,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                     m_stream << member.type << " " << member.name;
                     DumpMemberArray(member);
                 }
-                else if (T6::DDL::Member::IsStandardSize(static_cast<ddlPrimitiveTypes_e>(member.link.m_type_category), member.link.m_size, member.arraySize.value_or(1)))
+                else if (T6::DDL::Member::IsStandardSize(static_cast<ddlPrimitiveTypes_e>(member.link.m_type_category), member.link.m_size, member.enum_.has_value() ? jDDLDef.enums[member.link.m_enum_index].members.size() : member.arraySize.value_or(1)))
                 {
                     switch (member.link.m_type_category)
                     {

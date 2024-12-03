@@ -30,8 +30,18 @@ const CommonDDLRoot& CommonDDLDef::GetRoot() const
 
 CommonDDLStructDef* CommonDDLDef::GetStructByName(const std::string& structName, bool checkIncludes)
 {
-    if (m_structs.find(structName) != m_structs.end())
-        return &m_structs[structName];
+    auto it = std::find_if(m_structs.begin(),
+                           m_structs.end(),
+                           [structName](const CommonDDLStructDef& struc)
+                           {
+                               return structName == struc.m_name;
+                           });
+    if (it != m_structs.end())
+    {
+        return &m_structs[it->m_index];
+    }
+
+    assert(!checkIncludes);
 
     if (checkIncludes)
     {
@@ -41,8 +51,16 @@ CommonDDLStructDef* CommonDDLDef::GetStructByName(const std::string& structName,
         {
             assert(include.m_is_include);
 
-            if (include.m_structs.find(structName) != include.m_structs.end())
-                return &include.m_structs[structName];
+            auto it = std::find_if(include.m_structs.begin(),
+                                   include.m_structs.end(),
+                                   [structName](const CommonDDLStructDef& struc)
+                                   {
+                                       return structName == struc.m_name;
+                                   });
+            if (it != include.m_structs.end())
+            {
+                return &include.m_structs[it->m_index];
+            }
         }
     }
     return nullptr;
@@ -50,8 +68,16 @@ CommonDDLStructDef* CommonDDLDef::GetStructByName(const std::string& structName,
 
 CommonDDLEnumDef* CommonDDLDef::GetEnumByName(const std::string& enumName, bool checkIncludes)
 {
-    if (m_enums.find(enumName) != m_enums.end())
-        return &m_enums[enumName];
+    auto it = std::find_if(m_enums.begin(),
+                 m_enums.end(),
+                 [enumName](const CommonDDLEnumDef& _enum)
+                 {
+                     return enumName == _enum.m_name;                    
+                 });
+    if (it != m_enums.end())
+    {
+        return &m_enums[it->m_index];
+    }
 
     if (checkIncludes)
     {
@@ -61,8 +87,16 @@ CommonDDLEnumDef* CommonDDLDef::GetEnumByName(const std::string& enumName, bool 
         {
             assert(include.m_is_include);
 
-            if (include.m_enums.find(enumName) != include.m_enums.end())
-                return &include.m_enums[enumName];
+            auto it = std::find_if(include.m_enums.begin(),
+                                   include.m_enums.end(),
+                                   [enumName](const CommonDDLEnumDef& _enum)
+                                   {
+                                       return enumName == _enum.m_name;
+                                   });
+            if (it != include.m_enums.end())
+            {
+                return &include.m_enums[it->m_index];
+            }
         }
     }
 
@@ -108,12 +142,16 @@ CommonDDLEnumDef* CommonDDLDef::GetEnumByIndex(const int index)
 
 const size_t CommonDDLDef::TypeToStructIndex(const std::string& typeName) const noexcept
 {
-    auto i = 0u;
-    for (const auto& [k, struc] : m_structs)
+
+   auto it = std::find_if(m_structs.begin(),
+                           m_structs.end(),
+                           [typeName](const CommonDDLStructDef& struc)
+                           {
+                               return typeName == struc.m_name;
+                           });
+    if (it != m_structs.end())
     {
-        if (k == typeName)
-            return i;
-        i++;
+        return it->m_index;
     }
 
     return 0u;
@@ -121,12 +159,15 @@ const size_t CommonDDLDef::TypeToStructIndex(const std::string& typeName) const 
 
 const int CommonDDLDef::TypeToEnumIndex(const std::string& typeName) const noexcept
 {
-    auto i = 0u;
-    for (const auto& [k, enum_] : m_enums)
+    auto it = std::find_if(m_enums.begin(),
+                           m_enums.end(),
+                           [typeName](const CommonDDLEnumDef& _enum)
+                           {
+                               return typeName == _enum.m_name;
+                           });
+    if (it != m_enums.end())
     {
-        if (k == typeName)
-            return i;
-        i++;
+        return it->m_index;
     }
 
     return -1;
@@ -135,7 +176,7 @@ const int CommonDDLDef::TypeToEnumIndex(const std::string& typeName) const noexc
 const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::StructIndexToType(const size_t index) const noexcept
 {
     auto i = 0u;
-    for (const auto& [k, struc] : m_structs)
+    for (const auto& struc : m_structs)
     {
         if (i == index)
             return std::optional<std::reference_wrapper<const std::string>>(struc.m_name);
@@ -148,7 +189,7 @@ const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::Str
 const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::EnumIndexToType(const int index) const noexcept
 {
     auto i = 0u;
-    for (const auto& [k, enum_] : this->m_enums)
+    for (const auto& enum_ : this->m_enums)
     {
         if (i == index)
         {
@@ -160,7 +201,7 @@ const std::optional<std::reference_wrapper<const std::string>> CommonDDLDef::Enu
     return std::nullopt;
 }
 
-bool CommonDDLDef::Validate() const
+const bool CommonDDLDef::Validate() const
 {
     try
     {
@@ -177,13 +218,13 @@ bool CommonDDLDef::Validate() const
 
 void CommonDDLDef::PreCalculate()
 {
-    for (auto& [k, struc] : m_structs)
+    for (auto& struc : m_structs)
     {
         struc.ResetCalculated();
-        for (auto& [k2, member] : struc.m_members)
+        for (auto& member : struc.m_members)
             member.ResetCalculated();
     }
-    for (auto& [k, enum_] : m_enums)
+    for (auto& enum_ : m_enums)
         enum_.ResetCalculated();
 
     m_in_calculation.clear();
@@ -196,16 +237,16 @@ bool CommonDDLDef::Calculate()
 
     try
     {
-        for (auto& [k, struc] : m_structs)
+        for (auto& struc : m_structs)
         {
-            if (k == "root")
+            if (struc.m_name == "root")
             {
                 struc.Calculate();
                 break;
             }
         }
 
-        for (auto& [k, struc] : m_structs)
+        for (auto& struc : m_structs)
             // Unreferenced structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
             // Treyarch likely had an include system that would paste structs from an external file into the the defs that include.
             // Or they had an export/import system.
@@ -213,16 +254,16 @@ bool CommonDDLDef::Calculate()
                 m_size += struc.m_size;
 
         // Link unreferenced structs anyway
-        for (auto& [k, struc] : m_structs)
+        for (auto& struc : m_structs)
             if (!struc.GetRefCount())
                 struc.Calculate();
 
         // Link unreferenced enums anyway
-        for (auto& [k, enum_] : m_enums)
+        for (auto& enum_ : m_enums)
             if (!enum_.GetRefCount())
                 enum_.CalculateHashes();
 
-        for (auto& [k, enum_] : m_enums)
+        for (auto& enum_ : m_enums)
             enum_.CalculateHashes();
 
         return true;
@@ -235,11 +276,11 @@ bool CommonDDLDef::Calculate()
     return false;
 }
 
-void CommonDDLDef::ValidateRoot() const
+const void CommonDDLDef::ValidateRoot() const
 {
-    for (const auto& [k, struc] : m_structs)
+    for (const auto& struc : m_structs)
     {
-        if (k == "root")
+        if (struc.m_name == "root")
         {
             struc.Validate();
             break;
@@ -254,14 +295,14 @@ void CommonDDLDef::ValidateRoot() const
     // actually reference it in root). Treyarch canonically allowed defs to include structs/enums from common files, the evidence is that there are multiple
     // instances of the same struct appearing in multiple defs, with instances of it not having any references occuring multiple times.
 
-    for (const auto& [k, enum_] : m_enums)
+    for (const auto& enum_ : m_enums)
     {
         enum_.ReferenceCount();
         if (!enum_.GetRefCount())
             enum_.Validate();
     }
 
-    for (const auto& [k, struc] : m_structs)
+    for (const auto& struc : m_structs)
     {
         struc.ReferenceCount();
         if (!struc.GetRefCount())
@@ -278,7 +319,7 @@ void CommonDDLDef::NameError(const std::string& message) const
     throw DDL::Exception(prefaceAndMessage);
 }
 
-void CommonDDLDef::ValidateName(const std::string& name) const
+const void CommonDDLDef::ValidateName(bool isType, const std::string& name) const
 {
     if (name.empty())
         NameError("field cannot be empty");
@@ -298,6 +339,13 @@ void CommonDDLDef::ValidateName(const std::string& name) const
     if (GetFeatures().m_version_keyword_allowed_as_name && name == "version")
         return;
 
+    if (isType)
+    {
+        const auto& it = DDL_TYPE_NAMES.find(name);
+        if (it != DDL_TYPE_NAMES.end())
+            return;
+    }
+
     const auto& it = DDL_KEYWORDS.find(name);
     if (it != DDL_KEYWORDS.end())
         NameError(std::format("field cannot be reserved keyword \"{}\"", it->data()));
@@ -305,15 +353,21 @@ void CommonDDLDef::ValidateName(const std::string& name) const
 
 void CommonDDLDef::AddStructFromInclude(CommonDDLStructDef& includeStruct)
 {
-    if (m_structs.find(includeStruct.m_name) == m_structs.end())
+    auto it = std::find_if(m_structs.begin(),
+                           m_structs.end(),
+                           [includeStruct](const CommonDDLStructDef& struc)
+                           {
+                               return includeStruct.m_name == struc.m_name;
+                           });
+    if (it == m_structs.end())
     {
         includeStruct.m_reference_count++;
         if (includeStruct.m_resolved)
             return;
 
         includeStruct.m_resolved = true;
-        m_structs.emplace(includeStruct.m_name, includeStruct);
-        includeStruct.Resolve();
+        m_structs.push_back(includeStruct);
+        includeStruct.Resolve(true);
     }
     else
         assert(false);
@@ -321,14 +375,20 @@ void CommonDDLDef::AddStructFromInclude(CommonDDLStructDef& includeStruct)
 
 void CommonDDLDef::AddEnumFromInclude(CommonDDLEnumDef& includeEnum)
 {
-    if (m_enums.find(includeEnum.m_name) == m_enums.end())
+    auto it = std::find_if(m_enums.begin(),
+                           m_enums.end(),
+                           [includeEnum](const CommonDDLEnumDef& _enum)
+                           {
+                               return includeEnum.m_name == _enum.m_name;
+                           });
+    if (it != m_enums.end())
     {
         includeEnum.m_reference_count++;
         if (includeEnum.m_resolved)
             return;
 
         includeEnum.m_resolved = true;
-        m_enums.emplace(includeEnum.m_name, includeEnum);
+        m_enums.push_back(includeEnum);
     }
     else
         assert(false);
@@ -339,18 +399,32 @@ bool CommonDDLDef::Resolve()
     try
     {
         // Determine what structs from what includes are referenced
-        for (auto& [k, struc] : m_structs)
+        for (auto& struc : m_structs)
         {
             if (struc.m_name != "root")
                 continue;
 
-            for (auto& [k, member] : struc.m_members)
+            // root should always only have exactly 1 reference
+            struc.m_reference_count = 1;
+            for (auto& member : struc.m_members)
             {
                 m_permission_scope = member.m_permission.value();
-                member.Resolve();
+                member.Resolve(true);
             }
-            return true;
         }
+
+        for (auto& struc : m_structs)
+        {
+            if (struc.m_resolved)
+                continue;
+
+            for (auto& member : struc.m_members)
+            {
+                member.Resolve(false);
+            }
+        }
+
+        return true;
     }
     catch (DDL::Exception& e)
     {

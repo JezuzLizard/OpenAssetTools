@@ -34,14 +34,19 @@ CommonDDLEnumDef::CommonDDLEnumDef(const std::string& name, CommonDDLDef* parent
 {
 }
 
-CommonDDLDef& CommonDDLEnumDef::GetParentDef()
+CommonDDLDef* CommonDDLEnumDef::GetParentDef()
 {
-    return *m_parent;
+    return m_parent;
 }
 
-const CommonDDLDef& CommonDDLEnumDef::GetParentDef() const
+const CommonDDLDef* CommonDDLEnumDef::GetParentDef() const
 {
-    return *m_parent;
+    return m_parent;
+}
+
+void CommonDDLEnumDef::SetParentDef(CommonDDLDef* parent)
+{
+    m_parent = parent;
 }
 
 const size_t CommonDDLEnumDef::GetRefCount() const
@@ -64,9 +69,47 @@ void CommonDDLEnumDef::ResetCalculated()
     m_calculated = false;
 }
 
+void CommonDDLEnumDef::CalculateHashes()
+{
+    if (IsCalculated())
+        return;
+
+    for (auto i = 0u; i < m_members.size(); i++)
+    {
+        DDLHashEntry ddlHash = {};
+        auto func = [](const char* str)
+        {
+            if (!str)
+                return 0;
+
+            auto result = 0x1505;
+            auto offset = 0;
+            while (str[offset])
+            {
+                const auto c = tolower(str[offset++]);
+                result = c + 33 * result;
+            }
+
+            return result;
+        };
+        ddlHash.hash = func(m_members[i].c_str());
+        ddlHash.index = i;
+        GetHashTable().emplace_back(ddlHash);
+    }
+
+    std::sort(GetHashTable().begin(),
+              GetHashTable().end(),
+              [](const DDLHashEntry& a, const DDLHashEntry& b)
+              {
+                  return a.hash < b.hash;
+              });
+
+    SetCalculated();
+}
+
 std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 {
-    const auto& featureLevel = GetParentDef().GetFeatures();
+    const auto& featureLevel = GetParentDef()->GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -74,7 +117,7 @@ std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()
 
 const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
 {
-    const auto& featureLevel = GetParentDef().GetFeatures();
+    const auto& featureLevel = GetParentDef()->GetFeatures();
     assert(featureLevel.m_simple_hash_table || featureLevel.m_split_hash_table);
 
     return m_hash_table;
@@ -82,7 +125,7 @@ const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
 
 [[noreturn]] void CommonDDLEnumDef::LogicError(const std::string& message) const
 {
-    std::string prefaceAndMessage = std::format("DDL Enum Logic Error: [Enum: {}|File: {}]", m_name, GetParentDef().m_filename) + message;
+    std::string prefaceAndMessage = std::format("DDL ENUM ERROR: [Enum: {}|File: {}]", m_name, GetParentDef()->m_filename) + message;
 #ifdef DDL_DEBUG
     this;
     __debugbreak();
@@ -90,7 +133,7 @@ const std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable() const
     throw DDL::Exception(prefaceAndMessage);
 }
 
-void CommonDDLEnumDef::Validate() const
+const void CommonDDLEnumDef::Validate() const
 {
     if (m_calculated)
         return;
@@ -100,7 +143,7 @@ void CommonDDLEnumDef::Validate() const
     m_calculated = true;
 }
 
-void CommonDDLEnumDef::ValidateName() const
+const void CommonDDLEnumDef::ValidateName() const
 {
     std::set<std::string> occurrences;
 
@@ -113,22 +156,21 @@ void CommonDDLEnumDef::ValidateName() const
             continue;
         }
 
-        // This only occurs in unreferenced enums
-        // LogicError(std::format("multiple occurrences of enum member \"{}\"", members[i]));
-        std::cerr << std::format("multiple occurrences of enum member \"{}\"", m_members[i]) << "\n";
+        //the game may depend on this undefined behavior
+        std::cerr << std::format("DDL ENUM WARNING: [Def: {}|Enum: {}] multiple occurrences of enum member \"{}\"", GetParentDef()->m_filename, m_name, m_members[i]) << "\n";
     }
 }
 
-void CommonDDLEnumDef::ValidateMembers() const
+const void CommonDDLEnumDef::ValidateMembers() const
 {
     if (m_members.empty())
         LogicError("enum must have at least one member");
 }
 
-void CommonDDLEnumDef::ReferenceCount() const
+const void CommonDDLEnumDef::ReferenceCount() const
 {
     if (!m_reference_count)
-        std::cerr << "an unreferenced enum cannot be linked"
+        std::cerr << std::format("DDL ENUM WARNING: [Def: {}|Name: {}] an unreferenced enum will not be used by the engine!", GetParentDef()->m_filename, m_name)
                   << "\n";
     // LogicError("an unreferenced enum cannot be linked");
 }
