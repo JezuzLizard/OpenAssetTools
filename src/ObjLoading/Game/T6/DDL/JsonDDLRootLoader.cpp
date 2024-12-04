@@ -27,6 +27,18 @@ namespace
         {
         }
 
+        #define DDLAssert(expression, ...) DDLAssertInternal(expression, #expression, __VA_ARGS__)
+
+        void DDLAssertInternal(const bool expression,
+                               const std::string& expressionString,
+                               const bool fatalOnOriginal = true,
+                               const bool fatalOnRelink = true) const
+        {
+            if (!expression)
+                std::cout << expressionString << "\n";
+            assert(expression);
+        }
+
         bool Load(ddlRoot_t& ddlRoot, ISearchPath& searchPath) const
         {
             const auto jRoot = json::parse(m_stream);
@@ -75,8 +87,192 @@ namespace
             return CreateDDLRootFromJson(jDDLRoot, ddlRoot, searchPath);
         }
 
+                bool IsLowerCase(const std::string& string) const
+        {
+            return std::all_of(string.begin(),
+                               string.end(),
+                               [](unsigned char c)
+                               {
+                                   return std::islower(c);
+                               });
+        }
+
+        bool CheckName(const std::string& name) const
+        {
+            if (name.empty())
+                return false;
+
+            if (!std::isalpha(name[0]))
+                return false;
+
+            for (auto i = 1u; i < name.length(); i++)
+            {
+                if (!std::isalnum(name[i]) && name.substr(i, 1) != "_" && !std::islower(name[i]))
+                    return false;
+            }
+
+            if (name == "root" || name == "version")
+                return true;
+
+            const auto& it = DDL_KEYWORDS.find(name);
+            if (it != DDL_KEYWORDS.end())
+                return false;
+
+            return true;
+        }
+
+        void VerifyLimits(const ddlMemberDef_t& ddlMemberDef) const
+        {
+            // If this happens it means the assertion that serverDelta, and clientDelta are not assigned separately is false
+            DDLAssert((ddlMemberDef.rangeLimit == ddlMemberDef.serverDelta) && (ddlMemberDef.rangeLimit == ddlMemberDef.clientDelta));
+
+            auto memberUnitSize = (ddlMemberDef.size / ddlMemberDef.arraySize);
+
+            if (ddlMemberDef.type == DDL_FIXEDPOINT_TYPE)
+            {
+                DDLAssert(ddlMemberDef.rangeLimit > 0);
+                DDLAssert((memberUnitSize - ddlMemberDef.rangeLimit) > 0);
+            }
+            else if (ddlMemberDef.rangeLimit != 0)
+            {
+                DDLAssert(ddlMemberDef.type == DDL_UINT_TYPE || ddlMemberDef.type == DDL_INT_TYPE);
+
+                // Int type has the signed bit so the size is calculated differently
+                const auto bitWidth = std::bit_width(ddlMemberDef.rangeLimit);
+                DDLAssert((ddlMemberDef.type != DDL_UINT_TYPE || memberUnitSize == bitWidth));
+                DDLAssert((ddlMemberDef.type != DDL_INT_TYPE || memberUnitSize == bitWidth + 1));
+            }
+        }
+
+        void VerifyMember(const ddlMemberDef_t& ddlMemberDef) const
+        {
+            DDLAssert(CheckName(ddlMemberDef.name));
+            DDLAssert(ddlMemberDef.type >= DDL_BYTE_TYPE && ddlMemberDef.type < DDL_TYPE_COUNT);
+            DDLAssert(ddlMemberDef.size > 0);
+            DDLAssert(ddlMemberDef.arraySize > 0);
+            DDLAssert(ddlMemberDef.offset >= 0);
+            DDLAssert(ddlMemberDef.externalIndex >= 0 && ddlMemberDef.externalIndex < T6::DDL::MAX_STRUCTS);
+            DDLAssert(ddlMemberDef.enumIndex >= -1 && ddlMemberDef.enumIndex < T6::DDL::MAX_ENUMS);
+            DDLAssert(ddlMemberDef.type != DDL_STRING_TYPE || (ddlMemberDef.size % CHAR_BIT) == 0);
+            DDLAssert(ddlMemberDef.type != DDL_INT_TYPE || ddlMemberDef.size >= 1);
+
+            JsonDDLMemberLimits jLimits;
+            auto typeEnum = static_cast<ddlPrimitiveTypes_e>(ddlMemberDef.type);
+
+            //.size field has different implications depending on the type
+            // string type treat it as max bytes
+            // struct is based on the size of the struct
+            // enum is based on the type, and also modifies arraySize to the count of its members
+            if (ddlMemberDef.type != DDL_STRUCT_TYPE && !T6::DDL::Member::IsStandardSize(typeEnum, ddlMemberDef.size, ddlMemberDef.arraySize))
+                VerifyLimits(ddlMemberDef);
+
+            DDLAssert(ddlMemberDef.type != DDL_STRUCT_TYPE || ddlMemberDef.rangeLimit == 0);
+
+            DDLAssert(ddlMemberDef.type != DDL_ENUM_TYPE);
+
+            const auto permissionCategory = static_cast<ddlPermissionTypes_e>(ddlMemberDef.permission);
+
+            DDLAssert(permissionCategory >= DDL_PERMISSIONS_CLIENTONLY && permissionCategory < DDL_PERMISSIONS_COUNT);
+
+            DDLAssert(ddlMemberDef.arraySize != 1 || (ddlMemberDef.size % ddlMemberDef.arraySize) == 0);
+        }
+
+        void VerifyStruct(const ddlStructDef_t& ddlStructDef) const
+        {
+            DDLAssert(CheckName(ddlStructDef.name));
+            DDLAssert(ddlStructDef.memberCount > 0 && ddlStructDef.memberCount < T6::DDL::MAX_MEMBERS);
+            DDLAssert(ddlStructDef.size > 0);
+            DDLAssert(ddlStructDef.members);
+            DDLAssert(ddlStructDef.hashTable);
+
+            auto prevHash = 0;
+            auto calculatedStructSize = 0;
+            auto prevOffset = 0;
+            std::vector<bool> uniqueIndexes;
+            uniqueIndexes.resize(ddlStructDef.memberCount, false);
+
+            std::set<std::string> uniqueMembers;
+
+            for (auto i = 0; i < ddlStructDef.memberCount; i++)
+            {
+                DDLAssert(ddlStructDef.hashTable[i].hash);
+                DDLAssert(ddlStructDef.hashTable[i].index >= 0 && ddlStructDef.hashTable[i].index < ddlStructDef.memberCount);
+
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+                DDLAssert(prevHash == 0 || ddlStructDef.hashTable[i].hash > prevHash); // This is actually cursed
+                DDLAssert(!uniqueIndexes[ddlStructDef.hashTable[i].index]);
+                DDLAssert(!uniqueMembers.contains(ddlStructDef.members[i].name)); // HOW?!
+#endif
+
+                prevHash = ddlStructDef.hashTable[i].hash;
+                uniqueIndexes[ddlStructDef.hashTable[i].index] = true;
+                uniqueMembers.insert(ddlStructDef.members[i].name);
+
+                DDLAssert(ddlStructDef.members[i].offset <= ddlStructDef.size);
+                DDLAssert(ddlStructDef.members[i].offset == 0 || ddlStructDef.members[i].offset > prevOffset);
+                DDLAssert(ddlStructDef.members[i].offset == calculatedStructSize);
+                DDLAssert(ddlStructDef.members[i].size <= ddlStructDef.size);
+
+                prevOffset = ddlStructDef.members[i].offset;
+                calculatedStructSize += ddlStructDef.members[i].size;
+
+                VerifyMember(ddlStructDef.members[i]);
+            }
+
+            DDLAssert(ddlStructDef.size == calculatedStructSize);
+        }
+
+        void VerifyEnum(const ddlEnumDef_t& ddlEnumDef) const
+        {
+            DDLAssert(CheckName(ddlEnumDef.name));
+            DDLAssert(ddlEnumDef.memberCount > 1 && ddlEnumDef.memberCount < T6::DDL::MAX_MEMBERS);
+            DDLAssert(ddlEnumDef.members && ddlEnumDef.members[0]);
+            DDLAssert(ddlEnumDef.hashTable);
+
+            auto prevHash = 0;
+            std::vector<bool> uniqueIndexes;
+            uniqueIndexes.resize(ddlEnumDef.memberCount);
+
+            std::set<std::string> uniqueMembers;
+
+            for (auto i = 0; i < ddlEnumDef.memberCount; i++)
+            {
+                DDLAssert(ddlEnumDef.hashTable[i].hash);
+                DDLAssert(ddlEnumDef.hashTable[i].index >= 0 && ddlEnumDef.hashTable[i].index < ddlEnumDef.memberCount);
+
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+                DDLAssert(prevHash == 0 || ddlEnumDef.hashTable[i].hash > prevHash);
+                DDLAssert(!uniqueIndexes[ddlEnumDef.hashTable[i].index]);
+                DDLAssert(!uniqueMembers.contains(ddlEnumDef.members[i]));
+#endif
+
+                prevHash = ddlEnumDef.hashTable[i].hash;
+                uniqueIndexes[ddlEnumDef.hashTable[i].index] = true;
+                uniqueMembers.insert(ddlEnumDef.members[i]);
+
+                DDLAssert(CheckName(ddlEnumDef.members[i]));
+            }
+        }
+
+        void VerifyDef(int* prevDefVersion, const ddlDef_t* ddlDef) const
+        {
+            DDLAssert(ddlDef->version > 0);
+            DDLAssert(*prevDefVersion == 0 || *prevDefVersion > ddlDef->version);
+            DDLAssert(ddlDef->size > 0);
+            DDLAssert(ddlDef->structCount > 0 && ddlDef->structCount < T6::DDL::MAX_STRUCTS);
+            DDLAssert(ddlDef->enumCount >= 0 && ddlDef->enumCount < T6::DDL::MAX_ENUMS);
+
+            *prevDefVersion = ddlDef->version;
+
+            DDLAssert(ddlDef->structList != nullptr);
+            DDLAssert(!strncmp(ddlDef->structList[0].name, "root", sizeof("root")));
+
+            DDLAssert(ddlDef->enumCount != 0 || ddlDef->enumList == nullptr);
+        }
+
         void ConvertToAsset(const CommonDDLDef& in, ddlDef_t& out) const
         {
+            auto calculatedSize = 0;
             auto i = 0;
             for (const auto& enum_ : in.m_enums)
             {
@@ -90,6 +286,7 @@ namespace
                     out.enumList[i].hashTable[j].hash = hashTable.hash;
                     out.enumList[i].hashTable[j].index = hashTable.index;
                 }
+                VerifyEnum(out.enumList[i]);
                 i++;
             }
 
@@ -118,16 +315,24 @@ namespace
                     outMember.arraySize = inMember.m_array_size.value_or(1);
                     outMember.enumIndex = inMember.m_enum_index;
                     outMember.permission = inMember.m_permission.value();
+                    
+                    DDLAssert(out.structList[i].size == outMember.offset);
+                    out.structList[i].size += outMember.size;       
                     j++;
                 }
+
+                out.structList[i].size = struc.m_size;
 
                 for (auto j = 0u; j < struc.GetHashTable().size(); j++)
                 {
                     out.structList[i].hashTable[j].hash = struc.GetHashTable().at(j).hash;
                     out.structList[i].hashTable[j].index = struc.GetHashTable().at(j).index;
                 }
+                VerifyStruct(out.structList[i]);
                 i++;
             }
+
+            DDLAssert(out.size == out.structList[0].size);
         }
 
         bool ConvertJsonDDLDef(const JsonDDLRoot& jDDLRoot, const JsonDDLDef& jDDLDef, CommonDDLRoot& cRoot, CommonDDLDef& cDef, bool inInclude) const
@@ -184,8 +389,8 @@ namespace
                     std::string lowerCopyType = member.type;
                     utils::MakeStringLowerCase(lowerCopyType);
                     cDDLMember.m_type = lowerCopyType;
-                    if (member.permission.has_value())
-                        cDDLMember.m_permission = cDDLMember.NameToPermissionType(member.permission.value());
+                    if (struc.name == "root" && member.permission.has_value())
+                        cDDLMember.m_permission.emplace(cDDLMember.NameToPermissionType(member.permission.value()));
                     cDDLMember.m_array_size = member.arraySize;
                     if (member.limits.has_value())
                         cDDLMember.m_limits.emplace(member.limits->bits, member.limits->range, member.limits->fixedPrecisionBits, member.limits->fixedMagnitudeBits);
@@ -247,7 +452,14 @@ namespace
         bool AllocateDefMembers(const CommonDDLDef& cDef, ddlDef_t& ddlDef) const
         {
             ddlDef.enumCount = cDef.m_enums.size();
-            ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
+            if (ddlDef.enumCount > 0)
+            {
+                ddlDef.enumList = m_memory.Alloc<ddlEnumDef_t>(sizeof(ddlEnumDef_t) * ddlDef.enumCount);
+            }
+            else
+            {
+                ddlDef.enumList = nullptr;
+            }
 
             auto i = 0;
             for (const auto& enum_ : cDef.m_enums)
@@ -431,13 +643,22 @@ namespace
 
             auto* ddlDef = m_memory.Alloc<ddlDef_t>();
             auto* firstDef = ddlDef;
+            auto i = 0;
+            int prevDefVersion = 0;
             for (auto& cDef : cDDLT6Defs)
             {
                 if (!CreateDDLDef(cDef, *ddlDef))
                     return false;
 
-                ddlDef->next = m_memory.Alloc<ddlDef_t>();
+                VerifyDef(&prevDefVersion, ddlDef);
+
+                ddlDef->next = i < (cDDLT6Defs.size() - 1) ? m_memory.Alloc<ddlDef_t>() : 0;
+                if (!ddlDef->next)
+                {
+                    break;
+                }
                 ddlDef = ddlDef->next;
+                i++;
             }
 
             ddlRoot.ddlDef = std::move(firstDef);

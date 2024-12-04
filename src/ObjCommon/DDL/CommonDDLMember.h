@@ -72,6 +72,7 @@ public:
     const bool TypeCanUseBitfields() const;
     const bool TypeCanUseLimits() const;
     const bool TypeCanUseFixedFloatingPoint() const;
+    const bool TypeIsSigned() const;
     const bool IsStringType() const;
     const size_t GetGameStructType() const;
     const size_t GetGameEnumType() const;

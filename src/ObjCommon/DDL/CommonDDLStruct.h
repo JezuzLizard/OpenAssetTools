@@ -21,6 +21,7 @@ public:
     const void Validate() const;
     const void ReferenceCount() const;
     void CalculateHashes();
+    void CheckHashCollisions();
     void Calculate();
 
     void SetCalculated();

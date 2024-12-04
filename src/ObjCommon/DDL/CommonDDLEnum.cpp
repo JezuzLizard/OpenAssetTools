@@ -104,7 +104,28 @@ void CommonDDLEnumDef::CalculateHashes()
                   return a.hash < b.hash;
               });
 
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+    CheckHashCollisions();
+#endif
+
     SetCalculated();
+}
+
+void CommonDDLEnumDef::CheckHashCollisions()
+{
+    auto prevHash = 0;
+    auto prevIndex = 0;
+    for (auto i = 0; i < GetHashTable().size(); i++)
+    {
+        if (prevHash != 0 && GetHashTable()[i].hash == prevHash)
+        {
+            LogicError(std::format("hash collisions are not allowed within the same struct, detected between members: {} {}; please change one of the names",
+                                   m_members[prevIndex],
+                                   m_members[GetHashTable()[i].index]));
+        }
+        prevHash = GetHashTable()[i].hash;
+        prevIndex = GetHashTable()[i].index;
+    }
 }
 
 std::vector<DDLHashEntry>& CommonDDLEnumDef::GetHashTable()

@@ -174,6 +174,13 @@ const bool CommonDDLMemberDef::TypeCanUseLimits() const
     return (DDL_TYPE_FEATURES[m_type_category].flags & DDL_FLAG_LIMITS) != 0;
 };
 
+const bool CommonDDLMemberDef::TypeIsSigned() const
+{
+    if (m_type_category >= DDL_STRING_TYPE)
+        return false;
+    return (DDL_TYPE_FEATURES[m_type_category].flags & DDL_FLAG_SIGNED) != 0;
+};
+
 const bool CommonDDLMemberDef::TypeCanUseFixedFloatingPoint() const
 {
     return m_type_category == DDL_FIXEDPOINT_TYPE;
@@ -281,17 +288,30 @@ void CommonDDLMemberDef::Calculate()
         if (!m_limits.has_value())
             calculatedSize = GetStandardSize();
         else if (m_limits->m_bits.has_value())
+            // totalSize = B aka int:B foo;
             calculatedSize = m_limits->m_bits.value();
         else if (m_limits->m_range.has_value())
-            calculatedSize = std::bit_width(m_limits->m_range.value());
+        {
+            auto bitWidth = std::bit_width(m_limits->m_range.value());
+            // add + 1 for signed int, unless bits is already 32
+            // the parser interprets positive numbers only, so while MAX_INT is 32 bits, it is only 31 as an unsigned int
+            if (TypeIsSigned() && bitWidth < 32)
+                bitWidth += 1;
+
+            calculatedSize = bitWidth;
+            // totalSize = B aka int(B) foo;
+        }
     }
     else if (TypeCanUseFixedFloatingPoint())
     {
-        m_limits->m_range.emplace(std::bit_width(m_limits->m_precision.value()));
+        // totalSize = L + R aka fixed<L,R> foo;
+        // rangeLimit = R(in bits, exception to rangelimit normal behavior)
         calculatedSize = m_limits->m_magnitude.value() + m_limits->m_precision.value();
+        m_limits->m_range.emplace(m_limits->m_precision.value());
     }
     else if (IsStringType())
     {
+        assert(m_max_characters.has_value());
         if (m_max_characters.has_value())
             calculatedSize = m_max_characters.value() * CHAR_BIT;
     }
@@ -307,7 +327,10 @@ void CommonDDLMemberDef::Calculate()
     }
 
     if (HasEnum())
-        calculatedSize = (calculatedSize * m_enum->size());
+    {
+        m_array_size.emplace(parentDef->m_enums[m_enum_index].m_members.size());
+        calculatedSize = (calculatedSize * m_array_size.value());
+    }
     else
         calculatedSize = (calculatedSize * m_array_size.value_or(1));
 
@@ -386,8 +409,8 @@ const void CommonDDLMemberDef::ValidatePermission() const
 {
     if (!m_permission.has_value() || m_reference_count == 0)
         return;
-    if (GetParentStruct()->m_name != "root")
-        LogicError("permission cannot be defined outside of root");
+    //if (GetParentStruct()->m_name != "root")
+        //LogicError("permission cannot be defined outside of root");
     if (!IsValidPermission())
         LogicError("permission must be client, server, both, or unspecified(defaults to both)");
 }
@@ -463,6 +486,8 @@ const void CommonDDLMemberDef::ValidateRange() const
         LogicError("bits, fixedPrecisionBits, and fixedMagnitudeBits cannot be combined with range field");
     if (m_limits->m_range.value() > GetStandardMaxValue())
         LogicError("range exceeds maximum possible value for type");
+    if (m_limits->m_range.value() < GetStandardMinValue())
+        LogicError("range is less than minimum possible value for type");
 }
 
 const void CommonDDLMemberDef::ValidateFixedPoint() const
@@ -496,7 +521,7 @@ void CommonDDLMemberDef::Resolve(bool referencedByRoot)
 
     if (referencedByRoot)
     {
-        assert(m_permission.has_value());
+        assert(GetParentStruct()->m_name == "root" || !m_permission.has_value());
         m_permission.emplace(parentDef->m_permission_scope);
     }
     else
@@ -524,6 +549,11 @@ void CommonDDLMemberDef::Resolve(bool referencedByRoot)
         m_enum_index = enum_->m_index;
         m_category_flags = static_cast<ddlCategoryFlags_e>(m_category_flags | DDL_CATEGORY_FLAG_ENUM);
     }
+    else
+    {
+        // canonical idk why
+        m_enum_index = m_array_size.value_or(1) == 1 ? 0 : -1;
+    }
 
     if (IsValidType())
     {
@@ -542,9 +572,9 @@ void CommonDDLMemberDef::Resolve(bool referencedByRoot)
         struc->GetParentDef()->m_reference_count++;
         struc->m_reference_count++;
         if (struc->GetParentDef()->m_reference_count <= 1 && struc->m_from_include)
-        {
             parentDef->AddStructFromInclude(*struc);
-        }
+        else
+            struc->Resolve(referencedByRoot);
     }
 
     // the int type on the canonical ddlDef_t struct can only be one value, however enum, and struct are separate values

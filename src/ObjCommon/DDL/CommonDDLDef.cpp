@@ -159,6 +159,10 @@ const size_t CommonDDLDef::TypeToStructIndex(const std::string& typeName) const 
 
 const int CommonDDLDef::TypeToEnumIndex(const std::string& typeName) const noexcept
 {
+    // canonical T7 linker behavior
+    if (m_enums.size() == 0)
+        return -1;
+
     auto it = std::find_if(m_enums.begin(),
                            m_enums.end(),
                            [typeName](const CommonDDLEnumDef& _enum)
@@ -246,14 +250,20 @@ bool CommonDDLDef::Calculate()
             }
         }
 
+        // Unreferenced structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
+        // Treyarch likely had an include system that would paste structs from an external file into the the defs that include.
+        // Or they had an export/import system.
         for (auto& struc : m_structs)
-            // Unreferenced structs can canonically be linked into the asset, but do not change the size of the ddl buffer as they are not in the root struct.
-            // Treyarch likely had an include system that would paste structs from an external file into the the defs that include.
-            // Or they had an export/import system.
-            if (struc.GetRefCount())
-                m_size += struc.m_size;
+        {
+            if (struc.m_name == "root")
+            {
+                m_size = struc.m_size;
+                break;
+            }
+        }
 
         // Link unreferenced structs anyway
+        // TODO: check if necessary for unreferenced structs/enums to be linked anyway
         for (auto& struc : m_structs)
             if (!struc.GetRefCount())
                 struc.Calculate();
@@ -404,24 +414,47 @@ bool CommonDDLDef::Resolve()
             if (struc.m_name != "root")
                 continue;
 
+            struc.Resolve(true);
+
             // root should always only have exactly 1 reference
-            struc.m_reference_count = 1;
-            for (auto& member : struc.m_members)
-            {
-                m_permission_scope = member.m_permission.value();
-                member.Resolve(true);
-            }
+            assert(struc.m_name != "root" || struc.m_reference_count == 1);
         }
 
         for (auto& struc : m_structs)
         {
             if (struc.m_resolved)
+            {
+                assert(struc.m_reference_count != 0);
                 continue;
+            }
+
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+            if (struc.m_reference_count == 0)
+                LogicError(std::format("unreferenced struct {} cannot be linked", struc.m_name));
+#else
+            if (struc.m_reference_count == 0)
+            {
+                std::cerr << std::format("DDL STRUCT WARNING: unreferenced struct {} cannot be linked", struc.m_name) << "\n";
+            }
+            assert(struc.m_reference_count == 0);
 
             for (auto& member : struc.m_members)
             {
                 member.Resolve(false);
             }
+#endif
+        }
+        for (auto& enum_ : m_enums)
+        {
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+            if (enum_.m_reference_count == 0)
+                LogicError(std::format("unreferenced enum {} cannot be linked", enum_.m_name));
+#else
+            if (enum_.m_reference_count == 0)
+            {
+                std::cerr << std::format("DDL ENUM WARNING: unreferenced enum {} cannot be linked", enum_.m_name) << "\n";
+            }
+#endif
         }
 
         return true;

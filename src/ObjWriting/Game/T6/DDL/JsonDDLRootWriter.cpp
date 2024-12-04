@@ -9,6 +9,11 @@
 using namespace nlohmann;
 using namespace T6;
 
+#define DDL_DEBUG 1
+//#undef DDL_DEBUG
+//#define DDL_MINIMAL_DUMP 1
+//#define DDL_DEBUG_RELINK 1
+
 namespace
 {
     class JsonDumper
@@ -77,6 +82,59 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                 {
                     DDLAssert(enum_.refCount, false);
                 }
+
+#ifdef DDL_MINIMAL_DUMP
+                auto enumsCopy = jsonDDLRoot.defs[i].enums;
+                jsonDDLRoot.defs[i].enums.clear();
+                for (auto j = 0; j < enumsCopy.size(); j++)
+                {
+                    if (enumsCopy[j].refCount != 0)
+                    {
+                        jsonDDLRoot.defs[i].enums.push_back(enumsCopy[j]);
+                    }
+                }
+
+                auto structsCopy = jsonDDLRoot.defs[i].structs;
+                jsonDDLRoot.defs[i].structs.clear();
+                for (auto j = 0; j < structsCopy.size(); j++)
+                {
+                    if (structsCopy[j].refCount != 0)
+                    {
+                        jsonDDLRoot.defs[i].structs.push_back(structsCopy[j]);
+                    }
+                }
+                
+                // fix up enum/struct index references
+
+                for (auto& struc : jsonDDLRoot.defs[i].structs)
+                {
+                    for (auto& member : struc.members)
+                    {
+                        if (member.link.m_external_index >= jsonDDLRoot.defs[i].structs.size())
+                        {
+                            for (auto j = 0; j < jsonDDLRoot.defs[i].structs.size(); j++)
+                            {
+                                if (member.type == jsonDDLRoot.defs[i].structs[j].name)
+                                {
+                                    member.link.m_external_index = j;
+                                    break;
+                                }
+                            }
+                        }
+                        else if (member.enum_.has_value() && member.link.m_enum_index >= jsonDDLRoot.defs[i].enums.size())
+                        {
+                            for (auto j = 0; j < jsonDDLRoot.defs[i].enums.size(); j++)
+                            {
+                                if (member.enum_.value() == jsonDDLRoot.defs[i].enums[j].name)
+                                {
+                                    member.link.m_enum_index = j;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+#endif
 
                 jDef["def"] = jsonDDLRoot.defs[i];
 
@@ -217,6 +275,10 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             void DumpMember(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& _struct, const JsonDDLMemberDef& member)
             {
                 Indent();
+                const auto memberArraySize = member.enum_.has_value() ? jDDLDef.enums[member.link.m_enum_index].members.size() : member.arraySize.value_or(1);
+                const auto isStandardSize =
+                    T6::DDL::Member::IsStandardSize(static_cast<ddlPrimitiveTypes_e>(member.link.m_type_category), member.link.m_size, memberArraySize);
+                //assert(!member.enum_.has_value() || !isStandardSize || member.limits.has_value());
                 if (member.link.m_type_category == DDL_STRING_TYPE)
                 {
                     m_stream << "string(" << member.maxCharacters.value() << ") " << member.name;
@@ -227,7 +289,7 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                     m_stream << member.type << " " << member.name;
                     DumpMemberArray(member);
                 }
-                else if (T6::DDL::Member::IsStandardSize(static_cast<ddlPrimitiveTypes_e>(member.link.m_type_category), member.link.m_size, member.enum_.has_value() ? jDDLDef.enums[member.link.m_enum_index].members.size() : member.arraySize.value_or(1)))
+                else if (isStandardSize)
                 {
                     switch (member.link.m_type_category)
                     {
@@ -540,8 +602,8 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
                 DDLAssert(ddlMemberDef.type == DDL_UINT_TYPE || ddlMemberDef.type == DDL_INT_TYPE);
 
                 // Int type has the signed bit so the size is calculated differently
-                DDLAssert((ddlMemberDef.type == DDL_UINT_TYPE || memberUnitSize == (std::bit_width(ddlMemberDef.rangeLimit) + 1)));
-                DDLAssert((ddlMemberDef.type == DDL_INT_TYPE || memberUnitSize == std::bit_width(ddlMemberDef.rangeLimit)));
+                DDLAssert((ddlMemberDef.type != DDL_UINT_TYPE || memberUnitSize == std::bit_width(ddlMemberDef.rangeLimit)));
+                DDLAssert((ddlMemberDef.type != DDL_INT_TYPE || memberUnitSize == (std::bit_width(ddlMemberDef.rangeLimit) + 1)));
                 jDDLMemberLimits.range.emplace(ddlMemberDef.rangeLimit);
             }
             else
@@ -577,13 +639,15 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             //string type treat it as max bytes
             //struct is based on the size of the struct
             //enum is based on the type, and also modifies arraySize to the count of its members
+            auto memberUnitSize = (ddlMemberDef.size / ddlMemberDef.arraySize);
             if (ddlMemberDef.type == DDL_STRING_TYPE)
-                jDDLMemberDef.maxCharacters.emplace(ddlMemberDef.size / CHAR_BIT);
+                jDDLMemberDef.maxCharacters.emplace(memberUnitSize / CHAR_BIT);
             else if (ddlMemberDef.type != DDL_STRUCT_TYPE && !T6::DDL::Member::IsStandardSize(typeEnum, ddlMemberDef.size, ddlMemberDef.arraySize))
                 CreateJsonDDlMemberLimits(jDDLMemberDef.limits.emplace(jLimits), ddlMemberDef);
 
             DDLAssert(ddlMemberDef.type != DDL_STRUCT_TYPE || ddlMemberDef.rangeLimit == 0);
 
+            // T7 linker allows type to be enum for a set of flags based on the enum member count, however this appears to be unused in T6
             DDLAssert(ddlMemberDef.type != DDL_ENUM_TYPE);
 
             jDDLMemberDef.link.m_offset = ddlMemberDef.offset;

@@ -51,7 +51,7 @@ public:
     CommonDDLRoot& m_root;
     int m_size = 0;
     mutable size_t m_reference_count = 0;
-    int m_permission_scope = 0;
+    mutable int m_permission_scope = 0;
     std::vector<CommonDDLStructDef> m_structs;
     std::vector<CommonDDLEnumDef> m_enums;
     mutable std::vector<CommonDDLMemberDef> m_member_stack;

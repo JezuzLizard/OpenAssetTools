@@ -106,6 +106,21 @@ void CommonDDLStructDef::CalculateHashes()
               });
 }
 
+void CommonDDLStructDef::CheckHashCollisions()
+{
+    auto prevHash = 0;
+    auto prevIndex = 0;
+    for (auto i = 0; i < GetHashTable().size(); i++)
+    {
+        if (prevHash != 0 && GetHashTable()[i].hash == prevHash)
+        {
+            LogicError(std::format("hash collisions are not allowed within the same struct, detected between members: {} {}; please change one of the names", m_members[prevIndex].m_name, m_members[m_hash_table[i].index].m_name));
+        }
+        prevHash = GetHashTable()[i].hash;
+        prevIndex = GetHashTable()[i].index;
+    }
+}
+
 std::vector<DDLHashEntry>& CommonDDLStructDef::GetHashTable()
 {
     const auto& featureLevel = GetParentDef()->GetFeatures();
@@ -152,16 +167,21 @@ void CommonDDLStructDef::Calculate()
     {
         CalculateHashes();
     }
-    
+
+#ifdef DDL_FATAL_ERROR_ON_CANON_UNDEFINED_BEHAVIOR
+    CheckHashCollisions();
+#endif
     auto size = 0u;
     for (auto& member : m_members)
     {
         member.Calculate();
         member.m_offset = size;
+        assert(member.m_size > 0);
         size += member.m_size;
     }
 
     m_size = size;
+    assert(m_size > 0);
 
     m_calculated = true;
 }
@@ -197,7 +217,10 @@ const void CommonDDLStructDef::ValidateMembers() const
 
     for (const auto& member : m_members)
     {
-        assert(member.m_type_category != (size_t)-1);
+        if (m_name == "root")
+            GetParentDef()->m_permission_scope = member.m_permission.value();
+
+        assert(member.m_permission.value() == GetParentDef()->m_permission_scope);
         member.Validate();
     }
 }
@@ -212,8 +235,16 @@ const void CommonDDLStructDef::ReferenceCount() const
 
 void CommonDDLStructDef::Resolve(bool referencedByRoot)
 {
+    if (referencedByRoot)
+        m_reference_count++;
+    if (m_resolved)
+        return;
+
+    m_resolved = true;
     for (auto& member : m_members)
     {
+        if (m_name == "root")
+            GetParentDef()->m_permission_scope = member.m_permission.value();
         member.Resolve(referencedByRoot);
     }
 }
