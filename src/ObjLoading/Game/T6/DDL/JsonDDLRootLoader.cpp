@@ -568,23 +568,24 @@ namespace
             }
 
             // commonddldef structure supports multiple defs in the same file, but jsonddl does not
+            std::vector<JsonDDLDef> jDDLDefs;
+            jDDLDefs.resize(jDDLRoot.defFiles.size());
             for (auto i = 0u; i < jDDLRoot.defFiles.size(); i++)
             {
-                JsonDDLDef jDDLDef;
-                if (!LoadDDLDefJson(jDDLRoot.defFiles[i], searchPath, jDDLDef))
+                if (!LoadDDLDefJson(jDDLRoot.defFiles[i], searchPath, jDDLDefs[i]))
                     return false;
 
-                if (jDDLDef.enums.size() > T6::DDL::MAX_ENUMS)
+                if (jDDLDefs[i].enums.size() > T6::DDL::MAX_ENUMS)
                     return false;
 
-                for (const auto& enum_ : jDDLDef.enums)
+                for (const auto& enum_ : jDDLDefs[i].enums)
                     if (enum_.members.size() > T6::DDL::MAX_MEMBERS)
                         return false;
 
-                if (jDDLDef.structs.size() > T6::DDL::MAX_STRUCTS)
+                if (jDDLDefs[i].structs.size() > T6::DDL::MAX_STRUCTS)
                     return false;
 
-                for (const auto& struc : jDDLDef.structs)
+                for (const auto& struc : jDDLDefs[i].structs)
                     if (struc.members.size() > T6::DDL::MAX_MEMBERS)
                         return false;
 
@@ -598,8 +599,19 @@ namespace
                     //jDDLRoot.includeDefs.insert_or_assign(jDDLIncludeFile, jDDLInclude);
                 }
                 */
-                CommonDDLDef cDDLDef(jDDLDef.version, jDDLRoot.defFiles[i], cDDLRoot, false);
-                if (!ConvertJsonDDLDef(jDDLRoot, jDDLDef, cDDLRoot, cDDLDef, false))
+            }
+
+            std::sort(jDDLDefs.begin(),
+                      jDDLDefs.end(),
+                      [](const JsonDDLDef& a, const JsonDDLDef& b)
+                      {
+                          return a.version >= b.version;
+                      });
+
+            for (auto i = 0u; i < jDDLDefs.size(); i++)
+            {
+                CommonDDLDef cDDLDef(jDDLDefs[i].version, jDDLRoot.defFiles[i], cDDLRoot, false);
+                if (!ConvertJsonDDLDef(jDDLRoot, jDDLDefs[i], cDDLRoot, cDDLDef, false))
                     return false;
 
                 cDDLRoot.m_defs[jDDLRoot.defFiles[i]].push_back(cDDLDef);

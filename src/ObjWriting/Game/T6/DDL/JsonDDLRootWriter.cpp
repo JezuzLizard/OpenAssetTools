@@ -9,7 +9,6 @@
 using namespace nlohmann;
 using namespace T6;
 
-#define DDL_DEBUG 1
 //#undef DDL_DEBUG
 //#define DDL_MINIMAL_DUMP 1
 //#define DDL_DEBUG_RELINK 1
