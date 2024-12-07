@@ -263,12 +263,9 @@ DDLAssertInternal(expression, #expression, __VA_ARGS__)
             void DumpMemberArray(const JsonDDLMemberDef& member)
             {
                 if (member.arraySize.value_or(1) > 1)
-                {
-                    if (member.enum_.has_value())
-                        m_stream << "[" << member.enum_.value() << "]";
-                    else
-                        m_stream << "[" << member.arraySize.value() << "]";
-                }
+                    m_stream << "[" << member.arraySize.value() << "]";  
+                else if (member.enum_.has_value())
+                    m_stream << "[" << member.enum_.value() << "]";
             }
 
             void DumpMember(const JsonDDLDef& jDDLDef, const JsonDDLStructDef& _struct, const JsonDDLMemberDef& member)
